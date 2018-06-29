@@ -1,0 +1,17 @@
+{
+	"name": "Nmap",
+	"version": "0.1",
+	"description": "Network Scanner",
+	"path": "/usr/bin/nmap",
+	"allowed_asset_types": ["ip", "domain", "fqdn", "url", "ip-range", "subnet"],
+	"options": {
+		"hosts": 				{ "type": "required" },
+		"ports": 				{ "type": "optional", "value": "-p" },
+		"no_dns": 			{ "type": "optional", "value": "-n"},
+		"scan_udp": 		{ "type": "optional", "value": "-sU --max-retries 3"},
+		"detect_service_version": { "type": "optional", "value": "-sV"},
+		"detect_os": 		{ "type": "optional", "value": "-O --osscan-guess --max-os-tries 1"},
+		"no_ping": 			{ "type": "optional", "value": "-Pn"},
+		"script_scan": 	{ "type": "optional", "value": "-sC"}
+	}
+}

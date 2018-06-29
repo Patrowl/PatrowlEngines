@@ -1,0 +1,14 @@
+{
+	"name": "PatrOwl - Static code review module",
+	"version": "0.1",
+	"description": "Static code vulnerability scanner",
+	"allowed_asset_types": ["path", "url"],
+	"options": {
+		"scan_js": { "required": false, "value": "boolean" },
+		"git_username": "xxx",
+		"git_password": "xxx",
+		"git_accesstoken": "xxx",
+		"svn_username": "xxx",
+		"svn_password": "xxx"
+	}
+}

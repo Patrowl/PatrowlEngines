@@ -1,0 +1,11 @@
+{
+	"name": "Nessus",
+	"version": "6.10.2 (#85)",
+	"description": "Vulnerability Scanner",
+	"server_host": "NESSUS_IP",
+	"server_port": "8834",
+	"server_username": "NESSUS_USERNAME",
+	"server_password": "NESSUS_PASSWORD",
+	"default_policy": "NESSUS_POLICY_NETWORK_SCAN.nessus",
+	"allowed_asset_types": ["ip", "domain", "ip-range", "subnet"]
+}

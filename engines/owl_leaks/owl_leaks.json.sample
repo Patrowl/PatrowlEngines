@@ -1,0 +1,15 @@
+{
+	"name": "PatrOwl - DataLeaks module",
+	"version": "0.1",
+	"description": "DataLeaks Scanner",
+	"allowed_asset_types": ["ip", "domain", "fqdn", "url", "keyword"],
+	"options": {
+		"github_api_token": "xxx",
+		"github_username": "xxx",
+		"github_password": "xxx!!!",
+		"twitter_oauth_token": "x-xx",
+		"twitter_oauth_secret": "xxx",
+		"twitter_consumer_key": "xx",
+		"twitter_consumer_secret": "xxx"
+	}
+}

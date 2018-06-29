@@ -1,0 +1,7 @@
+{
+	"name": "SSLLABS",
+	"version": "2",
+	"description": "SSL Scanner based on Qualys SSL LAB API",
+	"api_url": "https://api.ssllabs.com/api/v2/",
+	"allowed_asset_types": ["domain", "fqdn", "url"]
+}

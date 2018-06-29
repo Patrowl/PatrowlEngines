@@ -1,0 +1,46 @@
+{
+  "name": "Cortex's API",
+  "version": "0.1a",
+  "description": "Cortex's API for PatrOwl",
+  "allowed_asset_types": ["ip", "domain", "url", "fqdn"],
+  "api_url": "http://0.0.0.0:9001",
+  "api_key": "xxxx",
+  "proxies": {
+    "http": null,
+    "https": null
+  },
+  "meta_analyzers": {
+    "passivedns": [
+      "DNSDB_IPHistory_2_0",
+      "Robtex_Reverse_PDNS_Query_1_0",
+      "Onyphe_Forward_1_0",
+      "Onyphe_Reverse_1_0",
+      "PassiveTotal_Passive_Dns_2_0",
+      "PassiveTotal_Unique_Resolutions_2_0",
+      "CIRCLPassiveDNS_2_0",
+      "CERTatPassiveDNS_2_0"
+    ],
+    "osint": [
+      "PassiveTotal_Osint_2_0",
+      "C1fApp_1_0"
+    ],
+    "threats": [
+      "PassiveTotal_Malware_2_0",
+      "EmergingThreats_DomainInfo_1_0",
+      "EmergingThreats_IPInfo_1_0",
+      "EmergingThreats_MalwareInfo_1_0"
+    ],
+    "reputation": [
+      "WOT_Lookup_1_0",
+      "GoogleSafebrowsing_2_0",
+      "EmergingThreats_DomainInfo_1_0",
+      "EmergingThreats_IPInfo_1_0"
+    ],
+    "passivessl": [
+      "PassiveTotal_Ssl_Certificate_History_2_0",
+      "PassiveTotal_Ssl_Certificate_Details_2_0",
+      "CIRCLPassiveSSL_2_0",
+      "Censys_1_0"
+    ]
+  }
+}

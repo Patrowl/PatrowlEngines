@@ -1,0 +1,9 @@
+{
+  "name": "UrlVoid's API",
+  "version": "0.1a",
+  "description": "UrlVoid's API",
+  "allowed_asset_types": ["url"],
+  "apikeys": [
+    "xxx"
+  ]
+}

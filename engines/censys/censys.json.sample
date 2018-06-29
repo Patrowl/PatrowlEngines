@@ -1,0 +1,7 @@
+{
+  "name": "Censys API",
+  "version": "0.0a",
+  "description": "Censys",
+  "allowed_asset_types": ["ip", "domain", "url", "kw"],
+  "keys": [ ]
+}

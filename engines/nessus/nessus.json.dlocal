@@ -1,0 +1,11 @@
+{
+	"name": "Nessus",
+	"version": "6.11.1 (#101) DARWIN",
+	"description": "Vulnerability Scanner",
+	"server_host": "docker.for.mac.localhost",
+	"server_port": "8834",
+	"server_username": "patrowl",
+	"server_password": "patrowl",
+	"default_policy": "NESSUS_POLICY_NETWORK_SCAN.nessus",
+	"allowed_asset_types": ["ip", "domain", "ip-range", "subnet"]
+}

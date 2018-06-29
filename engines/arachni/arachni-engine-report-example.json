@@ -1,0 +1,386 @@
+{
+  "version" : "1.5.1",
+  "seed" : "c7b8d97041368c31c2370d2a6c6ffb59",
+  "options" : {
+    "audit" : {
+      "parameter_values" : true,
+      "exclude_vector_patterns" : [],
+      "include_vector_patterns" : [],
+      "link_templates" : [],
+      "ui_forms" : true,
+      "links" : true,
+      "with_both_http_methods" : false,
+      "cookies" : false,
+      "ui_inputs" : true,
+      "forms" : true,
+      "headers" : false,
+      "jsons" : true,
+      "xmls" : true
+    },
+    "browser_cluster" : {
+      "local_storage" : {},
+      "wait_for_elements" : {},
+      "pool_size" : 12,
+      "job_timeout" : 10,
+      "worker_time_to_live" : 100,
+      "ignore_images" : true,
+      "screen_width" : 1600,
+      "screen_height" : 1200
+    },
+    "datastore" : {
+      "report_path" : null,
+      "token" : "c760900a4bfa695c078324d0443b7c5b"
+    },
+    "http" : {
+      "user_agent" : "Arachni/v2.0dev-FullScan",
+      "request_timeout" : 10000,
+      "request_redirect_limit" : 5,
+      "request_concurrency" : 30,
+      "request_queue_size" : 1000,
+      "request_headers" : {},
+      "response_max_size" : 500000,
+      "cookies" : {},
+      "authentication_type" : "auto"
+    },
+    "input" : {
+      "values" : {},
+      "default_values" : {
+        "name" : "arachni_name",
+        "user" : "arachni_user",
+        "usr" : "arachni_user",
+        "pass" : "5543!%arachni_secret",
+        "txt" : "arachni_text",
+        "num" : "132",
+        "amount" : "100",
+        "mail" : "arachni@email.gr",
+        "account" : "12",
+        "id" : "1"
+      },
+      "without_defaults" : true,
+      "force" : false
+    },
+    "scope" : {
+      "redundant_path_patterns" : {},
+      "dom_depth_limit" : 5,
+      "exclude_file_extensions" : [
+        "pdf",
+        "css",
+        "ico",
+        "jpg",
+        "svg",
+        "png",
+        "gif",
+        "jpeg"
+      ],
+      "exclude_path_patterns" : [],
+      "exclude_content_patterns" : [],
+      "include_path_patterns" : [],
+      "restrict_paths" : [],
+      "extend_paths" : [],
+      "url_rewrites" : {},
+      "auto_redundant_paths" : 10,
+      "include_subdomains" : false,
+      "exclude_binaries" : false,
+      "https_only" : false
+    },
+    "session" : {},
+    "checks" : [
+      "xss",
+      "xss_dom",
+      "xss_dom_script_context",
+      "xss_event",
+      "xss_path",
+      "xss_script_context",
+      "xss_tag",
+      "xxe"
+    ],
+    "platforms" : [],
+    "plugins" : {},
+    "no_fingerprinting" : true,
+    "authorized_by" : null,
+    "url" : "https://xss-game.appspot.com/level1/"
+  },
+  "sitemap" : {
+    "https://xss-game.appspot.com/level1/" : 200,
+    "https://xss-game.appspot.com/level2" : 200,
+    "https://xss-game.appspot.com/level1/frame" : 200,
+    "https://xss-game.appspot.com/level1/frame?query=Enter%20query%20here...&button=Search" : 200,
+    "https://xss-game.appspot.com/level1/source" : 200,
+    "https://xss-game.appspot.com/static/game.js" : 200,
+    "https://xss-game.appspot.com/static/game-frame.js" : 200,
+    "https://xss-game.appspot.com/static/syntaxhighlighter/scripts/shBrushJScript.js" : 200,
+    "https://xss-game.appspot.com/static/syntaxhighlighter/scripts/shBrushPython.js" : 200,
+    "https://xss-game.appspot.com/static/syntaxhighlighter/scripts/shBrushXml.js" : 200,
+    "https://xss-game.appspot.com/static/syntaxhighlighter/scripts/shBrushPhp.js" : 200,
+    "https://xss-game.appspot.com/static/syntaxhighlighter/scripts/shCore.js" : 200
+  },
+  "start_datetime" : "2017-04-28 16:30:47 +0200",
+  "finish_datetime" : "2017-04-28 16:31:16 +0200",
+  "delta_time" : "00:00:28",
+  "issues" : [
+    {
+      "name" : "Cross-Site Scripting (XSS) in script context",
+      "description" : "\nClient-side scripts are used extensively by modern web applications.\nThey perform from simple functions (such as the formatting of text) up to full\nmanipulation of client-side data and Operating System interaction.\n\nCross Site Scripting (XSS) allows clients to inject scripts into a request and\nhave the server return the script to the client in the response. This occurs\nbecause the application is taking untrusted data (in this example, from the client)\nand reusing it without performing any validation or sanitisation.\n\nIf the injected script is returned immediately this is known as reflected XSS.\nIf the injected script is stored by the server and returned to any client visiting\nthe affected page, then this is known as persistent XSS (also stored XSS).\n\nArachni has discovered that it is possible to force the page to execute custom\nJavaScript code.\n",
+      "references" : {
+        "Secunia" : "http://secunia.com/advisories/9716/",
+        "WASC" : "http://projects.webappsec.org/w/page/13246920/Cross%20Site%20Scripting",
+        "OWASP" : "https://www.owasp.org/index.php/XSS_%28Cross_Site_Scripting%29_Prevention_Cheat_Sheet"
+      },
+      "tags" : [
+        "xss",
+        "script",
+        "dom",
+        "injection"
+      ],
+      "cwe" : 79,
+      "severity" : "high",
+      "remedy_guidance" : "\nTo remedy XSS vulnerabilities, it is important to never use untrusted or unfiltered\ndata within the code of a HTML page.\n\nUntrusted data can originate not only form the client but potentially a third\nparty or previously uploaded file etc.\n\nFiltering of untrusted data typically involves converting special characters to\ntheir HTML entity encoded counterparts (however, other methods do exist, see references).\nThese special characters include:\n\n* `&`\n* `<`\n* `>`\n* `\"`\n* `'`\n* `/`\n\nAn example of HTML entity encoding is converting `<` to `&lt;`.\n\nAlthough it is possible to filter untrusted input, there are five locations\nwithin an HTML page where untrusted input (even if it has been filtered) should\nnever be placed:\n\n1. Directly in a script.\n2. Inside an HTML comment.\n3. In an attribute name.\n4. In a tag name.\n5. Directly in CSS.\n\nEach of these locations have their own form of escaping and filtering.\n\n_Because many browsers attempt to implement XSS protection, any manual verification\nof this finding should be conducted using multiple different browsers and browser\nversions._\n",
+      "check" : {
+        "name" : "XSS in script context",
+        "description" : "\nInjects JS taint code and check to see if it gets executed as proof of vulnerability.\n",
+        "elements" : [
+          "form",
+          "link",
+          "cookie",
+          "header",
+          "link_template"
+        ],
+        "author" : "Tasos \"Zapotek\" Laskos <tasos.laskos@arachni-scanner.com> ",
+        "version" : "0.2.5",
+        "shortname" : "xss_script_context"
+      },
+      "vector" : {
+        "class" : "Arachni::Element::Form",
+        "type" : "form",
+        "url" : "https://xss-game.appspot.com/level1/frame",
+        "source" : "<form action=\"\" method=\"GET\">\n  <input id=\"query\" name=\"query\" value=\"Enter query here...\" onfocus=\"this.value=''\">\n  </input>\n  <input id=\"button\" type=\"submit\" value=\"Search\">\n  </input>\n</form>",
+        "inputs" : {
+          "query" : "</script><script>window.top._arachni_js_namespace_taint_tracer.log_execution_flow_sink()</script>",
+          "button" : "Search"
+        },
+        "raw_inputs" : [],
+        "default_inputs" : {
+          "query" : "Enter query here...",
+          "button" : "Search"
+        },
+        "action" : "https://xss-game.appspot.com/level1/frame",
+        "method" : "get",
+        "affected_input_name" : "query",
+        "affected_input_value" : "</script><script>window.top._arachni_js_namespace_taint_tracer.log_execution_flow_sink()</script>",
+        "seed" : "</script><script>window.top._arachni_js_namespace_taint_tracer.log_execution_flow_sink()</script>"
+      },
+      "proof" : "</script><script>window.top._arachni_js_namespace_taint_tracer.log_execution_flow_sink()</script>",
+      "referring_page" : {
+        "body" : "\n<!doctype html>\n<html>\n  <head>\n    <!-- Internal game scripts/styles, mostly boring stuff -->\n    <script src=\"/static/game-frame.js\"></script>\n    <link rel=\"stylesheet\" href=\"/static/game-frame-styles.css\" />\n  </head>\n\n  <body id=\"level1\">\n    <img src=\"/static/logos/level1.png\">\n      <div>\n\n<form action=\"\" method=\"GET\">\n  <input id=\"query\" name=\"query\" value=\"Enter query here...\"\n    onfocus=\"this.value=''\">\n  <input id=\"button\" type=\"submit\" value=\"Search\">\n</form>\n\n    </div>\n  </body>\n</html>\n",
+        "dom" : {
+          "url" : "https://xss-game.appspot.com/level1/frame",
+          "transitions" : [],
+          "cookies" : [],
+          "digest" : null,
+          "data_flow_sinks" : [],
+          "execution_flow_sinks" : []
+        }
+      },
+      "platform_name" : null,
+      "platform_type" : null,
+      "page" : {
+        "body" : "<html><head><script src=\"http://javascript.browser.arachni/polyfills.js\"></script> <!-- Injected by Arachni::Browser::Javascript -->\n<script src=\"http://javascript.browser.arachni/taint_tracer.js\"></script> <!-- Injected by Arachni::Browser::Javascript -->\n<script src=\"http://javascript.browser.arachni/dom_monitor.js\"></script> <!-- Injected by Arachni::Browser::Javascript -->\n<script>\n/* arachni_js_namespace_initialize_start */ _arachni_js_namespaceTaintTracer.initialize({\"window.top._%s_taint_tracer.log_execution_flow_sink()\":{\"stop_at_first\":false,\"trace\":true}}) /* arachni_js_namespace_initialize_stop */\nwindow._arachni_js_namespace = true;\n\n/* arachni_js_namespace_code_start */  /* arachni_js_namespace_code_stop */\n</script> <!-- Injected by Arachni::Browser::Javascript -->\n\n\n\n  \n    <!-- Internal game scripts/styles, mostly boring stuff -->\n    <script src=\"/static/game-frame.js\">\n\n                // Injected by Arachni::Browser::Javascript\n                _arachni_js_namespaceTaintTracer.update_tracers();\n                _arachni_js_namespaceDOMMonitor.update_trackers();\n\n</script>\n<script type=\"text/javascript\">_arachni_js_namespaceTaintTracer.update_tracers();_arachni_js_namespaceDOMMonitor.update_trackers();</script> <!-- Injected by Arachni::Browser::Javascript -->\n\n    <link rel=\"stylesheet\" href=\"/static/game-frame-styles.css\">\n  </head>\n\n  <body id=\"level1\">\n    <img src=\"/static/logos/level1.png\">\n      <div>\nSorry, no results were found for <b>\n<script type=\"text/javascript\">_arachni_js_namespaceTaintTracer.update_tracers();_arachni_js_namespaceDOMMonitor.update_trackers();</script> <!-- Injected by Arachni::Browser::Javascript -->\n<script>\n\n                // Injected by Arachni::Browser::Javascript\n                _arachni_js_namespaceTaintTracer.update_tracers();\n                _arachni_js_namespaceDOMMonitor.update_trackers();\n\nwindow.top._arachni_js_namespace_taint_tracer.log_execution_flow_sink()</script>\n<script type=\"text/javascript\">_arachni_js_namespaceTaintTracer.update_tracers();_arachni_js_namespaceDOMMonitor.update_trackers();</script> <!-- Injected by Arachni::Browser::Javascript -->\n</b>. <a href=\"?\">Try again</a>.\n    </div>\n  \n\n</body></html>",
+        "dom" : {
+          "url" : "https://xss-game.appspot.com/level1/frame?query=%3C/script%3E%3Cscript%3Ewindow.top._arachni_js_namespace_taint_tracer.log_execution_flow_sink()%3C/script%3E&button=Search",
+          "transitions" : [
+            {
+              "element" : "page",
+              "event" : "load",
+              "options" : {
+                "url" : "https://xss-game.appspot.com/level1/frame?query=%3C/script%3E%3Cscript%3Ewindow.top._arachni_js_namespace_taint_tracer.log_execution_flow_sink()%3C/script%3E&button=Search",
+                "cookies" : {}
+              },
+              "time" : 0.786674
+            },
+            {
+              "element" : "https://xss-game.appspot.com/level1/frame?query=%3C/script%3E%3Cscript%3Ewindow.top._arachni_js_namespace_taint_tracer.log_execution_flow_sink()%3C/script%3E&button=Search",
+              "event" : "request",
+              "options" : {},
+              "time" : 0.110065
+            }
+          ],
+          "cookies" : [],
+          "digest" : null,
+          "data_flow_sinks" : [],
+          "execution_flow_sinks" : [
+            {
+              "data" : [],
+              "trace" : [
+                {
+                  "function" : {
+                    "name" : "global code"
+                  },
+                  "line" : 38,
+                  "url" : "https://xss-game.appspot.com/level1/frame?query=%3C/script%3E%3Cscript%3Ewindow.top._arachni_js_namespace_taint_tracer.log_execution_flow_sink()%3C/script%3E&button=Search"
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "remarks" : {},
+      "trusted" : true,
+      "cwe_url" : "http://cwe.mitre.org/data/definitions/79.html",
+      "digest" : 1351979475,
+      "response" : {
+        "headers" : {
+          "Content-Type" : "text/html; charset=utf-8",
+          "X-Xss-Protection" : "0",
+          "X-Cloud-Trace-Context" : "15630b61d1dc34136501c9d95a9b4437",
+          "Server" : "Google Frontend",
+          "Content-Length" : "2241",
+          "Alt-Svc" : "quic=\":443\"; ma=2592000; v=\"37,36,35\""
+        },
+        "url" : "https://xss-game.appspot.com/level1/frame?query=%3C/script%3E%3Cscript%3Ewindow.top._arachni_js_namespace_taint_tracer.log_execution_flow_sink()%3C/script%3E&button=Search",
+        "code" : 200,
+        "ip_address" : "216.58.213.180",
+        "headers_string" : "HTTP/1.1 200 OK\r\nContent-Type: text/html; charset=utf-8\r\nCache-Control: no-cache\r\nX-XSS-Protection: 0\r\nX-Cloud-Trace-Context: 15630b61d1dc34136501c9d95a9b4437\r\nDate: Fri, 28 Apr 2017 14:31:08 GMT\r\nServer: Google Frontend\r\nContent-Length: 493\r\nAlt-Svc: quic=\":443\"; ma=2592000; v=\"37,36,35\"\r\n\r\n",
+        "body" : "<script src=\"http://javascript.browser.arachni/polyfills.js\"></script> <!-- Injected by Arachni::Browser::Javascript -->\n<script src=\"http://javascript.browser.arachni/taint_tracer.js\"></script> <!-- Injected by Arachni::Browser::Javascript -->\n<script src=\"http://javascript.browser.arachni/dom_monitor.js\"></script> <!-- Injected by Arachni::Browser::Javascript -->\n<script>\n/* arachni_js_namespace_initialize_start */ _arachni_js_namespaceTaintTracer.initialize({\"window.top._%s_taint_tracer.log_execution_flow_sink()\":{\"stop_at_first\":false,\"trace\":true}}) /* arachni_js_namespace_initialize_stop */\nwindow._arachni_js_namespace = true;\n\n/* arachni_js_namespace_code_start */  /* arachni_js_namespace_code_stop */\n</script> <!-- Injected by Arachni::Browser::Javascript -->\n\n<!doctype html>\n<html>\n  <head>\n    <!-- Internal game scripts/styles, mostly boring stuff -->\n    <script src=\"/static/game-frame.js\">\n\n                // Injected by Arachni::Browser::Javascript\n                _arachni_js_namespaceTaintTracer.update_tracers();\n                _arachni_js_namespaceDOMMonitor.update_trackers();\n\n</script>\n<script type=\"text/javascript\">_arachni_js_namespaceTaintTracer.update_tracers();_arachni_js_namespaceDOMMonitor.update_trackers();</script> <!-- Injected by Arachni::Browser::Javascript -->\n\n    <link rel=\"stylesheet\" href=\"/static/game-frame-styles.css\" />\n  </head>\n\n  <body id=\"level1\">\n    <img src=\"/static/logos/level1.png\">\n      <div>\nSorry, no results were found for <b></script>\n<script type=\"text/javascript\">_arachni_js_namespaceTaintTracer.update_tracers();_arachni_js_namespaceDOMMonitor.update_trackers();</script> <!-- Injected by Arachni::Browser::Javascript -->\n<script>\n\n                // Injected by Arachni::Browser::Javascript\n                _arachni_js_namespaceTaintTracer.update_tracers();\n                _arachni_js_namespaceDOMMonitor.update_trackers();\n\nwindow.top._arachni_js_namespace_taint_tracer.log_execution_flow_sink()</script>\n<script type=\"text/javascript\">_arachni_js_namespaceTaintTracer.update_tracers();_arachni_js_namespaceDOMMonitor.update_trackers();</script> <!-- Injected by Arachni::Browser::Javascript -->\n</b>. <a href='?'>Try again</a>.\n    </div>\n  </body>\n</html>\n",
+        "time" : 0.329162,
+        "total_time" : 0.329162,
+        "return_code" : "ok",
+        "return_message" : "No error"
+      },
+      "request" : {
+        "url" : "https://xss-game.appspot.com/level1/frame?query=%3C/script%3E%3Cscript%3Ewindow.top._arachni_js_namespace_taint_tracer.log_execution_flow_sink()%3C/script%3E&button=Search",
+        "parameters" : {},
+        "headers" : {
+          "Accept" : "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+          "User-Agent" : "Mozilla/5.0 AppleWebKit/538.1 (KHTML, like Gecko) Arachni/1.5.1 Safari/538.1",
+          "Accept-Language" : "fr-FR,en,*",
+          "Host" : "xss-game.appspot.com"
+        },
+        "headers_string" : null,
+        "effective_body" : null,
+        "body" : "",
+        "method" : "get"
+      }
+    },
+    {
+      "name" : "Cross-Site Scripting (XSS)",
+      "description" : "\nClient-side scripts are used extensively by modern web applications.\nThey perform from simple functions (such as the formatting of text) up to full\nmanipulation of client-side data and Operating System interaction.\n\nCross Site Scripting (XSS) allows clients to inject scripts into a request and\nhave the server return the script to the client in the response. This occurs\nbecause the application is taking untrusted data (in this example, from the client)\nand reusing it without performing any validation or sanitisation.\n\nIf the injected script is returned immediately this is known as reflected XSS.\nIf the injected script is stored by the server and returned to any client visiting\nthe affected page, then this is known as persistent XSS (also stored XSS).\n\nArachni has discovered that it is possible to insert script content directly into\nHTML element content.\n",
+      "references" : {
+        "Secunia" : "http://secunia.com/advisories/9716/",
+        "WASC" : "http://projects.webappsec.org/w/page/13246920/Cross%20Site%20Scripting",
+        "OWASP" : "https://www.owasp.org/index.php/XSS_%28Cross_Site_Scripting%29_Prevention_Cheat_Sheet"
+      },
+      "tags" : [
+        "xss",
+        "regexp",
+        "injection",
+        "script"
+      ],
+      "cwe" : 79,
+      "severity" : "high",
+      "remedy_guidance" : "\nTo remedy XSS vulnerabilities, it is important to never use untrusted or unfiltered\ndata within the code of a HTML page.\n\nUntrusted data can originate not only form the client but potentially a third\nparty or previously uploaded file etc.\n\nFiltering of untrusted data typically involves converting special characters to\ntheir HTML entity encoded counterparts (however, other methods do exist, see references).\nThese special characters include:\n\n* `&`\n* `<`\n* `>`\n* `\"`\n* `'`\n* `/`\n\nAn example of HTML entity encoding is converting `<` to `&lt;`.\n\nAlthough it is possible to filter untrusted input, there are five locations\nwithin an HTML page where untrusted input (even if it has been filtered) should\nnever be placed:\n\n1. Directly in a script.\n2. Inside an HTML comment.\n3. In an attribute name.\n4. In a tag name.\n5. Directly in CSS.\n\nEach of these locations have their own form of escaping and filtering.\n\n_Because many browsers attempt to implement XSS protection, any manual verification\nof this finding should be conducted using multiple different browsers and browser\nversions._\n",
+      "check" : {
+        "name" : "XSS",
+        "description" : "\nInjects an HTML element into page inputs and then parses the HTML markup of\ntainted responses to look for proof of vulnerability.\n",
+        "elements" : [
+          "form",
+          "link",
+          "cookie",
+          "header",
+          "link_template"
+        ],
+        "author" : "Tasos \"Zapotek\" Laskos <tasos.laskos@arachni-scanner.com> ",
+        "version" : "0.4.9",
+        "shortname" : "xss"
+      },
+      "vector" : {
+        "class" : "Arachni::Element::Form",
+        "type" : "form",
+        "url" : "https://xss-game.appspot.com/level1/frame",
+        "source" : "<form action=\"\" method=\"GET\">\n  <input id=\"query\" name=\"query\" value=\"Enter query here...\" onfocus=\"this.value=''\">\n  </input>\n  <input id=\"button\" type=\"submit\" value=\"Search\">\n  </input>\n</form>",
+        "inputs" : {
+          "query" : "Enter query here...<xss_c7b8d97041368c31c2370d2a6c6ffb59/>",
+          "button" : "Search"
+        },
+        "raw_inputs" : [],
+        "default_inputs" : {
+          "query" : "Enter query here...",
+          "button" : "Search"
+        },
+        "action" : "https://xss-game.appspot.com/level1/frame",
+        "method" : "get",
+        "affected_input_name" : "query",
+        "affected_input_value" : "Enter query here...<xss_c7b8d97041368c31c2370d2a6c6ffb59/>",
+        "seed" : "<xss_c7b8d97041368c31c2370d2a6c6ffb59/>"
+      },
+      "proof" : "<xss_c7b8d97041368c31c2370d2a6c6ffb59/>",
+      "referring_page" : {
+        "body" : "\n<!doctype html>\n<html>\n  <head>\n    <!-- Internal game scripts/styles, mostly boring stuff -->\n    <script src=\"/static/game-frame.js\"></script>\n    <link rel=\"stylesheet\" href=\"/static/game-frame-styles.css\" />\n  </head>\n\n  <body id=\"level1\">\n    <img src=\"/static/logos/level1.png\">\n      <div>\n\n<form action=\"\" method=\"GET\">\n  <input id=\"query\" name=\"query\" value=\"Enter query here...\"\n    onfocus=\"this.value=''\">\n  <input id=\"button\" type=\"submit\" value=\"Search\">\n</form>\n\n    </div>\n  </body>\n</html>\n",
+        "dom" : {
+          "url" : "https://xss-game.appspot.com/level1/frame",
+          "transitions" : [],
+          "cookies" : [],
+          "digest" : null,
+          "data_flow_sinks" : [],
+          "execution_flow_sinks" : []
+        }
+      },
+      "platform_name" : null,
+      "platform_type" : null,
+      "page" : {
+        "body" : "\n<!doctype html>\n<html>\n  <head>\n    <!-- Internal game scripts/styles, mostly boring stuff -->\n    <script src=\"/static/game-frame.js\"></script>\n    <link rel=\"stylesheet\" href=\"/static/game-frame-styles.css\" />\n  </head>\n\n  <body id=\"level1\">\n    <img src=\"/static/logos/level1.png\">\n      <div>\nSorry, no results were found for <b>Enter query here...<xss_c7b8d97041368c31c2370d2a6c6ffb59/></b>. <a href='?'>Try again</a>.\n    </div>\n  </body>\n</html>\n",
+        "dom" : {
+          "url" : "https://xss-game.appspot.com/level1/frame?query=Enter%20query%20here...%3Cxss_c7b8d97041368c31c2370d2a6c6ffb59/%3E&button=Search",
+          "transitions" : [],
+          "cookies" : [],
+          "digest" : null,
+          "data_flow_sinks" : [],
+          "execution_flow_sinks" : []
+        }
+      },
+      "remarks" : {},
+      "trusted" : true,
+      "cwe_url" : "http://cwe.mitre.org/data/definitions/79.html",
+      "digest" : 3988610303,
+      "response" : {
+        "headers" : {
+          "Content-Type" : "text/html; charset=utf-8",
+          "Cache-Control" : "no-cache",
+          "X-Xss-Protection" : "0",
+          "X-Cloud-Trace-Context" : "f6eb3403cae6519aa9451d67363a628e",
+          "Date" : "Fri, 28 Apr 2017 14:31:07 GMT",
+          "Server" : "Google Frontend",
+          "Content-Length" : "454",
+          "Alt-Svc" : "quic=\":443\"; ma=2592000; v=\"37,36,35\""
+        },
+        "url" : "https://xss-game.appspot.com/level1/frame?query=Enter%20query%20here...%3Cxss_c7b8d97041368c31c2370d2a6c6ffb59/%3E&button=Search",
+        "code" : 200,
+        "ip_address" : "216.58.213.180",
+        "headers_string" : "HTTP/1.1 200 OK\r\nContent-Type: text/html; charset=utf-8\r\nCache-Control: no-cache\r\nX-XSS-Protection: 0\r\nX-Cloud-Trace-Context: f6eb3403cae6519aa9451d67363a628e\r\nDate: Fri, 28 Apr 2017 14:31:07 GMT\r\nServer: Google Frontend\r\nContent-Length: 454\r\nAlt-Svc: quic=\":443\"; ma=2592000; v=\"37,36,35\"\r\n\r\n",
+        "body" : "\n<!doctype html>\n<html>\n  <head>\n    <!-- Internal game scripts/styles, mostly boring stuff -->\n    <script src=\"/static/game-frame.js\"></script>\n    <link rel=\"stylesheet\" href=\"/static/game-frame-styles.css\" />\n  </head>\n\n  <body id=\"level1\">\n    <img src=\"/static/logos/level1.png\">\n      <div>\nSorry, no results were found for <b>Enter query here...<xss_c7b8d97041368c31c2370d2a6c6ffb59/></b>. <a href='?'>Try again</a>.\n    </div>\n  </body>\n</html>\n",
+        "time" : 0.199198,
+        "app_time" : 0.19849,
+        "total_time" : 0.199198,
+        "return_code" : "ok",
+        "return_message" : "No error"
+      },
+      "request" : {
+        "url" : "https://xss-game.appspot.com/level1/frame",
+        "parameters" : {
+          "query" : "Enter query here...<xss_c7b8d97041368c31c2370d2a6c6ffb59/>",
+          "button" : "Search"
+        },
+        "headers" : {
+          "Accept" : "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+          "User-Agent" : "Arachni/v2.0dev-FullScan",
+          "Accept-Language" : "en-US,en;q=0.8,he;q=0.6",
+          "X-Arachni-Scan-Seed" : "c7b8d97041368c31c2370d2a6c6ffb59"
+        },
+        "headers_string" : "GET /level1/frame?query=Enter%20query%20here...%3Cxss_c7b8d97041368c31c2370d2a6c6ffb59%2F%3E&button=Search HTTP/1.1\r\nHost: xss-game.appspot.com\r\nAccept-Encoding: gzip, deflate\r\nUser-Agent: Arachni/v2.0dev-FullScan\r\nAccept: text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8\r\nAccept-Language: en-US,en;q=0.8,he;q=0.6\r\nX-Arachni-Scan-Seed: c7b8d97041368c31c2370d2a6c6ffb59\r\n\r\n",
+        "effective_body" : null,
+        "body" : null,
+        "method" : "get"
+      }
+    }
+  ],
+  "plugins" : {}
+}
