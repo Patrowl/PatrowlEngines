@@ -4,8 +4,6 @@ engines/arachni/libs/*
 engines/arachni/logs/*
 engines/arachni/arachni.json
 engines/nmap/env
-engines/nmap/results/*
-engines/nmap/logs/*
 engines/nmap/nmap.json
 engines/nessus/results/*
 engines/nessus/tmp/*

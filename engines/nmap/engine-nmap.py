@@ -545,9 +545,6 @@ def getreport(scan_id):
 
 @app.route('/engines/nmap/test')
 def test():
-    if not APP_DEBUG:
-        return jsonify({"page": "test"})
-
     res = "<h2>Test Page (DEBUG):</h2>"
     for rule in app.url_map.iter_rules():
         options = {}
