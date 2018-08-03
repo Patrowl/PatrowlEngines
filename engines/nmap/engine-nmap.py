@@ -291,6 +291,7 @@ def scan_status(scan_id):
             })
         elif psutil.Process(proc.pid).status() == "zombie":
             res.update({"status" : "FINISHED" })
+            this.scans[scan_id]["status"] = "FINISHED"
             psutil.Process(proc.pid).terminate()
             #Check for errors
             # log_path = BASE_DIR+"/logs/" + scan_id +".error"
@@ -428,9 +429,9 @@ def _parse_report(filename, scan_id):
                 type="host_availability")))
 
         # get OS information
-        if host.find('os'):
+        if host.find('os') is not None:
             osinfo = host.find('os').find('osmatch')
-            if osinfo:
+            if osinfo is not None:
                 res.append(deepcopy(_add_issue(scan_id, target, ts,
                     "OS: {}".format(osinfo.get('name')),
                     "The scan detected that the host run in OS '{}' (accuracy={}%)"

@@ -1,14 +1,16 @@
 {
 	"name": "PatrOwl - Dns module",
-	"version": "0.1a",
+	"version": "0.1",
 	"description": "DNS Scanner",
 	"allowed_asset_types": ["ip", "domain"],
-	"sublister_bin_path": "/opt/owl_dns/libs/Sublist3r",
-	"pythonwhois_bin_path": "/opt/owl_dns/libs/python-whois",
-	"names_path": "/opt/owl_dns/etc/names.txt",
+	"sublister_bin_path": "/opt/patrowl-engines/owl_dns/libs/Sublist3r",
+	"pythonwhois_bin_path": "/opt/patrowl-engines/owl_dns/libs/python-whois",
+	"names_path": "/opt/patrowl-engines/owl_dns/etc/names.txt",
 	"options": {
 		"do_whois": 				{ "required": false, "value": "boolean" },
 		"do_advanced_whois":{ "required": false, "value": "boolean" },
+		"do_subdomain_enum":{ "required": false, "value": "boolean" },
+		"do_subdomain_bruteforce":{ "required": false, "value": "boolean" },
 		"do_reverse_dns": 	{ "required": false, "value": "boolean" },
 		"do_dns_resolve": 	{ "required": false, "value": "boolean" },
 		"do_subdomains_resolve": 	{ "required": false, "value": "boolean" }

@@ -17,13 +17,15 @@ DNS REST API engine
 
 ## Testing URLs
 http://0.0.0.0:5006/engines/owl_dns/test
+http://0.0.0.0:5006/engines/owl_dns/info
+http://0.0.0.0:5006/engines/owl_dns/status
 
 ## Dependencies
-https://github.com/joepie91/python-whois
-https://github.com/aboul3la/Sublist3r
+* [python-whois](https://github.com/joepie91/python-whois)
+* [Sublist3r](https://github.com/aboul3la/Sublist3r)
 
-
-## Other tools
+## Other interesting links & tools
+https://publicsuffix.org/list/effective_tld_names.dat
 https://github.com/darkoperator/dnsrecon
 [https://github.com/TheRook/subbrute]
 [https://bitbucket.org/richardpenman/pywhois]

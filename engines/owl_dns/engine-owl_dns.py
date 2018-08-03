@@ -254,10 +254,14 @@ def _get_whois(scan_id, asset):
     if not __is_domain(asset): return res
 
     raw = pythonwhois.net.get_whois_raw(str(asset))
-    #res.append(pythonwhois.parse.parse_raw_whois(raw))
-    res.update({
-        asset: pythonwhois.parse.parse_raw_whois(raw)
-    })
+    if "No match for " in raw[0]:
+        res.update({
+            asset: {"errors": raw[0]}
+        })
+    else:
+        res.update({
+            asset: pythonwhois.parse.parse_raw_whois(raw)
+        })
 
     scan_lock = threading.RLock()
     with scan_lock:
@@ -283,7 +287,7 @@ def _subdomain_bruteforce(scan_id, asset):
         "video", "videos", "mob", "mobile", "mobi", "ws", "ad", "doc", "docs",
         "store", "feeds", "rss", "files",
         "mantis", "nagios", "owa", "outlook", "zabbix"
-        ]
+    ]
 
 
     valid_sudoms = []
@@ -602,28 +606,50 @@ def _parse_results(scan_id):
     if 'whois' in scan['findings'].keys():
         for asset in scan['findings']['whois'].keys():
             nb_vulns['info'] += 1
-            whois_hash = hashlib.sha1(str(scan['findings']['whois'])).hexdigest()[:6]
-            issues.append({
-                "issue_id": len(issues)+1,
-                "severity": "info", "confidence": "certain",
-                "target": {
-                    "addr": [asset],
-                    "protocol": "domain"
+            # check errors
+            if "errors" in scan['findings']['whois'][asset].keys():
+                issues.append({
+                    "issue_id": len(issues)+1,
+                    "severity": "info", "confidence": "certain",
+                    "target": {
+                        "addr": [asset],
+                        "protocol": "domain"
+                        },
+                    "title": "[Whois] No match for '{}'".format(asset),
+                    "description": "No Whois data available for domain '{}'. Note that Whois is available for registered domains only (not sub-domains): \n{}".format(asset, scan['findings']['whois'][asset]['errors']),
+                    "solution": "n/a",
+                    "metadata": {
+                        "tags": ["domains", "whois"]
                     },
-                "title": "Whois info for '{}' (HASH: {})".format(asset, whois_hash),
-                "description": "Whois Info (raw): \n\n{}".format(str(scan['findings']['whois'][asset]['raw'][0])),
-                "solution": "n/a",
-                "metadata": {
-                    "tags": ["domains", "whois"]
-                },
-                "type": "whois_fullinfo",
-                "raw": scan['findings']['whois'][asset]['raw'][0],
-                "timestamp": ts
-            })
+                    "type": "whois_domain_error",
+                    "raw": scan['findings']['whois'][asset]['errors'],
+                    "timestamp": ts
+                })
+            else:
+                whois_hash = hashlib.sha1(str(scan['findings']['whois'])).hexdigest()[:6]
+                issues.append({
+                    "issue_id": len(issues)+1,
+                    "severity": "info", "confidence": "certain",
+                    "target": {
+                        "addr": [asset],
+                        "protocol": "domain"
+                        },
+                    "title": "Whois info for '{}' (HASH: {})".format(asset, whois_hash),
+                    "description": "Whois Info (raw): \n\n{}".format(str(scan['findings']['whois'][asset]['raw'][0])),
+                    "solution": "n/a",
+                    "metadata": {
+                        "tags": ["domains", "whois"]
+                    },
+                    "type": "whois_fullinfo",
+                    "raw": scan['findings']['whois'][asset]['raw'][0],
+                    "timestamp": ts
+                })
 
         # advanced whois info
         if 'do_advanced_whois' in scan['options'].keys() and scan['options']['do_advanced_whois']:
             for asset in scan['findings']['whois'].keys():
+                if "errors" in scan['findings']['whois'][asset].keys(): continue
+
                 issue = {
                     "severity": "info", "confidence": "certain",
                     "target": {
