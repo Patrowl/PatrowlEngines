@@ -3,7 +3,7 @@
 	"version": "1.0",
 	"description": "Network Scanner",
 	"path": "/usr/bin/nmap",
-	"allowed_asset_types": ["ip", "domain", "fqdn", "url", "ip-range", "subnet"],
+	"allowed_asset_types": ["ip", "domain", "fqdn", "url", "ip-range", "ip-subnet"],
 	"options": {
 		"hosts": 				{ "type": "required" },
 		"ports": 				{ "type": "optional", "value": "-p" },

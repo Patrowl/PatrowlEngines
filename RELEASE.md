@@ -1,6 +1,15 @@
 New features/fixes in the latest update
 =====================================
 
+August 16, 2018
+---
+* FEATURE:
+  - Nmap: Support ip subnets and ip ranges
+* FIX:
+  - Nmap: Scan status was set as "READY" if no pid was found (start scan error)
+* DOC: None
+* MISC: None
+
 August 3, 2018
 ---
 * FEATURE:

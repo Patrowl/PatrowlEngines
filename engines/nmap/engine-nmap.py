@@ -203,7 +203,7 @@ def _scan_thread(scan_id):
     # Check options
     for opt_key in options.keys():
         if opt_key in this.scanner['options'] and options.get(opt_key):
-            cmd += " " + this.scanner['options'][opt_key]['value']
+            cmd += " {}".format(this.scanner['options'][opt_key]['value'])
 
     with open(log_path, "w") as stderr:
         this.scans[scan_id]["proc"] = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE, stderr=stderr)
@@ -309,7 +309,7 @@ def scan_status(scan_id):
             #     os.remove(log_path)
             #     res.update({ "status": "READY" })
     else:
-        res.update({ "status": "READY" })
+        res.update({ "status": "UNKNOWN" })
     return jsonify(res)
 
 
@@ -330,6 +330,7 @@ def status():
     # display the status of scans performed
     scans = {}
     for scan in this.scans.keys():
+        scan_status(scan)
         scans.update({scan: {
             "status": this.scans[scan]["status"],
             "proc_cmd": this.scans[scan]["proc_cmd"],
