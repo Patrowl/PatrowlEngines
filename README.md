@@ -1,6 +1,7 @@
 ![](https://github.com/Patrowl/PatrowlDocs/blob/master/images/logos/logo-patrowl-light.png)
 
 [![Join the chat at https://gitter.im/Patrowl/Support](https://badges.gitter.im/Patrowl/Support.png)](https://gitter.im/Patrowl/Support)
+![https://sonarcloud.io/api/project_badges/measure?project=patrowl-engines&metric=alert_status](https://sonarcloud.io/api/project_badges/measure?project=patrowl-engines&metric=alert_status)
 
 # **PatrOwl**
 [PatrOwl](https://www.patrowl.io/) is a scalable, free and open-source solution for orchestrating Security Operations.

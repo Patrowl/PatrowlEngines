@@ -320,4 +320,4 @@ def _search_twitter_thread(scan_id, asset_kw):
 
 
 if __name__ == '__main__':
-    engine.run_app(app_host=APP_HOST, app_port=APP_PORT)
+    engine.run_app(app_debug=APP_DEBUG, app_host=APP_HOST, app_port=APP_PORT)

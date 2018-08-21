@@ -50,8 +50,8 @@ class PatrowlEngine:
 
         self._loadconfig()
         parser = optparse.OptionParser()
-        parser.add_option("-h", "--host", help="Hostname of the Patrowl Engine [default %s]" % DEFAULT_APP_HOST, default=app_host)
-        parser.add_option("-p", "--port", help="Port for the Patrowl Engine [default %s]" % DEFAULT_APP_PORT, default=app_port)
+        parser.add_option("-H", "--host", help="Hostname of the Patrowl Engine [default %s]" % DEFAULT_APP_HOST, default=app_host)
+        parser.add_option("-P", "--port", help="Port for the Patrowl Engine [default %s]" % DEFAULT_APP_PORT, default=app_port)
         parser.add_option("-d", "--debug", action="store_true", dest="debug", help=optparse.SUPPRESS_HELP)
         options, _ = parser.parse_args()
         self.app.run(debug=options.debug, host=options.host, port=int(options.port), threaded=True)
