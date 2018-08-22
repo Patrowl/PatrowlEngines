@@ -12,6 +12,10 @@
 		"detect_service_version": { "type": "optional", "value": "-sV"},
 		"detect_os": 		{ "type": "optional", "value": "-O --osscan-guess --max-os-tries 1"},
 		"no_ping": 			{ "type": "optional", "value": "-Pn"},
-		"script_scan": 	{ "type": "optional", "value": "-sC"}
+		"script_scan": 	{ "type": "optional", "value": "-sC"},
+		"aggressive_scan": 	{ "type": "optional", "value": "-T4"},
+		"slow_scan": 	{ "type": "optional", "value": "-T1"},
+		"script": 	{ "type": "optional", "value": "--script"},
+		"script_args": 	{ "type": "optional", "value": "--script-args"}
 	}
 }

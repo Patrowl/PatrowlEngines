@@ -127,7 +127,7 @@ def start():
 
     # Load scan parameters
     data = json.loads(request.data)
-    if not 'assets' in data.keys() or not data['options']['ports']:
+    if not 'assets' in data.keys():# or not data['options']['ports']:
         res.update({
             "status": "refused",
             "details" : {
@@ -190,20 +190,29 @@ def _scan_thread(scan_id):
     hosts = list(set(hosts))
 
     # Sanitize args :
-    ports = ",".join(this.scans[scan_id]['options']['ports'])
-    del this.scans[scan_id]['options']['ports']
+    ports = None
+    if "ports" in this.scans[scan_id]['options'].keys():
+        ports = ",".join(this.scans[scan_id]['options']['ports'])
+    #del this.scans[scan_id]['options']['ports']
     options = this.scans[scan_id]['options']
     log_path = BASE_DIR+"/logs/" + scan_id +".error"
 
     cmd = this.scanner['path'] + " -sS "+ " ".join(hosts) + \
-        " -p" + ports + \
         " -oX "+BASE_DIR+"/results/nmap_" + scan_id + ".xml" \
         " -vvv"
 
     # Check options
     for opt_key in options.keys():
-        if opt_key in this.scanner['options'] and options.get(opt_key):
+        if opt_key in this.scanner['options'] and options.get(opt_key) and opt_key not in ["ports", "script", "script_args"]:
             cmd += " {}".format(this.scanner['options'][opt_key]['value'])
+        if opt_key == "ports" and ports is not None: # /!\ @todo / Security issue: Sanitize parameters here
+            cmd += " -p {}".format(ports)
+        if opt_key == "script" and options.get(opt_key).endswith('.nse'): # /!\ @todo / Security issue: Sanitize parameters here
+            cmd += " --script {}".format(options.get(opt_key))
+        if opt_key == "script_args": # /!\ @todo / Security issue: Sanitize parameters here
+            cmd += " --script-args {}".format(options.get(opt_key))
+
+
 
     with open(log_path, "w") as stderr:
         this.scans[scan_id]["proc"] = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE, stderr=stderr)
@@ -460,11 +469,11 @@ def _parse_report(filename, scan_id):
                     type="port_status")))
 
                 # get service information if available
-                if port.find('service') is not None:
+                if port.find('service') is not None and port.find('state').get('state') not in ["filtered", "closed"]:
                     svc_name = port.find('service').get('name')
                     target.update({ "service": svc_name })
                     res.append(deepcopy(_add_issue(scan_id, target, ts,
-                        "Service '{} is running on port '{}/{}'".format(svc_name, proto, portid),
+                        "Service '{}' is running on port '{}/{}'".format(svc_name, proto, portid),
                         "The scan detected that the service '{}' is running on port '{}/{}' "
                             .format(svc_name, proto, portid),
                         type="port_info")))
