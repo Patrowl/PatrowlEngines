@@ -197,7 +197,7 @@ def _scan_thread(scan_id):
     options = this.scans[scan_id]['options']
     log_path = BASE_DIR+"/logs/" + scan_id +".error"
 
-    cmd = this.scanner['path'] + " -sS "+ " ".join(hosts) + \
+    cmd = this.scanner['path'] + " ".join(hosts) + \
         " -oX "+BASE_DIR+"/results/nmap_" + scan_id + ".xml" \
         " -vvv"
 
