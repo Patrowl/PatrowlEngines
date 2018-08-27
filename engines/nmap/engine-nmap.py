@@ -202,7 +202,7 @@ def _scan_thread(scan_id):
 
     # Check options
     for opt_key in options.keys():
-        if opt_key in this.scanner['options'] and options.get(opt_key) and opt_key not in ["ports", "script", "script_args"]:
+        if opt_key in this.scanner['options'] and options.get(opt_key) and opt_key not in ["ports", "script", "script_args", "script_output_fields"]:
             cmd += " {}".format(this.scanner['options'][opt_key]['value'])
         if opt_key == "ports" and ports is not None: # /!\ @todo / Security issue: Sanitize parameters here
             cmd += " -p{}".format(ports)
@@ -364,7 +364,7 @@ def info():
     return jsonify(res)
 
 
-def _add_issue(scan_id, target, ts, title, desc, type, severity = "info", confidence = "certain"):
+def _add_issue(scan_id, target, ts, title, desc, type, severity = "info", confidence = "certain", vuln_refs = {}, links = []):
     this.scans[scan_id]["nb_findings"] = this.scans[scan_id]["nb_findings"] + 1
     issue = {
         "issue_id": this.scans[scan_id]["nb_findings"],
@@ -375,7 +375,11 @@ def _add_issue(scan_id, target, ts, title, desc, type, severity = "info", confid
         "description": desc,
         "solution": "n/a",
         "type": type,
-        "timestamp": ts
+        "timestamp": ts,
+        "metadata": {
+            "vuln_refs": vuln_refs,
+            "links": links
+        }
     }
 
     return issue
@@ -472,14 +476,46 @@ def _parse_report(filename, scan_id):
                 if port.find('service') is not None and port.find('state').get('state') not in ["filtered", "closed"]:
                     svc_name = port.find('service').get('name')
                     target.update({ "service": svc_name })
+
+                    # Check if a CPE has been identified
+                    cpe_info=""
+                    cpe_links=None
+                    cpe_refs={}
+                    if port.find('service').find("cpe") is not None:
+                        cpe_vector = port.find('service').find("cpe").text
+                        cpe_link = _get_cpe_link(cpe_vector)
+                        cpe_info = "\n The following CPE vector has been identified: {}".format(cpe_vector)
+                        cpe_refs={"CPE": [cpe_vector]}
+
                     res.append(deepcopy(_add_issue(scan_id, target, ts,
                         "Service '{}' is running on port '{}/{}'".format(svc_name, proto, portid),
-                        "The scan detected that the service '{}' is running on port '{}/{}' "
-                            .format(svc_name, proto, portid),
-                        type="port_info")))
+                        "The scan detected that the service '{}' is running on port '{}/{}'. {}"
+                            .format(svc_name, proto, portid, cpe_info),
+                        type="port_info",
+                        links=[cpe_link],
+                        vuln_refs=cpe_refs)))
+
+        # get script results - generate issues
+        if host.find('hostscript') is not None:
+            for script in host.find('hostscript'):
+                script_output = script.get('output')
+                res.append(deepcopy(_add_issue(scan_id, target, ts,
+                    "Script '{}' has given results".format(script.get('id')),
+                    "The script '{}' revealed following information: \n{}".format(script.get('id'), script_output),
+                    type="host_script")))
+
+                if "script_output_fields" in this.scans[scan_id]["options"].keys():
+                    for elem in script.findall("elem"):
+                        if elem.get("key") in this.scans[scan_id]["options"]["script_output_fields"]:
+                            res.append(deepcopy(_add_issue(scan_id, target, ts,
+                                "Script results '{}/{}' set to '{}'".format(script.get('id'), elem.get("key"), elem.text),
+                                "The script '{}' revealed following information: \n'{}' was identified to '{}'".format(script.get('id'), elem.get("key"), elem.text),
+                                type="host_script_advanced")))
 
     return res
 
+def _get_cpe_link(cpe):
+    return "https://nvd.nist.gov/vuln/search/results?adv_search=true&cpe={}".format(cpe)
 
 @app.route('/engines/nmap/getfindings/<scan_id>')
 def getfindings(scan_id):

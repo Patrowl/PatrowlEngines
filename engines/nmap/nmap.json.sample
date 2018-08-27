@@ -19,6 +19,7 @@
 		"aggressive_scan": 	{ "type": "optional", "value": "-T4"},
 		"slow_scan": 	{ "type": "optional", "value": "-T1"},
 		"script": 	{ "type": "optional", "value": "--script"},
-		"script_args": 	{ "type": "optional", "value": "--script-args"}
+		"script_args": 	{ "type": "optional", "value": "--script-args"},
+		"script_output_fields": {"type": "optional", "value": [""]}
 	}
 }
