@@ -1,7 +1,7 @@
 #!/bin/bash
 
 TRUSTED_HOSTS=""
-#TRUSTED_HOSTS="--trusted-host=pypi.org --trusted-host=pypi.python.org --trusted-host=files.pythonhosted.org"
+#TRUSTED_HOSTS="--trusted-host pypi.org --trusted-host pypi.python.org --trusted-host files.pythonhosted.org"
 
 # Check if python2.7 if installed
 python_bin=$(which python2.7)
@@ -17,9 +17,9 @@ for engine_dir in $engines_path/*; do
 	if [ -f "${engine_dir}/requirements.txt" ]; then
 		cd ${engine_dir}
 		rm -rf env
-		${python_bin} -m virtualenv env $TRUSTED_HOSTS
+		${python_bin} -m virtualenv env
 		. env/bin/activate
-		env/bin/pip install -r requirements.txt
+		env/bin/pip install -r requirements.txt $TRUSTED_HOSTS
 		deactivate
 	fi
 done

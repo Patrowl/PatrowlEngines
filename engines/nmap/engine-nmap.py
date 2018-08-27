@@ -197,16 +197,15 @@ def _scan_thread(scan_id):
     options = this.scans[scan_id]['options']
     log_path = BASE_DIR+"/logs/" + scan_id +".error"
 
-    cmd = this.scanner['path'] + " ".join(hosts) + \
-        " -oX "+BASE_DIR+"/results/nmap_" + scan_id + ".xml" \
-        " -vvv"
+    cmd = this.scanner['path'] + " -vvv " + " ".join(hosts) + \
+        " -oX "+BASE_DIR+"/results/nmap_" + scan_id + ".xml"
 
     # Check options
     for opt_key in options.keys():
         if opt_key in this.scanner['options'] and options.get(opt_key) and opt_key not in ["ports", "script", "script_args"]:
             cmd += " {}".format(this.scanner['options'][opt_key]['value'])
         if opt_key == "ports" and ports is not None: # /!\ @todo / Security issue: Sanitize parameters here
-            cmd += " -p {}".format(ports)
+            cmd += " -p{}".format(ports)
         if opt_key == "script" and options.get(opt_key).endswith('.nse'): # /!\ @todo / Security issue: Sanitize parameters here
             cmd += " --script {}".format(options.get(opt_key))
         if opt_key == "script_args": # /!\ @todo / Security issue: Sanitize parameters here
@@ -215,7 +214,7 @@ def _scan_thread(scan_id):
 
 
     with open(log_path, "w") as stderr:
-        this.scans[scan_id]["proc"] = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE, stderr=stderr)
+        this.scans[scan_id]["proc"] = subprocess.Popen(cmd, shell=True, stdout=open("/dev/null", "w"), stderr=None)
     this.scans[scan_id]["proc_cmd"] = cmd
 
     return True
@@ -266,7 +265,8 @@ def stop_scan(scan_id):
     if hasattr(proc, 'pid'):
         #his.proc.terminate()
         #proc.kill()
-        os.killpg(os.getpgid(proc.pid), signal.SIGTERM)
+        #os.killpg(os.getpgid(proc.pid), signal.SIGTERM)
+        psutil.Process(proc.pid).terminate()
         res.update({"status" : "TERMINATED",
             "details": {
                 "pid" : proc.pid,
