@@ -1,5 +1,5 @@
 click==6.7
-Flask==0.12.2
+Flask==0.12.4
 gitdb2==2.0.3
 GitPython==2.1.9
 itsdangerous==0.24
