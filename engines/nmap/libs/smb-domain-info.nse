@@ -33,7 +33,7 @@ probably start looking for sticky notes on people's monitors.
 -- |_  fqdn: myserver.intra.dom.local
 -----------------------------------------------------------------------
 
-author = "Nicolas Mattiocco"
+author = "Nicolas Mattiocco <nicolas@greenlock.fr>"
 copyright = "Nicolas Mattiocco"
 license = "Same as Nmap--See https://nmap.org/book/man-legal.html"
 categories = {"discovery"}
