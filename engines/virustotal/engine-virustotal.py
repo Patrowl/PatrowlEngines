@@ -385,8 +385,8 @@ def _parse_results(scan_id):
                 if 'undetected_downloaded_samples' in results.keys() and len(results['undetected_downloaded_samples']) > 0:
                     # sort by sha256
                     for record in sorted(results['undetected_downloaded_samples'], key=operator.itemgetter('sha256')):
-                        entry = "{} (total: {}, positives: {}, scan date: {})".format(
-                            record['sha256'], record['total'], record['positives'], record['date'])
+                        entry = "{} (total: {}, positives: {})".format(
+                            record['sha256'], record['total'], record['positives'])
                         undetected_samples_str = "".join((undetected_samples_str, entry+"\n"))
                     undetected_samples_hash = hashlib.sha1(undetected_samples_str).hexdigest()[:6]
 
@@ -409,8 +409,8 @@ def _parse_results(scan_id):
                 if 'detected_communicating_samples' in results.keys() and len(results['detected_communicating_samples']) > 0:
                     # sort by sha256
                     for record in sorted(results['detected_communicating_samples'], key=operator.itemgetter('sha256')):
-                        entry = "{} (total: {}, positives: {}, scan date: {})".format(
-                            record['sha256'], record['total'], record['positives'], record['date'])
+                        entry = "{} (total: {}, positives: {})".format(
+                            record['sha256'], record['total'], record['positives'])
                         detected_samples_str = "".join((detected_samples_str, entry+"\n"))
                     detected_samples_hash = hashlib.sha1(detected_samples_str).hexdigest()[:6]
 
@@ -508,7 +508,7 @@ def _parse_results(scan_id):
 
                 #whois
                 domain_whois = ""
-                if 'whois' in results.keys():
+                if 'whois' in results.keys() and results['whois'] is not None:
                     nb_vulns['info'] += 1
                     issues.append({
                         "issue_id": len(issues)+1,
@@ -623,8 +623,8 @@ def _parse_results(scan_id):
                 if 'detected_communicating_samples' in results.keys() and len(results['detected_communicating_samples']) > 0:
                     # sort by sha256
                     for record in sorted(results['detected_communicating_samples'], key=operator.itemgetter('sha256')):
-                        entry = "{} (total: {}, positives: {}, scan date: {})".format(
-                            record['sha256'], record['total'], record['positives'], record['date'])
+                        entry = "{} (total: {}, positives: {})".format(
+                            record['sha256'], record['total'], record['positives'])
                         detected_samples_str = "".join((detected_samples_str, entry+"\n"))
                     detected_samples_hash = hashlib.sha1(detected_samples_str).hexdigest()[:6]
 
@@ -648,8 +648,8 @@ def _parse_results(scan_id):
                 if 'undetected_downloaded_samples' in results.keys() and len(results['undetected_downloaded_samples']) > 0:
                     # sort by sha256
                     for record in sorted(results['undetected_downloaded_samples'], key=operator.itemgetter('sha256')):
-                        entry = "{} (total: {}, positives: {}, scan date: {})".format(
-                            record['sha256'], record['total'], record['positives'], record['date'])
+                        entry = "{} (total: {}, positives: {})".format(
+                            record['sha256'], record['total'], record['positives'])
                         undetected_samples_str = "".join((undetected_samples_str, entry+"\n"))
                     undetected_samples_hash = hashlib.sha1(undetected_samples_str).hexdigest()[:6]
 
@@ -673,8 +673,8 @@ def _parse_results(scan_id):
                 if 'detected_referrer_samples' in results.keys() and len(results['detected_referrer_samples']) > 0:
                     # sort by sha256
                     for record in sorted(results['detected_referrer_samples'], key=operator.itemgetter('sha256')):
-                        entry = "{} (total: {}, positives: {}, scan date: {})".format(
-                            record['sha256'], record['total'], record['positives'], record['date'])
+                        entry = "{} (total: {}, positives: {})".format(
+                            record['sha256'], record['total'], record['positives'])
                         detected_referrer_samples_str = "".join((detected_referrer_samples_str, entry+"\n"))
                     detected_referrer_samples_hash = hashlib.sha1(detected_referrer_samples_str).hexdigest()[:6]
 
