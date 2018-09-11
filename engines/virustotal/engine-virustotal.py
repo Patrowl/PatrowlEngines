@@ -672,9 +672,13 @@ def _parse_results(scan_id):
                 detected_referrer_samples_str = ""
                 if 'detected_referrer_samples' in results.keys() and len(results['detected_referrer_samples']) > 0:
                     # sort by sha256
+
+                    detected_referrer_samples_links = []
                     for record in sorted(results['detected_referrer_samples'], key=operator.itemgetter('sha256')):
+                        link = "https://www.virustotal.com/#/file/{}".format(record['sha256'])
                         entry = "{} (total: {}, positives: {})".format(
-                            record['sha256'], record['total'], record['positives'])
+                            link, record['total'], record['positives'])
+                        detected_referrer_samples_links.append(link)
                         detected_referrer_samples_str = "".join((detected_referrer_samples_str, entry+"\n"))
                     detected_referrer_samples_hash = hashlib.sha1(detected_referrer_samples_str).hexdigest()[:6]
 
@@ -687,7 +691,9 @@ def _parse_results(scan_id):
                         "description": "100 Most recent samples that contain the given domain among their strings and detected by at least one AV:\n{}".format(
                             detected_referrer_samples_str),
                         "solution": "n/a",
-                        "metadata": { "tags": ["domain", "samples", "malware"] },
+                        "metadata": {
+                            "tags": ["domain", "samples", "malware"],
+                            "links": detected_referrer_samples_links },
                         "type": "domain_detected_referrer_samples",
                         "raw": {"detected_referrer_samples": results['detected_referrer_samples']},
                         "timestamp": ts

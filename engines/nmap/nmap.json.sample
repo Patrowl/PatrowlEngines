@@ -7,11 +7,13 @@
 	"options": {
 		"hosts": 				{ "type": "required" },
 		"ports": 				{ "type": "optional", "value": "-p" },
+		"show_open_ports": 				{ "type": "optional", "value": "--open" },
 		"no_dns": 			{ "type": "optional", "value": "-n"},
 		"scan_udp": 		{ "type": "optional", "value": "-sU --max-retries 3"},
 		"syn_scan": 		{ "type": "optional", "value": "-sS"},
 		"tcp_scan": 		{ "type": "optional", "value": "-sT"},
 		"ping_scan": 		{ "type": "optional", "value": "-sP"},
+		"all_scan": 		{ "type": "optional", "value": "-A"},
 		"detect_service_version": { "type": "optional", "value": "-sV"},
 		"detect_os": 		{ "type": "optional", "value": "-O --osscan-guess --max-os-tries 1"},
 		"no_ping": 			{ "type": "optional", "value": "-Pn"},
@@ -20,6 +22,7 @@
 		"slow_scan": 	{ "type": "optional", "value": "-T1"},
 		"script": 	{ "type": "optional", "value": "--script"},
 		"script_args": 	{ "type": "optional", "value": "--script-args"},
+		"perfs": 	{ "type": "optional", "value": "--defeat-rst-ratelimit"},
 		"script_output_fields": {"type": "optional", "value": [""]}
 	}
 }

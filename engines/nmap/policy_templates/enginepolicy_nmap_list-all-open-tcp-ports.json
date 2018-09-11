@@ -1,0 +1,1 @@
+{"policies": [{"engine": 1, "status": "active", "description": "List all open TCP ports", "scopes": [1], "file": null, "owner": 1, "id": 6, "scope_names": ["Network Infrastructure"], "name": "List all open TCP ports", "engine_name": "NMAP", "default": false, "options": {"no_dns": 1, "ports": ["-"], "detect_service_version": 0, "no_ping": 0}}]}

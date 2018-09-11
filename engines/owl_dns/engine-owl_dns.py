@@ -117,11 +117,15 @@ def start_scan():
         for asset in data["assets"]:
             if asset["datatype"] == "domain":
                 th = threading.Thread(target=_subdomain_enum, args=(scan_id, asset["value"],))
-                this.scans[scan_id]['threads'].append(th)
-                th.daemon = False
                 th.start()
-                #th.do_run = False
-                th.join()
+                this.scans[scan_id]['threads'].append(th)
+
+                # th = threading.Thread(target=_subdomain_enum, args=(scan_id, asset["value"],))
+                # this.scans[scan_id]['threads'].append(th)
+                # th.daemon = False
+                # th.start()
+                # #th.do_run = False
+                # th.join()
 
     if 'do_subdomains_resolve' in scan['options'].keys() and data['options']['do_subdomains_resolve']:
         for asset in data["assets"]:
@@ -172,6 +176,7 @@ def __is_domain(host):
     res = False
     try:
         if not __is_ip_addr(host):
+            #print str(pythonwhois.net.get_whois_raw(host))
             res = not "No entries found" in str(pythonwhois.net.get_whois_raw(host))
     except:
         pass
@@ -324,12 +329,12 @@ def _subdomain_enum(scan_id, asset):
 
     # check the asset is a valid domain name
     if not __is_domain(asset):
-        #time.sleep(1)
         return res
 
     sub_res = sublist3r.main(
         asset, 1, None,
         ports=None, silent=True, verbose=False, enable_bruteforce=False, engines=None)
+
     res.update({asset: sub_res})
 
     # scan_lock = threading.RLock()
@@ -339,12 +344,12 @@ def _subdomain_enum(scan_id, asset):
                 if not subdom in this.scans[scan_id]['findings']['subdomains_list'][asset]:
                     this.scans[scan_id]['findings']['subdomains_list'][asset].extend(sub_res)
         else:
-            with this.scan_lock:
-                this.scans[scan_id]['findings']['subdomains_list'][asset] = sub_res
-    else:
-        with this.scan_lock:
-            this.scans[scan_id]['findings']['subdomains_list'] = {}
+            # with this.scan_lock:
             this.scans[scan_id]['findings']['subdomains_list'][asset] = sub_res
+    else:
+        # with this.scan_lock:
+        this.scans[scan_id]['findings']['subdomains_list'] = {}
+        this.scans[scan_id]['findings']['subdomains_list'][asset] = sub_res
 
     #time.sleep(2)
     return res

@@ -3,7 +3,8 @@ DNS REST API engine
 
 ## Dependancies
 - Python 2.7 + pip
-- Sublist3r (see: https://github.com/aboul3la/Sublist3r) and update owl_dns.json with installation path
+- [python-whois](https://github.com/joepie91/python-whois) (do not forget to update `owl_dns.json` with installation path)
+- [Sublist3r](https://github.com/aboul3la/Sublist3r)
 - See requirements.txt for others python packages (use "pip install -r requirements.txt")
 
 
@@ -19,10 +20,6 @@ DNS REST API engine
 http://0.0.0.0:5006/engines/owl_dns/test
 http://0.0.0.0:5006/engines/owl_dns/info
 http://0.0.0.0:5006/engines/owl_dns/status
-
-## Dependencies
-* [python-whois](https://github.com/joepie91/python-whois)
-* [Sublist3r](https://github.com/aboul3la/Sublist3r)
 
 ## Other interesting links & tools
 https://publicsuffix.org/list/effective_tld_names.dat

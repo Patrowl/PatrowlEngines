@@ -1,0 +1,1 @@
+{"policies": [{"engine": 4, "status": "", "description": "Check malware from domain", "scopes": [3, 6, 7], "file": null, "owner": 1, "id": 3, "scope_names": ["Domain", "E-Reputation", "Malware"], "name": "Check malware from domain", "engine_name": "VIRUSTOTAL", "default": false, "options": {"do_scan_url": false, "max_timeout": 3600, "do_scan_domain": true, "do_scan_ip": false}}]}

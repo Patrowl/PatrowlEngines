@@ -866,5 +866,4 @@ if __name__ == '__main__':
     parser.add_option("-d", "--debug", action="store_true", dest="debug", help=optparse.SUPPRESS_HELP)
 
     options, _ = parser.parse_args()
-    # app.run(debug=options.debug, host=options.host, port=int(options.port))
     app.run(debug=options.debug, host=options.host, port=int(options.port), threaded=True)

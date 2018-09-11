@@ -1,6 +1,6 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
-import os, subprocess, signal, sys, psutil, json, uuid, optparse, threading, urllib, time
+import os, subprocess, signal, sys, psutil, json, uuid, optparse, threading, urllib, time, hashlib
 from urlparse import urlparse
 from copy import deepcopy
 from flask import Flask, request, jsonify, redirect, url_for, send_file
@@ -364,7 +364,7 @@ def info():
     return jsonify(res)
 
 
-def _add_issue(scan_id, target, ts, title, desc, type, severity = "info", confidence = "certain", vuln_refs = {}, links = []):
+def _add_issue(scan_id, target, ts, title, desc, type, severity = "info", confidence = "certain", vuln_refs = {}, links = [], tags = [], risk = {}):
     this.scans[scan_id]["nb_findings"] = this.scans[scan_id]["nb_findings"] + 1
     issue = {
         "issue_id": this.scans[scan_id]["nb_findings"],
@@ -378,7 +378,9 @@ def _add_issue(scan_id, target, ts, title, desc, type, severity = "info", confid
         "timestamp": ts,
         "metadata": {
             "vuln_refs": vuln_refs,
-            "links": links
+            "risk": risk,
+            "links": links,
+            "tags": tags
         }
     }
 
@@ -495,6 +497,32 @@ def _parse_report(filename, scan_id):
                         links=[cpe_link],
                         vuln_refs=cpe_refs)))
 
+                for port_script in port.findall('script'):
+                    script_id = port_script.get('id')
+                    script_output = port_script.get('output')
+                    script_hash = hashlib.sha1(script_output).hexdigest()[:6]
+
+                    if script_id == "vulners":
+                        port_max_cvss, port_cve_list, port_cve_links, port_cpe = _get_vulners_findings(script_output)
+                        res.append(deepcopy(_add_issue(scan_id, target, ts,
+                            "Nmap script '{}' detected several findings (HASH: {})".format(script_id, script_hash),
+                            "The script '{}' detected following findings:\n{}"
+                                .format(script_id, script_output),
+                            type="port_script",
+                            tags=[script_id],
+                            risk={"cvss_base_score": float(port_max_cvss)},
+                            vuln_refs={"CVE": port_cve_list, "CPE": port_cpe},
+                            links=port_cve_links
+                            )))
+                    else:
+                        res.append(deepcopy(_add_issue(scan_id, target, ts,
+                            "Nmap script '{}' detected several findings (HASH: {})".format(script_id, script_hash),
+                            "The script '{}' detected following findings:\n{}"
+                                .format(script_id, script_output),
+                            type="port_script",
+                            tags=[script_id])))
+
+
         # get script results - generate issues
         if host.find('hostscript') is not None:
             for script in host.find('hostscript'):
@@ -516,6 +544,26 @@ def _parse_report(filename, scan_id):
 
 def _get_cpe_link(cpe):
     return "https://nvd.nist.gov/vuln/search/results?adv_search=true&cpe={}".format(cpe)
+
+# custom functions for Vulners issues
+def _get_vulners_findings(findings):
+    max_cvss = 0.0
+    cve_list = []
+    cve_links = []
+    cpe_info = ""
+    for line in findings.splitlines():
+        cols = line.split('\t\t', 2)
+        vulners_cve = cols[0].strip()
+        if vulners_cve.startswith('cpe'):
+            cpe_info = line.strip()
+        if vulners_cve.startswith('CVE-'):
+            vulners_cvss = cols[1]
+            if vulners_cvss > max_cvss: max_cvss = vulners_cvss
+            #print "cve:", vulners_cve, "-> cvss:",vulners_cvss
+            cve_list.append(vulners_cve)
+            cve_links.append(cols[2].strip())
+    #print "max_cvss:", max_cvss
+    return max_cvss, cve_list, cve_links, cpe_info
 
 @app.route('/engines/nmap/getfindings/<scan_id>')
 def getfindings(scan_id):
