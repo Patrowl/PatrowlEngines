@@ -505,7 +505,7 @@ def _parse_report(filename, scan_id):
                     if script_id == "vulners":
                         port_max_cvss, port_cve_list, port_cve_links, port_cpe = _get_vulners_findings(script_output)
                         res.append(deepcopy(_add_issue(scan_id, target, ts,
-                            "Nmap script '{}' detected several findings (HASH: {})".format(script_id, script_hash),
+                            "Nmap script '{}' detected findings on port {}/{} (HASH: {})".format(script_id, proto, portid, script_hash),
                             "The script '{}' detected following findings:\n{}"
                                 .format(script_id, script_output),
                             type="port_script",
@@ -516,7 +516,7 @@ def _parse_report(filename, scan_id):
                             )))
                     else:
                         res.append(deepcopy(_add_issue(scan_id, target, ts,
-                            "Nmap script '{}' detected several findings (HASH: {})".format(script_id, script_hash),
+                            "Nmap script '{}' detected findings on port {}/{} (HASH: {})".format(script_id, proto, portid, script_hash),
                             "The script '{}' detected following findings:\n{}"
                                 .format(script_id, script_output),
                             type="port_script",
