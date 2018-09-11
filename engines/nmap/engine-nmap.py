@@ -504,13 +504,23 @@ def _parse_report(filename, scan_id):
 
                     if script_id == "vulners":
                         port_max_cvss, port_cve_list, port_cve_links, port_cpe = _get_vulners_findings(script_output)
+
+                        port_severity = "info"
+                        if port_max_cvss >= 7.5:
+                            port_severity = "high"
+                        elif port_max_cvss >= 5.0 and port_max_cvss < 7.5:
+                            port_severity = "medium"
+                        elif port_max_cvss >= 3.0 and port_max_cvss < 5.0:
+                            port_severity = "low"
+
                         res.append(deepcopy(_add_issue(scan_id, target, ts,
                             "Nmap script '{}' detected findings on port {}/{} (HASH: {})".format(script_id, proto, portid, script_hash),
                             "The script '{}' detected following findings:\n{}"
                                 .format(script_id, script_output),
+                            severity=port_severity,
                             type="port_script",
                             tags=[script_id],
-                            risk={"cvss_base_score": float(port_max_cvss)},
+                            risk={"cvss_base_score": port_max_cvss},
                             vuln_refs={"CVE": port_cve_list, "CPE": port_cpe},
                             links=port_cve_links
                             )))
@@ -563,7 +573,7 @@ def _get_vulners_findings(findings):
             cve_list.append(vulners_cve)
             cve_links.append(cols[2].strip())
     #print "max_cvss:", max_cvss
-    return max_cvss, cve_list, cve_links, cpe_info
+    return float(max_cvss), cve_list, cve_links, cpe_info
 
 @app.route('/engines/nmap/getfindings/<scan_id>')
 def getfindings(scan_id):
