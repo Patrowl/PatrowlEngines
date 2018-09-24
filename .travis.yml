@@ -7,6 +7,8 @@ services:
 
 python:
   - "2.7"
+  # - "3.2"
+  # - "3.5"
 
 env:
   - PATROWL_ENGINE="arachni"
@@ -32,8 +34,9 @@ install:
 script:
   - python engine-$PATROWL_ENGINE.py -d > /dev/null &
   - pytest
+  - docker --version
   - docker build --tag docker_$PATROWL_ENGINE .
-  - docker run --rm docker_$PATROWL_ENGINE
+  - docker run --rm -d docker_$PATROWL_ENGINE
   - docker ps -a
   - docker stop docker_$PATROWL_ENGINE
   - docker rm docker_$PATROWL_ENGINE
