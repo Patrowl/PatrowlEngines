@@ -1,4 +1,4 @@
-sudo: enabled
+sudo: required
 
 language: python
 
@@ -7,8 +7,7 @@ services:
 
 python:
   - "2.7"
-  # - "3.2"
-  # - "3.5"
+  - "3.5"
 
 env:
   - PATROWL_ENGINE="arachni"

@@ -1,32 +1,20 @@
 import json, requests, time, random
 
-ENGINE_BASE_URL = "http://127.0.0.1:5001/engines/nmap"
+ENGINE_BASE_URL = "http://127.0.0.1:5008/engines/urlvoid"
 TEST_SCAN_ID = random.randint(1000000, 1999999)
 MAX_TIMEOUT = 300   # in seconds
 SCAN_POLICY = {
-  "no_ping":0,
-  "no_dns":1,
-  "ports":[
-    "80",
-    "22",
-    "443",
-    "56",
-    "25"
-  ],
-  "detect_service_version":1,
-  "script":"libs/vulners.nse",
-  "show_open_ports":1
+    "max_timeout": MAX_TIMEOUT
 }
 
-
-print("TEST CASE: nmap-vulners-script")
+print("TEST CASE: urlvoid-check_google")
 
 post_data = {
     "assets": [{
         "id" :'1',
-        "value" :'patrowl.io',
-        "criticity": 'low',
-        "datatype": 'domain'
+        "value" :'https://google.com',
+        "criticity": 'medium',
+        "datatype": 'url'
     }],
     "options": SCAN_POLICY,
     "scan_id": str(TEST_SCAN_ID)
@@ -40,19 +28,23 @@ assert r.json()['status'] == "accepted"
 
 # Wait until scan is finished
 timeout_start = time.time()
+has_error = False
 while time.time() < timeout_start + MAX_TIMEOUT:
     r = requests.get(url="{}/status/{}".format(ENGINE_BASE_URL, TEST_SCAN_ID))
     print(r.json())
-    if r.json()["status"] == "FINISHED":
+    if r.json()["status"] == "FINISHED": break
+    elif r.json()["status"] == "ERROR":
+        has_error = True
         break
     time.sleep(3)
 
 # Get findings
-r = requests.get(url="{}/getfindings/{}".format(ENGINE_BASE_URL, TEST_SCAN_ID))
-print(r.json())
-assert r.json()['status'] == "success"
+if not has_error:
+    r = requests.get(url="{}/getfindings/{}".format(ENGINE_BASE_URL, TEST_SCAN_ID))
+    print(r.json())
+    assert r.json()['status'] == "success"
 
-# Get Report
-r = requests.get(url="{}/getreport/{}".format(ENGINE_BASE_URL, TEST_SCAN_ID))
-print(r.json())
-assert r.json()['scan']['status'] == "FINISHED"
+    # Get report
+    r = requests.get(url="{}/getreport/{}".format(ENGINE_BASE_URL, TEST_SCAN_ID))
+    print(r.json())
+    assert r.json()['scan']['status'] == "FINISHED"
