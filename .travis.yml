@@ -5,11 +5,16 @@ language: python
 python:
   - "2.7"
 
+env:
+  - PATROWL_ENGINE="arachni"
+  - PATROWL_ENGINE="nmap"
+
 before_install:
-  - cd engines/arachni
+  - cd engines/$PATROWL_ENGINE
 
 install:
   - pip install -r requirements.txt
 
 script:
+  - python engine-$PATROWL_ENGINE -d
   - pytest
