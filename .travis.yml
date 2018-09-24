@@ -38,8 +38,6 @@ script:
   - docker build --tag docker_$PATROWL_ENGINE .
   - docker run --rm -d docker_$PATROWL_ENGINE
   - docker ps -a
-  - docker stop docker_$PATROWL_ENGINE
-  - docker rm docker_$PATROWL_ENGINE
 
 after_script:
   - docker images
