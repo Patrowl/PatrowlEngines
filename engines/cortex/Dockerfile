@@ -10,6 +10,7 @@ WORKDIR /opt/patrowl-engines/cortex
 # Copy the current directory contents into the container at /
 COPY __init__.py .
 COPY engine-cortex.py .
+COPY cortexapi.py .
 COPY cortex.json.sample cortex.json
 COPY requirements.txt .
 #COPY README.md .
