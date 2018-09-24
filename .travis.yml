@@ -7,7 +7,16 @@ python:
 
 env:
   - PATROWL_ENGINE="arachni"
+  - PATROWL_ENGINE="burp"
+  - PATROWL_ENGINE="censys"
+  - PATROWL_ENGINE="cortex"
+  - PATROWL_ENGINE="nessus"
   - PATROWL_ENGINE="nmap"
+  - PATROWL_ENGINE="owl_code"
+  - PATROWL_ENGINE="owl_dns"
+  - PATROWL_ENGINE="ssllabs"
+  - PATROWL_ENGINE="urlvoid"
+  - PATROWL_ENGINE="virustotal"
 
 before_install:
   - cd engines/$PATROWL_ENGINE
@@ -16,5 +25,5 @@ install:
   - pip install -r requirements.txt
 
 script:
-  - python engine-$PATROWL_ENGINE.py -d
+  - python engine-$PATROWL_ENGINE.py -d > /dev/null &
   - pytest
