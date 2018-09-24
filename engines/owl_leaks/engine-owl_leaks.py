@@ -269,9 +269,9 @@ def _search_twitter_thread(scan_id, asset_kw):
             since = "since:{}".format(engine.scans[scan_id]["options"]["search_twitter_options"]["since"])
 
     #WARNING a query should not exceed 500 chars, including filters and operators
-    print "query_string :", "\""+asset_kw+"\" "+extra_kw+" "+since+" -filter:retweets", "len:", len("\""+asset_kw+"\" "+extra_kw+" "+since+" -filter:retweets")
+    #print "query_string :", "\""+asset_kw+"\" "+extra_kw+" "+since+" -filter:retweets", "len:", len("\""+asset_kw+"\" "+extra_kw+" "+since+" -filter:retweets")
     results = twitter.search.tweets(q="\""+asset_kw+"\" "+extra_kw+" -filter:retweets", count=max_count)
-    print results
+    #print results
 
     if len(results["statuses"]) == 0: # no results
         metalink = "https://twitter.com/search"+results["search_metadata"]["refresh_url"]
@@ -291,7 +291,7 @@ def _search_twitter_thread(scan_id, asset_kw):
 
     else:
         for tweet in results["statuses"]:
-            print "id:", tweet["id"], "text:", tweet["text"]
+            #print "id:", tweet["id"], "text:", tweet["text"]
             # print "user_id:", tweet["user"]["id"], "user_name:", tweet["user"]["name"], "user_nickname:", tweet["user"]["screen_name"]
             # print "tweet_url:", "https://twitter.com/i/web/status/"+tweet["id_str"]
 
@@ -317,6 +317,10 @@ def _search_twitter_thread(scan_id, asset_kw):
     scan_lock = threading.RLock()
     with scan_lock:
         engine.scans[scan_id]["findings"] = engine.scans[scan_id]["findings"] + findings
+
+@app.before_first_request
+def main():
+    engine._loadconfig()
 
 
 if __name__ == '__main__':

@@ -481,7 +481,7 @@ def _parse_report(filename, scan_id):
 
                     # Check if a CPE has been identified
                     cpe_info=""
-                    cpe_links=None
+                    cpe_link=None
                     cpe_refs={}
                     if port.find('service').find("cpe") is not None:
                         cpe_vector = port.find('service').find("cpe").text
@@ -668,14 +668,17 @@ def page_not_found(e):
     return jsonify({"page": "not found"})
 
 
-if __name__ == '__main__':
+@app.before_first_request
+def main():
     if os.getuid() != 0:
         print "Error: Start the NMAP engine using root privileges !"
         sys.exit(-1)
     if not os.path.exists(BASE_DIR+"/results"):
         os.makedirs(BASE_DIR+"/results")
-    loadconfig()
+    _loadconfig()
 
+
+if __name__ == '__main__':
     parser = optparse.OptionParser()
     parser.add_option("-H", "--host", help="Hostname of the Flask app [default %s]" % APP_HOST, default=APP_HOST)
     parser.add_option("-P", "--port", help="Port for the Flask app [default %s]" % APP_PORT, default=APP_PORT)

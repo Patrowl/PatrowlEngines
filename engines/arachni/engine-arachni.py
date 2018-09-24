@@ -38,7 +38,7 @@ def clean():
 @app.route('/engines/arachni/clean/<scan_id>')
 def clean_scan(scan_id):
     res = { "page": "clean_scan" }
-    scan_id = int(scan_id)
+    #scan_id = int(scan_id)
     res.update({"scan_id": scan_id})
 
     if not scan_id in this.scans.keys():
@@ -74,7 +74,7 @@ def _loadconfig():
         + " --authentication-username " + this.scanner['username'] \
         + " --authentication-password " + this.scanner['password'] \
         + " --reroute-to-logfile " + BASE_DIR +"/logs"
-    this.proc = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    this.proc = subprocess.Popen(cmd, shell=True, stdout=open("/dev/null", "w"), stderr=None)
 
     print(" * Arachni REST API server successfully started on http://{}:{}/"
           .format(this.scanner['listening_host'], this.scanner['listening_port']))
@@ -95,6 +95,8 @@ def reloadconfig():
 @app.route('/engines/arachni/info')
 def info():
     res = { "page": "info" }
+
+    #todo check archni_status
 
     url = str(this.scanner['api_url']) + "/scans"
     try:
@@ -135,7 +137,7 @@ def status():
 
 
 def _is_scan_finished(scan_id):
-    scan_id = int(scan_id)
+    #scan_id = int(scan_id)
     if not scan_id in this.scans.keys():
         print("scan_id {} not found".format(scan_id))
         return False
@@ -167,7 +169,7 @@ def _is_scan_finished(scan_id):
 def scan_status(scan_id):
     res = { "page": "scan_status" }
 
-    scan_id = int(scan_id)
+    #scan_id = int(scan_id)
     if not scan_id in this.scans.keys():
         res.update({ "status": "error", "reason": "scan_id '{}' not found".format(scan_id)})
         return jsonify(res)
@@ -222,15 +224,24 @@ def start():
 		})
         return jsonify(res)
 
-    scan["scan_id"] = data["scan_id"]
+    # scan["scan_id"] = data["scan_id"]
+    scan["scan_id"] = str(data['scan_id'])
+    scan_id = str(data['scan_id'])
 
     if data["scan_id"] in this.scans.keys():
         res.update({ "status": "ERROR", "reason": "scan already started (scan_id={})".format(data["scan_id"])})
         return jsonify(res)
 
     # Initialize the scan parameters
+    asset = data['assets'][0]
+    if asset["datatype"] not in this.scanner["allowed_asset_types"]:
+        return jsonify({
+                "status": "refused",
+                "details" : {
+                    "reason": "datatype '{}' not supported for the asset {}.".format(asset["datatype"], asset["value"])
+            }})
 
-    scan["asset_url"] = list(data['assets'])[0]['value']
+    scan["asset_url"] = list(data['assets'])[0]['value'] # only take the 1st
     scan["target_host"] = urlparse.urlparse(scan["asset_url"]).netloc
     scan["target_protocol"] = urlparse.urlparse(scan["asset_url"]).scheme
 
@@ -295,7 +306,7 @@ genresults bydefaut stop/delete the scan in the arachni context
 def stop_scan(scan_id):
     res = { "page": "stop" }
 
-    scan_id = int(scan_id)
+    #scan_id = int(scan_id)
     if not scan_id in this.scans.keys():
         res.update({ "status": "ERROR", "reason": "scan_id '{}' not found".format(scan_id)})
         return jsonify(res)
@@ -343,7 +354,7 @@ def stop_scan(scan_id):
 
 @app.route('/engines/arachni/getfindings/<scan_id>')
 def getfindings(scan_id):
-    scan_id = int(scan_id)
+    #scan_id = int(scan_id)
     res = { "page": "getfindings" , "scan_id": scan_id}
 
     if not _is_scan_finished(scan_id):
@@ -548,10 +559,16 @@ def page_not_found(e):
     return jsonify({"page": "not found"})
 
 
-if __name__ == '__main__':
+@app.before_first_request
+def main():
     if not os.path.exists(BASE_DIR+"/results"):
         os.makedirs(BASE_DIR+"/results")
+    if not os.path.exists(BASE_DIR+"/logs"):
+        os.makedirs(BASE_DIR+"/logs")
     _loadconfig()
+
+
+if __name__ == '__main__':
     parser = optparse.OptionParser()
     parser.add_option("-H", "--host", help="Hostname of the Flask app [default %s]" % APP_HOST, default=APP_HOST)
     parser.add_option("-P", "--port", help="Port for the Flask app [default %s]" % APP_PORT, default=APP_PORT)

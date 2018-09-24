@@ -1011,10 +1011,14 @@ def _exit_thread(signum, frame):
         resq._Thread__stop()
     sys.exit(1)
 
-if __name__ == '__main__':
+@app.before_first_request
+def main():
     if not os.path.exists(BASE_DIR+"/results"):
         os.makedirs(BASE_DIR+"/results")
     _loadconfig()
+
+
+if __name__ == '__main__':
     signal.signal(signal.SIGINT, _exit_thread)
     #context = ('../../certificat/engine-censys.crt','../../certificat/engine-censys.key')
     #app.run(debug=APP_DEBUG, host=APP_HOST, port=APP_PORT, threaded=True) #, ssl_context=context)

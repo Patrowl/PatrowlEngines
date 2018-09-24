@@ -691,13 +691,16 @@ def page_not_found(e):
     return jsonify({"page": "undefined", "status": "error", "reason": "page not found"})
 
 
-if __name__ == '__main__':
+@app.before_first_request
+def main():
     if not os.path.exists(BASE_DIR+"/results"):
         os.makedirs(BASE_DIR+"/results")
     if not os.path.exists(BASE_DIR+"/reports"):
         os.makedirs(BASE_DIR+"/reports")
     _loadconfig()
 
+
+if __name__ == '__main__':
     parser = optparse.OptionParser()
     parser.add_option("-H", "--host", help="Hostname of the Flask app [default %s]" % APP_HOST, default=APP_HOST)
     parser.add_option("-P", "--port", help="Port for the Flask app [default %s]" % APP_PORT, default=APP_PORT)

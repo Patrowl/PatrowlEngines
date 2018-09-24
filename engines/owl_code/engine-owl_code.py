@@ -424,5 +424,10 @@ def _scanowaspdc_thread(scan_id, asset_kw):
     shutil.rmtree(scan_wd, ignore_errors=True)
 
 
+@app.before_first_request
+def main():
+    engine._loadconfig()
+    
+
 if __name__ == '__main__':
     engine.run_app(app_host=APP_HOST, app_port=APP_PORT)
