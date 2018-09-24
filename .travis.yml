@@ -2,12 +2,15 @@ sudo: enabled
 
 language: python
 
+services:
+  - docker
+
 python:
   - "2.7"
 
 env:
   - PATROWL_ENGINE="arachni"
-  - PATROWL_ENGINE="burp"
+  # - PATROWL_ENGINE="burp"
   - PATROWL_ENGINE="censys"
   - PATROWL_ENGINE="cortex"
   - PATROWL_ENGINE="nessus"
@@ -23,7 +26,13 @@ before_install:
 
 install:
   - pip install -r requirements.txt
+  - pip install requests
 
 script:
   - python engine-$PATROWL_ENGINE.py -d > /dev/null &
   - pytest
+  - docker build --tag docker_$PATROWL_ENGINE .
+  - docker run docker_$PATROWL_ENGINE
+
+after_script:
+  - docker images
