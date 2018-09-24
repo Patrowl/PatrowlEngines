@@ -10,18 +10,18 @@ python:
   - "3.5"
 
 env:
-  - PATROWL_ENGINE="arachni"
+  - PATROWL_ENGINE="arachni" ENGINE_PORT=5005
   # - PATROWL_ENGINE="burp"
   # - PATROWL_ENGINE="censys"
-  - PATROWL_ENGINE="cortex"
-  - PATROWL_ENGINE="nessus"
-  - PATROWL_ENGINE="nmap"
-  - PATROWL_ENGINE="owl_code"
-  - PATROWL_ENGINE="owl_leaks"
-  - PATROWL_ENGINE="owl_dns"
-  - PATROWL_ENGINE="ssllabs"
-  - PATROWL_ENGINE="urlvoid"
-  - PATROWL_ENGINE="virustotal"
+  - PATROWL_ENGINE="cortex" ENGINE_PORT=5009
+  - PATROWL_ENGINE="nessus" ENGINE_PORT=5002
+  - PATROWL_ENGINE="nmap" ENGINE_PORT=5001
+  - PATROWL_ENGINE="owl_code" ENGINE_PORT=5013
+  - PATROWL_ENGINE="owl_leaks" ENGINE_PORT=5012
+  - PATROWL_ENGINE="owl_dns" ENGINE_PORT=5006
+  - PATROWL_ENGINE="ssllabs" ENGINE_PORT=5004
+  - PATROWL_ENGINE="urlvoid" ENGINE_PORT=5008
+  - PATROWL_ENGINE="virustotal" ENGINE_PORT=5007
 
 before_install:
   - cd engines/$PATROWL_ENGINE
@@ -31,7 +31,8 @@ install:
   - pip install requests
 
 script:
-  - python engine-$PATROWL_ENGINE.py -d > /dev/null &
+  # - python engine-$PATROWL_ENGINE.py > /dev/null &
+  - gunicorn engine-$PATROWL_ENGINE:app -b 0.0.0.0:$ENGINE_PORT > /dev/null &
   - pytest
   - docker --version
   - docker build --tag docker_$PATROWL_ENGINE .
