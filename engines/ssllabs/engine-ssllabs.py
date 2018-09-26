@@ -329,8 +329,9 @@ def start():
     return jsonify(res)
 
 
-@app.route('/engines/ssllabs/stop', methods=['GET'])
-def stop(scan_id):
+# Stop all scans
+@app.route('/engines/ssllabs/stopscans', methods=['GET'])
+def stop():
     res = { "page": "stop" }
 
     for scan_id in this.scans.keys():

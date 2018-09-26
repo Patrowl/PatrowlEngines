@@ -7,7 +7,7 @@ services:
 
 python:
   - "2.7"
-  - "3.5"
+  # - "3.5"
 
 env:
   - PATROWL_ENGINE="arachni" ENGINE_PORT=5005
