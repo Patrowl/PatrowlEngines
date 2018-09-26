@@ -215,6 +215,18 @@ def stop_scan(scan_id):
     return jsonify(res)
 
 
+# Stop all scans
+@app.route('/engines/virustotal/stopscans', methods=['GET'])
+def stop():
+    res = { "page": "stopscans" }
+
+    for scan_id in this.scans.keys():
+        stop_scan(scan_id)
+
+    res.update({"status": "SUCCESS"})
+
+    return jsonify(res)
+
 @app.route('/engines/virustotal/clean')
 def clean():
     res = { "page": "clean" }

@@ -39,4 +39,5 @@ WORKDIR /opt/patrowl-engines/arachni/
 EXPOSE 5105
 
 # Run app.py when the container launches
-CMD ["python", "engine-arachni.py"]
+#CMD ["python", "engine-arachni.py"]
+CMD ["gunicorn", "engine-arachni:app", "-b", "0.0.0.0:5105"]

@@ -21,7 +21,7 @@ def default():
     return redirect(url_for('index'))
 
 
-@app.route('/engines/urlvoid/')
+@app.route('/engines/urlvoid/', methods=['GET'])
 def index():
     return jsonify({ "page": "index" })
 
@@ -41,7 +41,7 @@ def _loadconfig():
         return { "status": "error", "reason": "config file not found" }
 
 
-@app.route('/engines/urlvoid/reloadconfig')
+@app.route('/engines/urlvoid/reloadconfig', methods=['GET'])
 def reloadconfig():
     res = { "page": "reloadconfig" }
     _loadconfig()
@@ -157,7 +157,20 @@ def get_report(asset,apikey):
     return issues
 
 
-@app.route('/engines/urlvoid/stop/<scan_id>')
+# Stop all scans
+@app.route('/engines/urlvoid/stopscans', methods=['GET'])
+def stop():
+    res = { "page": "stopscans" }
+
+    for scan_id in this.scans.keys():
+        stop_scan(scan_id)
+
+    res.update({"status": "SUCCESS"})
+
+    return jsonify(res)
+
+
+@app.route('/engines/urlvoid/stop/<scan_id>', methods=['GET'])
 def stop_scan(scan_id):
     res = { "page": "stop" }
 
@@ -179,15 +192,16 @@ def stop_scan(scan_id):
     return jsonify(res)
 
 
-@app.route('/engines/urlvoid/clean')
+@app.route('/engines/urlvoid/clean', methods=['GET'])
 def clean():
     res = { "page": "clean" }
     this.scans.clear()
     _loadconfig()
+    res.update({"status": "SUCCESS"})
     return jsonify(res)
 
 
-@app.route('/engines/urlvoid/clean/<scan_id>')
+@app.route('/engines/urlvoid/clean/<scan_id>', methods=['GET'])
 def clean_scan(scan_id):
     res = { "page": "clean_scan" }
     res.update({"scan_id": scan_id})
@@ -201,7 +215,7 @@ def clean_scan(scan_id):
     return jsonify(res)
 
 
-@app.route('/engines/urlvoid/status/<scan_id>')
+@app.route('/engines/urlvoid/status/<scan_id>', methods=['GET'])
 def scan_status(scan_id):
     if not scan_id in this.scans.keys():
         return jsonify({
@@ -224,7 +238,7 @@ def scan_status(scan_id):
     return jsonify({"status": this.scans[scan_id]['status']})
 
 
-@app.route('/engines/urlvoid/status')
+@app.route('/engines/urlvoid/status', methods=['GET'])
 def status():
     res = {    "page": "status"}
 
@@ -251,7 +265,7 @@ def status():
     return jsonify(res)
 
 
-@app.route('/engines/urlvoid/info')
+@app.route('/engines/urlvoid/info', methods=['GET'])
 def info():
     status()
     return jsonify({"page": "info", "engine_config": this.scanner})
@@ -317,7 +331,7 @@ def _parse_results(scan_id):
     return issues, summary
 
 
-@app.route('/engines/urlvoid/getfindings/<scan_id>')
+@app.route('/engines/urlvoid/getfindings/<scan_id>', methods=['GET'])
 def getfindings(scan_id):
     res = { "page": "getfindings", "scan_id": scan_id }
 
@@ -370,7 +384,7 @@ def _json_serial(obj):
     raise TypeError ("Type not serializable ({})".format(obj))
 
 
-@app.route('/engines/urlvoid/getreport/<scan_id>')
+@app.route('/engines/urlvoid/getreport/<scan_id>', methods=['GET'])
 def getreport(scan_id):
     filepath = BASE_DIR+"/results/urlvoid_"+scan_id+".json"
 
@@ -380,7 +394,7 @@ def getreport(scan_id):
     return send_from_directory(BASE_DIR+"/results/", "urlvoid_"+scan_id+".json")
 
 
-@app.route('/engines/urlvoid/test')
+@app.route('/engines/urlvoid/test', methods=['GET'])
 def test():
     if not APP_DEBUG:
         return jsonify({"page": "test"})
@@ -397,15 +411,18 @@ def test():
 
     return res
 
+
 @app.errorhandler(404)
 def page_not_found(e):
     return jsonify({"page": "not found"})
+
 
 @app.before_first_request
 def main():
     if not os.path.exists(BASE_DIR+"/results"):
         os.makedirs(BASE_DIR+"/results")
     _loadconfig()
+
 
 if __name__ == '__main__':
     parser = optparse.OptionParser()
