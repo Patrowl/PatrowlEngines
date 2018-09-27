@@ -266,7 +266,8 @@ def stop_scan(scan_id):
         #his.proc.terminate()
         #proc.kill()
         #os.killpg(os.getpgid(proc.pid), signal.SIGTERM)
-        psutil.Process(proc.pid).terminate()
+        if psutil.pid_exists(proc.pid):
+            psutil.Process(proc.pid).terminate()
         res.update({"status" : "TERMINATED",
             "details": {
                 "pid" : proc.pid,
@@ -291,14 +292,18 @@ def scan_status(scan_id):
 
     if hasattr(proc, 'pid'):
         #print(psutil.Process(proc.pid).status())
-        if psutil.Process(proc.pid).status() in ["sleeping", "running"]:
+        if not psutil.pid_exists(proc.pid):
+            res.update({"status" : "FINISHED" })
+            this.scans[scan_id]["status"] = "FINISHED"
+
+        elif psutil.pid_exists(proc.pid) and psutil.Process(proc.pid).status() in ["sleeping", "running"]:
             res.update({
                 "status" : "SCANNING",
                 "info": {
                     "pid" : proc.pid,
                     "cmd": this.scans[scan_id]["proc_cmd"] }
             })
-        elif psutil.Process(proc.pid).status() == "zombie":
+        elif psutil.pid_exists(proc.pid) and psutil.Process(proc.pid).status() == "zombie":
             res.update({"status" : "FINISHED" })
             this.scans[scan_id]["status"] = "FINISHED"
             psutil.Process(proc.pid).terminate()
@@ -586,8 +591,7 @@ def getfindings(scan_id):
 
     # check if the scan is finished
     status()
-
-    if hasattr(proc, 'pid') and psutil.Process(proc.pid).status() in ["sleeping", "running"]:
+    if hasattr(proc, 'pid') and psutil.pid_exists(proc.pid) and psutil.Process(proc.pid).status() in ["sleeping", "running"]:
         #print "scan not finished"
         res.update({ "status": "error", "reason": "Scan in progress" })
         return jsonify(res)

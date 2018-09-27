@@ -18,7 +18,10 @@ pip install -r requirements.txt
 ```
 sudo env/bin/python engine-nmap.py [--port 5001] [--host 0.0.0.0] [--debug]
 ```
-> Note the use of `env/bin/python` allowing the reference of the python modules within the virtualenv 
+> Note the use of `env/bin/python` allowing the reference of the python modules within the virtualenv
+
+- or use Gunicorn (don't forget the `--preload` option if you use multiple workers!!):
+sudo gunicorn engine-nmap:app -b :5001 --access-logfile - --workers=4 -k gevent --preload
 
 ## Testing URLs
 http://0.0.0.0:5001/engines/nmap/test
