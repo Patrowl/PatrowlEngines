@@ -245,7 +245,7 @@ def clean_scan(scan_id):
 # Stop all scans
 @app.route('/engines/nmap/stopscans')
 def stop():
-    res = { "page": "stop all scans" }
+    res = { "page": "stopscans" }
 
     for scan_id in this.scans.keys():
         stop_scan(scan_id)

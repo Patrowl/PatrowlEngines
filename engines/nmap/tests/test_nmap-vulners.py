@@ -36,6 +36,7 @@ r = requests.post(url="{}/startscan".format(ENGINE_BASE_URL),
            data=json.dumps(post_data),
            headers = {'Content-type': 'application/json', 'Accept': 'application/json'})
 print(r.json())
+assert r.json()['status'] == "accepted"
 
 # Wait until scan is finished
 timeout_start = time.time()
@@ -49,7 +50,9 @@ while time.time() < timeout_start + MAX_TIMEOUT:
 # Get findings
 r = requests.get(url="{}/getfindings/{}".format(ENGINE_BASE_URL, TEST_SCAN_ID))
 print(r.json())
+assert r.json()['status'] == "success"
 
 # Get Report
 r = requests.get(url="{}/getreport/{}".format(ENGINE_BASE_URL, TEST_SCAN_ID))
 print(r.json())
+assert r.json()['scan']['status'] == "FINISHED"
