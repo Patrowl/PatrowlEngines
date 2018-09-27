@@ -675,7 +675,7 @@ def main():
         sys.exit(-1)
     if not os.path.exists(BASE_DIR+"/results"):
         os.makedirs(BASE_DIR+"/results")
-    _loadconfig()
+    loadconfig()
 
 
 if __name__ == '__main__':

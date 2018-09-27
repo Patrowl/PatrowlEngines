@@ -10,6 +10,10 @@ DEFAULT_APP_DEBUG = False
 DEFAULT_APP_MAXSCANS = 25
 
 def _json_serial(obj):
+    """
+        JSON serializer for objects not serializable by default json code
+        Used for datetime serialization when the results are written in file
+    """
     if isinstance(obj, datetime.datetime) or isinstance(obj, datetime.date):
         serial = obj.isoformat()
         return serial
@@ -84,7 +88,7 @@ class PatrowlEngine:
             self.allowed_asset_types = engine_config["allowed_asset_types"]
             self.status = "READY"
         else:
-            print "Error: config file '{}' not found".format(conf_file)
+            #print ("Error: config file '{}' not found".format(conf_file))
             return { "status": "ERROR", "reason": "config file not found" }
 
     def had_options(self, options):
@@ -188,12 +192,12 @@ class PatrowlEngine:
 
         #print "fn:", self.scans[scan_id]
 
-        res.update({"status": "success"})
+        res.update({"status": "SUCCESS"})
         return jsonify(res)
 
     # Stop all scans
     def stop(self):
-        res = {"page": "stop"}
+        res = {"page": "stopscans"}
         for scan_id in self.scans.keys():
             self.stop_scan(scan_id)
         res.update({"status": "SUCCESS"})
