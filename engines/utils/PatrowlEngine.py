@@ -191,12 +191,12 @@ class PatrowlEngine:
         res.update({"status": "success"})
         return jsonify(res)
 
-
+    # Stop all scans
     def stop(self):
-        res = {"page": "stop all scans"}
+        res = {"page": "stop"}
         for scan_id in self.scans.keys():
             self.stop_scan(scan_id)
-
+        res.update({"status": "SUCCESS"})
         return jsonify(res)
 
 

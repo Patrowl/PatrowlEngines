@@ -29,4 +29,5 @@ RUN pip install --trusted-host pypi.python.org -r requirements.txt
 EXPOSE 5108
 
 # Run app.py when the container launches
-CMD ["python", "engine-urlvoid.py"]
+#CMD ["python", "engine-urlvoid.py"]
+CMD ["gunicorn", "engine-urlvoid:app", "-b", "0.0.0.0:5108"]
