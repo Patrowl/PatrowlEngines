@@ -38,7 +38,7 @@ script:
   # Build and run the docker image
   - docker --version
   - docker build --tag docker_$PATROWL_ENGINE .
-  - docker run --rm -d docker_$PATROWL_ENGINE
+  - docker run --rm -d -p $ENGINE_PORT:$ENGINE_PORT docker_$PATROWL_ENGINE
   - docker ps -a
   # Perform tests on the docker instance
   - pytest -s ./tests/*
