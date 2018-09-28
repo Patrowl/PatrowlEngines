@@ -34,6 +34,7 @@ script:
   # - python engine-$PATROWL_ENGINE.py > /dev/null &
   # Run the inst
   - gunicorn engine-$PATROWL_ENGINE:app -b 0.0.0.0:$ENGINE_PORT > /dev/null &
+  - id
 
   # Build and run the docker image
   - docker --version
