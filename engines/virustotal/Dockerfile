@@ -28,7 +28,7 @@ RUN pip install --trusted-host pypi.python.org -r requirements.txt
 COPY virustotal.json.sample virustotal.json
 
 # TCP port exposed by the container (NAT)
-EXPOSE 5107
+EXPOSE 5007
 
 # Run app.py when the container launches
 CMD ["python", "engine-virustotal.py"]

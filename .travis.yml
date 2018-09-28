@@ -33,12 +33,12 @@ install:
 script:
   # - python engine-$PATROWL_ENGINE.py > /dev/null &
   # Run the inst
-  - gunicorn engine-$PATROWL_ENGINE:app -b 0.0.0.0:$ENGINE_PORT > /dev/null &
+  - gunicorn engine-$PATROWL_ENGINE:app -b 0.0.0.0:1$ENGINE_PORT > /dev/null &
 
   # Build and run the docker image
   - docker --version
   - docker build --tag docker_$PATROWL_ENGINE .
-  - docker run --rm -d -p $ENGINE_PORT:$ENGINE_PORT docker_$PATROWL_ENGINE
+  - docker run -d --rm -p $ENGINE_PORT:$ENGINE_PORT docker_$PATROWL_ENGINE
   - docker ps -a
   # Perform tests on the docker instance
   - pytest -s ./tests/*
