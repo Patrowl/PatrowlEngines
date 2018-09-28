@@ -78,6 +78,7 @@ def _loadconfig():
 
     print(" * Arachni REST API server successfully started on http://{}:{}/"
           .format(this.scanner['listening_host'], this.scanner['listening_port']))
+    this.scanner['status'] = 'READY'
 
     return {"status": "READY"}
 
