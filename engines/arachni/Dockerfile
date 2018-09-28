@@ -23,9 +23,9 @@ COPY arachni.json.sample arachni.json
 COPY requirements.txt .
 COPY README.md .
 
-RUN apt-get -qq update && apt-get install -yq wget ruby bash python python-pip && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 WORKDIR /opt/patrowl-engines/arachni/libs
-#RUN wget https://github.com/Arachni/arachni/releases/download/v$VERSION_FRAMEWORK/arachni-$VERSION_ARACHNI-linux-x86_64.tar.gz -nv
+
+RUN apt-get -qq update && apt-get install -yq wget ruby bash python python-pip && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 RUN wget $DL_LINK -nv
 RUN tar xzf $TGZ_ARACHNI && \
 rm -f $TGZ_ARACHNI && \
@@ -34,7 +34,7 @@ useradd -m -s /bin/sh user && \
 echo "Success"
 
 ENV PATH /opt/patrowl-engines/arachni/libs/arachni/bin:$PATH
-RUN pip install -r /opt/patrowl-engines/arachni/requirements.txt
+RUN pip install -U -r /opt/patrowl-engines/arachni/requirements.txt
 
 WORKDIR /opt/patrowl-engines/arachni/
 
@@ -42,5 +42,4 @@ WORKDIR /opt/patrowl-engines/arachni/
 EXPOSE 5105
 
 # Run app.py when the container launches
-#CMD ["python", "engine-arachni.py"]
 CMD ["gunicorn", "engine-arachni:app", "-b", "0.0.0.0:5105"]

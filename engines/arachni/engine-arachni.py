@@ -38,7 +38,6 @@ def clean():
 @app.route('/engines/arachni/clean/<scan_id>')
 def clean_scan(scan_id):
     res = { "page": "clean_scan" }
-    #scan_id = int(scan_id)
     res.update({"scan_id": scan_id})
 
     if not scan_id in this.scans.keys():
@@ -138,7 +137,6 @@ def status():
 
 
 def _is_scan_finished(scan_id):
-    #scan_id = int(scan_id)
     if not scan_id in this.scans.keys():
         print("scan_id {} not found".format(scan_id))
         return False
@@ -170,7 +168,6 @@ def _is_scan_finished(scan_id):
 def scan_status(scan_id):
     res = { "page": "scan_status" }
 
-    #scan_id = int(scan_id)
     if not scan_id in this.scans.keys():
         res.update({ "status": "error", "reason": "scan_id '{}' not found".format(scan_id)})
         return jsonify(res)
@@ -189,7 +186,6 @@ def scan_status(scan_id):
             else:
                 this.scans[scan_id]["status"] = str(resp["status"]).upper()
     except:
-        #print("API connexion error")
         this.scans[scan_id]["status"] = "ERROR"
         res.update({ "status": "ERROR",	"reason": "API error" })
 
@@ -266,8 +262,6 @@ def start():
     if 'no_fingerprinting' in data['options'].keys(): scan["options"].update({"no_fingerprinting": data['options']['no_fingerprinting']})
     if 'input' in data['options'].keys(): scan["options"].update({"input": data['options']['input']})
 
-    #print scan
-
     url = this.scanner['api_url'] + "/scans"
     post_data = {
         "url": scan["asset_url"]
@@ -307,7 +301,6 @@ genresults bydefaut stop/delete the scan in the arachni context
 def stop_scan(scan_id):
     res = { "page": "stop" }
 
-    #scan_id = int(scan_id)
     if not scan_id in this.scans.keys():
         res.update({ "status": "ERROR", "reason": "scan_id '{}' not found".format(scan_id)})
         return jsonify(res)
@@ -315,7 +308,6 @@ def stop_scan(scan_id):
     resp = None
     try:
         url = this.scanner['api_url'] + "/scans/" + this.scans[scan_id]['arachni_scan_id'] + "/pause"
-        #r = requests.delete(url=url, verify=False, auth=this.scanner['auth'])
         r = requests.put(url=url, verify=False, auth=this.scanner['auth'])
         if r.status_code == 200:
             this.scans[scan_id]["status"] = "STOPPED"
@@ -355,7 +347,6 @@ def stop_scan(scan_id):
 
 @app.route('/engines/arachni/getfindings/<scan_id>')
 def getfindings(scan_id):
-    #scan_id = int(scan_id)
     res = { "page": "getfindings" , "scan_id": scan_id}
 
     if not _is_scan_finished(scan_id):
@@ -368,7 +359,6 @@ def getfindings(scan_id):
     port = scan['target_port']
     protocol = scan['target_protocol']
     url = this.scanner['api_url'] + "/scans/" + str(scan['arachni_scan_id']) + "/report.json"
-    #print url
 
     try:
         r = requests.get(url=url, verify=False, auth=this.scanner['auth'])
@@ -529,6 +519,7 @@ def getreport(scan_id):
     if not os.path.exists(filepath):
         return jsonify({ "status": "ERROR", "reason": "report file for scan_id '{}' not found".format(scan_id)})
 
+    #@todo
     # return send_file(filepath,
     #     mimetype='application/json',
     #     attachment_filename='arachni_'+str(scan_id)+".json",
