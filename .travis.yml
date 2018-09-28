@@ -34,7 +34,6 @@ script:
   # - python engine-$PATROWL_ENGINE.py > /dev/null &
   # Run the inst
   - gunicorn engine-$PATROWL_ENGINE:app -b 0.0.0.0:$ENGINE_PORT > /dev/null &
-  - id
 
   # Build and run the docker image
   - docker --version
@@ -42,7 +41,7 @@ script:
   - docker run --rm -d docker_$PATROWL_ENGINE
   - docker ps -a
   # Perform tests on the docker instance
-  - pytest -s $PATROWL_ENGINE/tests/*
+  - pytest -s ./tests/*
 
 after_script:
   - docker images
