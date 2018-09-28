@@ -36,8 +36,10 @@ def _loadconfig():
             this.keys.append(apikey)
         del this.scanner["apikeys"]
         this.scanner['status'] = "READY"
+        print(this.scanner)
+
     else:
-        print "Error: config file '{}' not found".format(conf_file)
+        print ()"Error: config file '{}' not found".format(conf_file))
         return { "status": "error", "reason": "config file not found" }
 
 

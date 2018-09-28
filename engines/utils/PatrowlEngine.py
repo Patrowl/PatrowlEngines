@@ -19,6 +19,7 @@ def _json_serial(obj):
         return serial
     raise TypeError ("Type not serializable")
 
+
 class PatrowlEngine:
     def __init__(self, app, base_dir, name, max_scans=DEFAULT_APP_MAXSCANS):
         self.app = app

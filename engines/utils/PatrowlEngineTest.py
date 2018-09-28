@@ -8,7 +8,7 @@ class PatrowlEngineTest:
         self.engine_name = engine_name
         self.base_url = base_url
 
-    def custom_test(self, test_name, assets, scan_policy= {}, is_valid=True, max_timeout=300):
+    def custom_test(self, test_name, assets, scan_policy={}, is_valid=True, max_timeout=300):
         print("test-{}-custom: {}".format(self.engine_name, test_name))
         TEST_SCAN_ID = random.randint(1000000, 1999999)
         post_data = {
