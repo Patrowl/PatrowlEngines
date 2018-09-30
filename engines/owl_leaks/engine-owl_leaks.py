@@ -66,7 +66,7 @@ def status(): return engine.getstatus()
 @app.route('/engines/owl_leaks/status/<scan_id>')
 def status_scan(scan_id): return engine.getstatus_scan(scan_id)
 
-@app.route('/engines/owl_leaks/stop')
+@app.route('/engines/owl_leaks/stopscans')
 def stop(): return engine.stop()
 
 @app.route('/engines/owl_leaks/stop/<scan_id>')

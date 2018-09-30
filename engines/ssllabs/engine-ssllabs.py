@@ -332,7 +332,7 @@ def start():
 # Stop all scans
 @app.route('/engines/ssllabs/stopscans', methods=['GET'])
 def stop():
-    res = { "page": "stop" }
+    res = { "page": "stopscans" }
 
     for scan_id in this.scans.keys():
         stop_scan(scan_id)
