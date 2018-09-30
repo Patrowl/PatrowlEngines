@@ -59,7 +59,7 @@ def status(): return engine.getstatus()
 @app.route('/engines/owl_code/status/<scan_id>')
 def status_scan(scan_id): return engine.getstatus_scan(scan_id)
 
-@app.route('/engines/owl_code/stop')
+@app.route('/engines/owl_code/stopscans')
 def stop(): return engine.stop()
 
 @app.route('/engines/owl_code/stop/<scan_id>')
@@ -427,7 +427,7 @@ def _scanowaspdc_thread(scan_id, asset_kw):
 @app.before_first_request
 def main():
     engine._loadconfig()
-    
+
 
 if __name__ == '__main__':
     engine.run_app(app_host=APP_HOST, app_port=APP_PORT)
