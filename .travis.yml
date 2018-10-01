@@ -4,6 +4,7 @@ services:
 - docker
 python:
 - '2.7'
+# - '3.6'
 env:
 - PATROWL_ENGINE="arachni" ENGINE_PORT=5105
 - PATROWL_ENGINE="cortex" ENGINE_PORT=5009
@@ -16,9 +17,15 @@ env:
 - PATROWL_ENGINE="urlvoid" ENGINE_PORT=5008
 - PATROWL_ENGINE="virustotal" ENGINE_PORT=5007
 before_install:
-- openssl aes-256-cbc -K $encrypted_e04b6597f270_key -iv $encrypted_e04b6597f270_iv
-  -in engines/virustotal/virustotal.json.enc -out engines/virustotal/virustotal.json.sample -d
-- cd engines/$PATROWL_ENGINE
+# - openssl aes-256-cbc -K $encrypted_e04b6597f270_key -iv $encrypted_e04b6597f270_iv
+#   -in engines/virustotal/virustotal.json.enc -out engines/virustotal/virustotal.json.sample
+#   -d
+- cd engines
+- openssl aes-256-cbc -K $encrypted_18b0e45d2454_key -iv $encrypted_18b0e45d2454_iv -in travis-config.tar.enc -out travis-config.tar -d
+- tar xvf travis-config.tar
+- cp virustotal/virustotal.json virustotal/virustotal.json.sample
+- cp urlvoid/urlvoid.json urlvoid/urlvoid.json.sample
+- cd $PATROWL_ENGINE
 install:
 - pip install -r requirements.txt
 - pip install requests
