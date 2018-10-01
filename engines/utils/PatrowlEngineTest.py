@@ -69,7 +69,7 @@ class PatrowlEngineTest:
         except AssertionError:
             print(r.json()) ; assert False
 
-    def custom_test(self, test_name, assets, scan_policy={}, is_valid=True, max_timeout=300):
+    def custom_test(self, test_name, assets, scan_policy={}, is_valid=True, max_timeout=1200):
         print("test-{}-custom: {}".format(self.engine_name, test_name))
         TEST_SCAN_ID = random.randint(1000000, 1999999)
         post_data = {
