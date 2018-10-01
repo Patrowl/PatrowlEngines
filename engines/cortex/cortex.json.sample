@@ -3,8 +3,8 @@
   "version": "0.1a",
   "description": "Cortex's API for PatrOwl",
   "allowed_asset_types": ["ip", "domain", "url", "fqdn"],
-  "api_url": "http://0.0.0.0:9001",
-  "api_key": "xxxx",
+  "api_url": "http://host.docker.internal:9001",
+  "api_key": "2htAxXlWy7kIq5VKUZCK7Etj/8y0ruji",
   "proxies": {
     "http": null,
     "https": null

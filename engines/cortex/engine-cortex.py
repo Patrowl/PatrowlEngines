@@ -3,8 +3,6 @@
 import os, sys, json, time, datetime, threading, random, requests, urlparse, hashlib, optparse
 import xml.etree.ElementTree as ElementTree
 from flask import Flask, request, jsonify, redirect, url_for, send_from_directory
-# from cortex4py.api import CortexApi
-# from cortex4py.api import CortexException
 from cortexapi import CortexApi, CortexException
 
 app = Flask(__name__)
@@ -209,12 +207,25 @@ def stop_scan(scan_id):
     res.update({"status": "success"})
     return jsonify(res)
 
+# Stop all scans
+@app.route('/engines/cortex/stopscans', methods=['GET'])
+def stop():
+    res = { "page": "stopscans" }
+
+    for scan_id in this.scans.keys():
+        stop_scan(scan_id)
+
+    res.update({"status": "SUCCESS"})
+
+    return jsonify(res)
+
 
 @app.route('/engines/cortex/clean')
 def clean():
     res = { "page": "clean" }
     this.scans.clear()
     _loadconfig()
+    res.update({"status": "SUCCESS"})
     return jsonify(res)
 
 

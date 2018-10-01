@@ -11,6 +11,9 @@ services:
       - thread_pool.index.queue_size=100000
       - thread_pool.search.queue_size=100000
       - thread_pool.bulk.queue_size=100000
+      - ES_JAVA_OPTS=-Xms750m -Xmx750m
+    ports:
+      - "0.0.0.0:9200:9200"
   cortex:
     image: thehiveproject/cortex:latest
     depends_on:
