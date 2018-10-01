@@ -140,6 +140,7 @@ def test_arachni_xss():
 
 
 if __name__ == '__main__':
-    sleep(5)
+    time.sleep(5)
     test_generic_features()
+    time.sleep(5)
     test_arachni_xss()
