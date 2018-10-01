@@ -13,6 +13,7 @@ COPY engine-cortex.py .
 COPY cortexapi.py .
 COPY cortex.json.sample cortex.json
 COPY requirements.txt .
+COPY tests/ tests/
 #COPY README.md .
 
 # Install any needed packages specified in requirements.txt
