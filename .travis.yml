@@ -41,11 +41,11 @@ jobs:
       script: gunicorn engine-$PATROWL_ENGINE:app -b 0.0.0.0:1$ENGINE_PORT > /dev/null &
     - stage: build docker image and start tests
       script:
-        - docker --version
-        - docker build --tag docker_$PATROWL_ENGINE .
-        # - if env(PATROWL_ENGINE) = cortex; then docker-compose -f tests/cortex_docker_compose.yml up; fi
-        - docker run -d --rm -p $ENGINE_PORT:$ENGINE_PORT docker_$PATROWL_ENGINE
-        - docker ps -a
-        - pytest -s ./tests/*
+      - docker --version
+      - docker build --tag docker_$PATROWL_ENGINE .
+      # - if env(PATROWL_ENGINE) = cortex; then docker-compose -f tests/cortex_docker_compose.yml up; fi
+      - docker run -d --rm -p $ENGINE_PORT:$ENGINE_PORT docker_$PATROWL_ENGINE
+      - docker ps -a
+      - pytest -s ./tests/*
 after_script:
 - docker images
