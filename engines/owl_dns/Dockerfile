@@ -40,4 +40,4 @@ RUN pip install --trusted-host pypi.python.org -r requirements.txt
 EXPOSE 5006
 
 # Run app.py when the container launches
-CMD ["python", "engine-owl_dns.py"]
+CMD ["gunicorn", "engine-owl_dns:app", "-b", "0.0.0.0:5006"]

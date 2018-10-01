@@ -19,7 +19,7 @@ env:
 before_install:
 - cd engines
 - openssl aes-256-cbc -K $encrypted_18b0e45d2454_key -iv $encrypted_18b0e45d2454_iv -in travis-config.tar.enc -out travis-config.tar -d
-- tar xvf travis-config.tar
+- tar xf travis-config.tar
 - cp virustotal/virustotal.json virustotal/virustotal.json.sample
 - cp urlvoid/urlvoid.json urlvoid/urlvoid.json.sample
 - cd $PATROWL_ENGINE

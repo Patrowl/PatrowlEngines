@@ -3,7 +3,7 @@
 FROM alpine:latest
 # FROM ubuntu:latest
 MAINTAINER Patrowl.io "getsupport@patrowl.io"
-LABEL Name="Nessus\ \(Patrowl engine\)" Version="1.0.0"
+LABEL Name="Nmap\ \(Patrowl engine\)" Version="1.0.0"
 
 # Set the working directory
 RUN mkdir -p /opt/patrowl-engines/nmap
