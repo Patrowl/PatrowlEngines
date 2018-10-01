@@ -4,6 +4,8 @@ import json, requests, time, random
 sys.path.append( os.path.dirname( os.path.dirname( os.path.abspath(__file__) ) ) )
 from utils.PatrowlEngineTest import PatrowlEngineTest
 
+time.sleep(60)
+
 # Define the engine instance
 pet = PatrowlEngineTest(engine_name="cortex", base_url="http://127.0.0.1:5009/engines/cortex")
 
