@@ -14,7 +14,7 @@ def test_generic_features():
 ## custom tests
 def test_arachni_xss():
     pet.custom_test(
-        test_name="urlvoid_xss",
+        test_name="arachni_xss",
         assets=[{
             "id" :'1',
             "value" :'https://xss-game.appspot.com/level1',
