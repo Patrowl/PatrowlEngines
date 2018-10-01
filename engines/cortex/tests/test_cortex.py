@@ -6,7 +6,6 @@ from utils.PatrowlEngineTest import PatrowlEngineTest
 
 # Define the engine instance
 pet = PatrowlEngineTest(engine_name="cortex", base_url="http://127.0.0.1:50091/engines/cortex")
-time.sleep(90)
 
 # generic tests
 def test_generic_features():
