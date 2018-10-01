@@ -39,7 +39,7 @@ RUN pip install -U -r /opt/patrowl-engines/arachni/requirements.txt
 WORKDIR /opt/patrowl-engines/arachni/
 
 # TCP port exposed by the container (NAT)
-EXPOSE 5105
+EXPOSE 5005
 
 # Run app.py when the container launches
 CMD ["gunicorn", "engine-arachni:app", "-b", "0.0.0.0:5105"]

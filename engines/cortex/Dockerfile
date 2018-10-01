@@ -27,7 +27,7 @@ RUN pip install --upgrade pip
 RUN pip install --trusted-host pypi.python.org -r requirements.txt
 
 # TCP port exposed by the container (NAT)
-EXPOSE 5109
+EXPOSE 5009
 
 # Run app.py when the container launches
 CMD ["python", "engine-cortex.py"]

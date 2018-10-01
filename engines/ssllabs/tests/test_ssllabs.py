@@ -5,7 +5,7 @@ sys.path.append( os.path.dirname( os.path.dirname( os.path.abspath(__file__) ) )
 from utils.PatrowlEngineTest import PatrowlEngineTest
 
 # Define the engine instance
-pet = PatrowlEngineTest(engine_name="ssllabs", base_url="http://127.0.0.1:5104/engines/ssllabs")
+pet = PatrowlEngineTest(engine_name="ssllabs", base_url="http://127.0.0.1:5004/engines/ssllabs")
 
 # generic tests
 def test_generic_features():

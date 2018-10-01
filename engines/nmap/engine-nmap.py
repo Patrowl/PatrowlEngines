@@ -250,6 +250,8 @@ def stop():
     for scan_id in this.scans.keys():
         stop_scan(scan_id)
 
+    res.update({ "status": "SUCCESS" })
+
     return jsonify(res)
 
 
