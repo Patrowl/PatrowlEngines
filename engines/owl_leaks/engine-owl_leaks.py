@@ -51,7 +51,7 @@ def index(): return engine.index()
 @app.route('/engines/owl_leaks/test')
 def test(): return engine.test()
 
-@app.route('/engines/owl_code/reloadconfig')
+@app.route('/engines/owl_leaks/reloadconfig')
 def reloadconfig(): return engine.reloadconfig()
 
 @app.route('/engines/owl_leaks/info')
