@@ -17,9 +17,6 @@ RUN mkdir -p /opt/patrowl-engines/owl_code/results
 RUN mkdir -p /opt/patrowl-engines/owl_code/libs
 RUN mkdir -p /opt/patrowl-engines/owl_code/utils
 
-# Copy the Patrowl dependencies
-ADD utils /opt/patrowl-engines/owl_code/utils
-
 # Set the working directory to /opt/<engine_name>
 WORKDIR /tmp/
 
@@ -44,10 +41,11 @@ RUN wget -qO- -O /tmp/current.txt ${version_url}                            && \
 WORKDIR /opt/patrowl-engines/owl_code
 
 # Copy the current directory contents into the container at /
-COPY owl_code/__init__.py .
-COPY owl_code/engine-owl_code.py .
-COPY owl_code/requirements.txt .
-COPY owl_code/owl_code.json.sample owl_code.json
+COPY __init__.py .
+COPY engine-owl_code.py .
+COPY requirements.txt .
+COPY owl_code.json.sample owl_code.json
+COPY utils/ utils/
 
 # Install python modules
 RUN pip install --upgrade pip

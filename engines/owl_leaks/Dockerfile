@@ -14,9 +14,6 @@ RUN mkdir -p /opt/patrowl-engines/owl_leaks
 RUN mkdir -p /opt/patrowl-engines/owl_leaks/results
 RUN mkdir -p /opt/patrowl-engines/owl_leaks/utils
 
-# Copy the Patrowl dependencies
-#COPY utils /opt/patrowl-engines/owl_leaks/utils
-
 # Set the working directory to /opt/<engine_name>
 WORKDIR /opt/patrowl-engines/owl_leaks
 
