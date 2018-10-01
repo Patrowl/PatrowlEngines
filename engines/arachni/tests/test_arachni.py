@@ -140,5 +140,6 @@ def test_arachni_xss():
 
 
 if __name__ == '__main__':
+    sleep(5)
     test_generic_features()
     test_arachni_xss()
