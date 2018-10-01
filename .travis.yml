@@ -24,7 +24,7 @@ before_install:
 - cp urlvoid/urlvoid.json urlvoid/urlvoid.json.sample
 #- cd $PATROWL_ENGINE
 install:
-- pip install -r requirements.txt
+- pip install -r $PATROWL_ENGINE/requirements.txt
 - pip install requests
 script:
 - gunicorn engine-$PATROWL_ENGINE:app -b 0.0.0.0:1$ENGINE_PORT --chdir $PATROWL_ENGINE > /dev/null &
