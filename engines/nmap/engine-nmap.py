@@ -606,7 +606,7 @@ def getfindings(scan_id):
         res.update({ "status": "error", "reason": "Report file not available" })
         return jsonify(res)
 
-    issues =  _parse_report(report_filename, scan_id)
+    issues = _parse_report(report_filename, scan_id)
     scan = {
         "scan_id": scan_id
     }
@@ -616,7 +616,6 @@ def getfindings(scan_id):
         "nb_low": 0,
         "nb_medium": 0,
         "nb_high": 0,
-        #"delta_time": "",
         "engine_name": "nmap",
         "engine_version": this.scanner['version']
     }
@@ -630,10 +629,12 @@ def getfindings(scan_id):
         }, report_file, default=_json_serial)
 
 
-    res.update({ "scan": scan })
-    res.update({ "summary": summary })
-    res.update({ "issues": issues })
-    res.update({ "status": "success"})
+    res.update({
+        "scan": scan,
+        "summary": summary,
+        "issues": issues,
+        "status": "success"
+        })
     return jsonify(res)
 
 
