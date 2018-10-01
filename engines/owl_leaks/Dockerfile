@@ -31,7 +31,7 @@ RUN pip install --upgrade pip
 RUN pip install --trusted-host pypi.python.org -r requirements.txt
 
 # TCP port exposed by the container (NAT)
-EXPOSE 5112
+EXPOSE 5012
 
 # Run app.py when the container launches
 CMD ["python", "engine-owl_leaks.py", "--port=5012", "--host=0.0.0.0"]

@@ -32,6 +32,7 @@ def clean():
     res = { "page": "clean" }
     this.scans.clear()
     _loadconfig()
+    res.update({ "status": "SUCCESS" })
     return jsonify(res)
 
 
@@ -45,7 +46,7 @@ def clean_scan(scan_id):
         return jsonify(res)
 
     this.scans.pop(scan_id)
-    res.update({"status": "removed"})
+    res.update({"status": "SUCCESS"})
     return jsonify(res)
 
 
@@ -323,6 +324,17 @@ def stop_scan(scan_id):
 
     return jsonify(res)
 
+# Stop all scans
+@app.route('/engines/arachni/stopscans', methods=['GET'])
+def stop():
+    res = { "page": "stopscans" }
+
+    for scan_id in this.scans.keys():
+        stop_scan(scan_id)
+
+    res.update({"status": "SUCCESS"})
+
+    return jsonify(res)
 
 '''
 # outputs:

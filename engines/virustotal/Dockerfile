@@ -31,4 +31,4 @@ COPY virustotal.json.sample virustotal.json
 EXPOSE 5007
 
 # Run app.py when the container launches
-CMD ["python", "engine-virustotal.py"]
+CMD ["gunicorn", "engine-virustotal:app", "-b", "0.0.0.0:5007"]
