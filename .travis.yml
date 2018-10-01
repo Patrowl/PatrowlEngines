@@ -17,9 +17,7 @@ env:
 - PATROWL_ENGINE="virustotal" ENGINE_PORT=5007
 before_install:
 - openssl aes-256-cbc -K $encrypted_e04b6597f270_key -iv $encrypted_e04b6597f270_iv
-  -in engines/virustotal.json.sample.enc -out engines/virustotal.json.sample -d
-- openssl aes-256-cbc -K $encrypted_e04b6597f270_key -iv $encrypted_e04b6597f270_iv
-  -in engines/virustotal.json.enc -out engines/virustotal.json -d
+  -in engines/virustotal/virustotal.json.enc -out engines/virustotal/virustotal.json.sample -d
 - cd engines/$PATROWL_ENGINE
 install:
 - pip install -r requirements.txt
