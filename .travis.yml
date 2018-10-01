@@ -22,6 +22,7 @@ before_install:
 - tar xf travis-config.tar
 - cp virustotal/virustotal.json virustotal/virustotal.json.sample
 - cp urlvoid/urlvoid.json urlvoid/urlvoid.json.sample
+- cp utils/*.py $PATROWL_ENGINE/utils/
 #- cd $PATROWL_ENGINE
 install:
 - pip install -r $PATROWL_ENGINE/requirements.txt
