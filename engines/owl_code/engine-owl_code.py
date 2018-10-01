@@ -44,6 +44,9 @@ def index(): return engine.index()
 @app.route('/engines/owl_code/test')
 def test(): return engine.test()
 
+@app.route('/engines/owl_code/reloadconfig')
+def reloadconfig(): return engine.reloadconfig()
+
 @app.route('/engines/owl_code/info')
 def info(): return engine.info()
 

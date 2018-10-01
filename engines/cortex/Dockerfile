@@ -30,4 +30,4 @@ RUN pip install --trusted-host pypi.python.org -r requirements.txt
 EXPOSE 5009
 
 # Run app.py when the container launches
-CMD ["python", "engine-cortex.py"]
+CMD ["gunicorn", "engine-cortex:app", "-b", "0.0.0.0:5009"]

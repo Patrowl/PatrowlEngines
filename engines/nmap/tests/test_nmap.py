@@ -23,7 +23,6 @@ def test_nmap_vulners():
         }],
         scan_policy={
           "no_ping":0,
-          "no_dns":1,
           "ports":[
             "80",
             "22",

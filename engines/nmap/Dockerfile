@@ -1,7 +1,5 @@
-# Use an official Python runtime as a parent image
-#FROM python:2.7-slim
 FROM alpine:latest
-# FROM ubuntu:latest
+
 MAINTAINER Patrowl.io "getsupport@patrowl.io"
 LABEL Name="Nmap\ \(Patrowl engine\)" Version="1.0.0"
 
@@ -17,6 +15,7 @@ COPY engine-nmap.py .
 COPY nmap.json.sample nmap.json
 COPY requirements.txt .
 COPY README.md .
+COPY libs/ libs/
 
 # Install any needed packages specified in requirements.txt
 RUN apk add --update \
@@ -27,6 +26,7 @@ RUN apk add --update \
     py-pip \
     build-base \
     nmap \
+    nmap-scripts \
   && adduser -u 1000 -G wheel -D alpine \
   && rm -rf /var/cache/apk/*
 
@@ -40,4 +40,4 @@ EXPOSE 5001
 USER alpine
 
 # Run app.py when the container launches
-CMD ["sudo", "python", "engine-nmap.py"]
+CMD ["sudo", "gunicorn", "engine-nmap:app", "-b", "0.0.0.0:5001"]
