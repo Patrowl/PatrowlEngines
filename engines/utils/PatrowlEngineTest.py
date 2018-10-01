@@ -23,6 +23,7 @@ class PatrowlEngineTest:
         print("test-{}-status".format(self.engine_name))
         r = requests.get(url="{}/status".format(self.base_url))
         try:
+            assert r.status_code == 200
             assert r.json()["page"] == "status"
             assert r.json()["status"] == "READY"
         except AssertionError:
@@ -33,6 +34,7 @@ class PatrowlEngineTest:
         print("test-{}-info".format(self.engine_name))
         r = requests.get(url="{}/info".format(self.base_url))
         try:
+            assert r.status_code == 200
             assert r.json()["page"] == "info"
             assert r.json()["engine_config"]["status"] == "READY"
         except AssertionError:
@@ -42,6 +44,7 @@ class PatrowlEngineTest:
         print("test-{}-reloadconfig".format(self.engine_name))
         r = requests.get(url="{}/reloadconfig".format(self.base_url))
         try:
+            assert r.status_code == 200
             assert r.json()["config"]["status"] == "READY"
         except AssertionError:
             print(r.json()) ; assert False
@@ -50,6 +53,7 @@ class PatrowlEngineTest:
         print("test-{}-stopscans".format(self.engine_name))
         r = requests.get(url="{}/stopscans".format(self.base_url))
         try:
+            assert r.status_code == 200
             assert r.json()["page"] == "stopscans"
             assert r.json()["status"] == "SUCCESS"
         except AssertionError:
@@ -59,6 +63,7 @@ class PatrowlEngineTest:
         print("test-{}-cleanscans".format(self.engine_name))
         r = requests.get(url="{}/clean".format(self.base_url))
         try:
+            assert r.status_code == 200
             assert r.json()["page"] == "clean"
             assert r.json()["status"] == "SUCCESS"
         except AssertionError:
@@ -77,6 +82,7 @@ class PatrowlEngineTest:
                    data=json.dumps(post_data),
                    headers = {'Content-type': 'application/json', 'Accept': 'application/json'})
         try:
+            assert r.status_code == 200
             assert r.json()['status'] == "accepted"
         except AssertionError:
             print(r.json()) ; assert False
