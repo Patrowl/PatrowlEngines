@@ -89,12 +89,15 @@ class PatrowlEngine:
             self.allowed_asset_types = engine_config["allowed_asset_types"]
             self.status = "READY"
         else:
+            self.status = "ERROR"
             return { "status": "ERROR", "reason": "config file not found" }
 
     def reloadconfig(self):
         res = { "page": "reloadconfig" }
         self._loadconfig()
-        res.update({"config": self.__to_dict()})
+        res.update({"config": {
+            "status": self.status
+        }})
         return jsonify(res)
 
     def had_options(self, options):

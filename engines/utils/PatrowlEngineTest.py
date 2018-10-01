@@ -116,6 +116,8 @@ class PatrowlEngineTest:
                 #assert r.json()['scan']['status'] == "FINISHED"
             except AssertionError:
                 print(r.json()) ; assert False
+        else:
+            assert False
 
     def do_generic_tests(self):
         self.test_connectivity()
