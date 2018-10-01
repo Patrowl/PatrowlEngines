@@ -11,6 +11,7 @@ Jinja2==2.10
 json2html==1.2.1
 MarkupSafe==1.0
 python-magic==0.4.15
+python-magic-bin==0.4.14
 requests==2.18.4
 urllib3==1.22
 Werkzeug==0.14.1
