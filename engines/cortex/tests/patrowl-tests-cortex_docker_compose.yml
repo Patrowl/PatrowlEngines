@@ -20,3 +20,5 @@ services:
       - elasticsearch
     ports:
       - "0.0.0.0:9001:9001"
+tty: true
+stdin_open: true
