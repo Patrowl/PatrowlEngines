@@ -76,12 +76,10 @@ def _loadconfig():
         + " --authentication-username " + this.scanner['username'] \
         + " --authentication-password " + this.scanner['password'] \
         + " --reroute-to-logfile " + BASE_DIR +"/logs"
-    this.proc = subprocess.Popen(cmd, shell=False, stdout=open("/dev/null", "w"), stderr=None)
-    # this.proc = subprocess.Popen(cmd, shell=True, stdout=open("/dev/null", "w"), stderr=None)
-
+    this.proc = subprocess.Popen(cmd, shell=True, stdout=open("/dev/null", "w"), stderr=open("/dev/null", "w"))
+    this.scanner['status'] = 'READY'
     print(" * Arachni REST API server successfully started on http://{}:{}/"
           .format(this.scanner['listening_host'], this.scanner['listening_port']))
-    this.scanner['status'] = 'READY'
 
     return {"status": "READY"}
 
