@@ -1,4 +1,5 @@
-FROM debian:jessie
+#FROM debian:jessie
+FROM ubuntu:16.04
 MAINTAINER Patrowl.io "getsupport@patrowl.io"
 LABEL Name="Arachni\ \(Patrowl engine\)" Version="1.0.0"
 
