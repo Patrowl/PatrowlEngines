@@ -10,12 +10,12 @@ pet = PatrowlEngineTest(engine_name="arachni", base_url="http://127.0.0.1:5005/e
 
 # generic tests
 def test_generic_features():
-    time.sleep(30)
+    time.sleep(5)
     pet.do_generic_tests()
 
 ## custom tests
 def test_arachni_xss():
-    time.sleep(30)
+    time.sleep(5)
     pet.custom_test(
         test_name="arachni_xss",
         assets=[{
