@@ -86,8 +86,9 @@ def loadconfig():
     if os.path.exists(conf_file):
         json_data = open(conf_file)
         this.scanner = json.load(json_data)
+        this.scanner['status'] = "READY"
     else:
-        print "Error: config file '{}' not found".format(conf_file)
+        print ("Error: config file '{}' not found".format(conf_file))
         return { "status": "ERROR", "reason": "config file not found" }
 
 
@@ -212,7 +213,7 @@ def _scan_thread(scan_id):
             cmd += " --script-args {}".format(options.get(opt_key))
 
 
-
+    this.scans[scan_id]["proc_cmd"] = "not set!!"
     with open(log_path, "w") as stderr:
         this.scans[scan_id]["proc"] = subprocess.Popen(cmd, shell=True, stdout=open("/dev/null", "w"), stderr=None)
     this.scans[scan_id]["proc_cmd"] = cmd
@@ -224,7 +225,8 @@ def _scan_thread(scan_id):
 def clean():
     res = { "page": "clean" }
     this.scans.clear()
-    _loadconfig()
+    loadconfig()
+    res.update({ "status": "SUCCESS" })
     return jsonify(res)
 
 
@@ -249,6 +251,8 @@ def stop():
 
     for scan_id in this.scans.keys():
         stop_scan(scan_id)
+
+    res.update({ "status": "SUCCESS" })
 
     return jsonify(res)
 
@@ -291,7 +295,6 @@ def scan_status(scan_id):
         return jsonify(res)
 
     if hasattr(proc, 'pid'):
-        #print(psutil.Process(proc.pid).status())
         if not psutil.pid_exists(proc.pid):
             res.update({"status" : "FINISHED" })
             this.scans[scan_id]["status"] = "FINISHED"
@@ -603,7 +606,7 @@ def getfindings(scan_id):
         res.update({ "status": "error", "reason": "Report file not available" })
         return jsonify(res)
 
-    issues =  _parse_report(report_filename, scan_id)
+    issues = _parse_report(report_filename, scan_id)
     scan = {
         "scan_id": scan_id
     }
@@ -613,7 +616,6 @@ def getfindings(scan_id):
         "nb_low": 0,
         "nb_medium": 0,
         "nb_high": 0,
-        #"delta_time": "",
         "engine_name": "nmap",
         "engine_version": this.scanner['version']
     }
@@ -627,10 +629,12 @@ def getfindings(scan_id):
         }, report_file, default=_json_serial)
 
 
-    res.update({ "scan": scan })
-    res.update({ "summary": summary })
-    res.update({ "issues": issues })
-    res.update({ "status": "success"})
+    res.update({
+        "scan": scan,
+        "summary": summary,
+        "issues": issues,
+        "status": "success"
+        })
     return jsonify(res)
 
 

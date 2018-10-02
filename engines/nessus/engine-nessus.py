@@ -457,9 +457,9 @@ def stop_scan(scan_id):
     return jsonify(res)
 
 
-@app.route('/engines/nessus/stop', methods=['GET'])
+@app.route('/engines/nessus/stopscans', methods=['GET'])
 def stop():
-    res = {	"page": "stop"}
+    res = {	"page": "stopscans"}
 
     for scan_id in this.scans.keys():
         clean_scan(scan_id)

@@ -21,7 +21,9 @@ engines/owl_code/libs/*
 engines/owl_code/owl_code.json
 env
 results
+reports
 .scannerwork
 *.pyc
 **/__pycache__
 **/.pytest_cache
+travis-config.tar

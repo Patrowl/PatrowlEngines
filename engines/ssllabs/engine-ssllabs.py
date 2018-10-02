@@ -108,6 +108,7 @@ def clean():
     res = { "page": "clean" }
     this.scans = {}
     _loadconfig()
+    res.update({ "status": "SUCCESS" })
     return jsonify(res)
 
 
@@ -332,10 +333,12 @@ def start():
 # Stop all scans
 @app.route('/engines/ssllabs/stopscans', methods=['GET'])
 def stop():
-    res = { "page": "stop" }
+    res = { "page": "stopscans" }
 
     for scan_id in this.scans.keys():
         stop_scan(scan_id)
+
+    res.update({ "status": "SUCCESS" })
 
     return jsonify(res)
 
@@ -703,7 +706,7 @@ def _parse_report(results, asset_name, asset_port):
     })
 
     # certificate_debianflaw
-    if details["key"]["debianFlaw"] == True:
+    if "debianFlaw" in details["key"].keys() and details["key"]["debianFlaw"] == True:
         nb_vulns['high'] += 1
         issues.append({
             "issue_id": len(issues)+1,

@@ -5,8 +5,8 @@
 	"allowed_asset_types": ["ip", "domain", "file", "hash", "url"],
 	"virustotalapi_bin_path": "/Users/GreenLock/Documents/Projets/patrowl/FullScan-external/virustotal-api",
 	"apikeys": [
-		"xxx",
-		"yyy"
+		"xx",
+		"yy"
 ],
 	"options": {
 		"do_scan_file": 	{ "required": false, "value": "boolean", "asset_types": ["file", "hash"] },

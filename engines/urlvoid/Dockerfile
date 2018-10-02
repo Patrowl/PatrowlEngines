@@ -26,8 +26,7 @@ RUN pip install --upgrade pip
 RUN pip install --trusted-host pypi.python.org -r requirements.txt
 
 # TCP port exposed by the container (NAT)
-EXPOSE 5108
+EXPOSE 5008
 
 # Run app.py when the container launches
-#CMD ["python", "engine-urlvoid.py"]
-CMD ["gunicorn", "engine-urlvoid:app", "-b", "0.0.0.0:5108"]
+CMD ["gunicorn", "engine-urlvoid:app", "-b", "0.0.0.0:5008"]

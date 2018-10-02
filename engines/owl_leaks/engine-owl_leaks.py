@@ -51,6 +51,9 @@ def index(): return engine.index()
 @app.route('/engines/owl_leaks/test')
 def test(): return engine.test()
 
+@app.route('/engines/owl_leaks/reloadconfig')
+def reloadconfig(): return engine.reloadconfig()
+
 @app.route('/engines/owl_leaks/info')
 def info(): return engine.info()
 
@@ -66,7 +69,7 @@ def status(): return engine.getstatus()
 @app.route('/engines/owl_leaks/status/<scan_id>')
 def status_scan(scan_id): return engine.getstatus_scan(scan_id)
 
-@app.route('/engines/owl_leaks/stop')
+@app.route('/engines/owl_leaks/stopscans')
 def stop(): return engine.stop()
 
 @app.route('/engines/owl_leaks/stop/<scan_id>')

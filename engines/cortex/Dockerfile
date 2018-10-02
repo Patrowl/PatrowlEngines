@@ -13,6 +13,7 @@ COPY engine-cortex.py .
 COPY cortexapi.py .
 COPY cortex.json.sample cortex.json
 COPY requirements.txt .
+COPY tests/ tests/
 #COPY README.md .
 
 # Install any needed packages specified in requirements.txt
@@ -27,7 +28,7 @@ RUN pip install --upgrade pip
 RUN pip install --trusted-host pypi.python.org -r requirements.txt
 
 # TCP port exposed by the container (NAT)
-EXPOSE 5109
+EXPOSE 5009
 
 # Run app.py when the container launches
-CMD ["python", "engine-cortex.py"]
+CMD ["gunicorn", "engine-cortex:app", "-b", "0.0.0.0:5009"]

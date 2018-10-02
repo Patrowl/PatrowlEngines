@@ -1,0 +1,22 @@
+version: "2"
+services:
+  elasticsearch:
+    image: patrowl/tests_elasticsearch_1:latest
+    environment:
+      - http.host=0.0.0.0
+      - transport.host=0.0.0.0
+      - xpack.security.enabled=false
+      - cluster.name=hive
+      - script.inline=true
+      - thread_pool.index.queue_size=100000
+      - thread_pool.search.queue_size=100000
+      - thread_pool.bulk.queue_size=100000
+      - ES_JAVA_OPTS=-Xms750m -Xmx750m
+    ports:
+      - "0.0.0.0:9200:9200"
+  cortex:
+    image: patrowl/tests_cortex_1:latest
+    depends_on:
+      - elasticsearch
+    ports:
+      - "0.0.0.0:9001:9001"

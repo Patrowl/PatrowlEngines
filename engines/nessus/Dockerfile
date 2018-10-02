@@ -29,7 +29,7 @@ RUN pip install --upgrade pip
 RUN pip install --trusted-host pypi.python.org -r requirements.txt
 
 # TCP port exposed by the container (NAT)
-EXPOSE 5102
+EXPOSE 5002
 
 # Run app.py when the container launches
-CMD ["python", "engine-nessus.py"]
+CMD ["gunicorn", "engine-nessus:app", "-b", "0.0.0.0:5002"]
