@@ -1,6 +1,6 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
-import os, sys, requests, json, urlparse, datetime, time, subprocess, hashlib, threading, optparse
+import os, sys, requests, json, urlparse, datetime, time, subprocess, hashlib, threading, optparse, psutil
 from flask import Flask, request, jsonify, redirect, url_for, send_file, send_from_directory
 
 app = Flask(__name__)
@@ -64,9 +64,10 @@ def _loadconfig():
         }}
 
     # check if an instance is running, then kill and restart it
-    if hasattr(this.proc, 'pid'):
+    if hasattr(this.proc, 'pid') and psutil.pid_exists(this.proc.pid):
         print(" * Terminate PID {}".format(this.proc.pid))
-        this.proc.terminate()
+        psutil.Process(this.proc.pid).terminate()
+        time.sleep(5)
 
     cmd = this.scanner['path'] + "/bin/arachni_rest_server " \
         + "--address " + this.scanner['listening_host'] \
