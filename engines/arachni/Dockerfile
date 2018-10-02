@@ -26,7 +26,7 @@ COPY README.md .
 
 WORKDIR /opt/patrowl-engines/arachni/libs
 
-RUN apt-get -qq update && apt-get install -yq wget ruby bash python python-pip bsdtar make gcc && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
+RUN apt-get -qq update && apt-get --no-install-recommends install -yq wget ruby bash python python-pip bsdtar make gcc && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 RUN ln -sf $(which bsdtar) $(which tar)
 RUN wget $DL_ARACHNI_LINK -nv
 RUN tar xzf $TGZ_ARACHNI && \
@@ -44,4 +44,4 @@ WORKDIR /opt/patrowl-engines/arachni/
 EXPOSE 5005
 
 # Run app.py when the container launches
-CMD ["gunicorn", "engine-arachni:app", "-k", "gevent", "-b", "0.0.0.0:5005", "--preload"]
+CMD ["gunicorn", "engine-arachni:app", "-k", "gevent", "-w", "1", "-b", "0.0.0.0:5005", "--preload"]
