@@ -36,6 +36,7 @@ useradd -m -s /bin/sh user && \
 echo "Success"
 
 ENV PATH /opt/patrowl-engines/arachni/libs/arachni/bin:$PATH
+RUN pip install --upgrade pip
 RUN pip install -r /opt/patrowl-engines/arachni/requirements.txt
 
 WORKDIR /opt/patrowl-engines/arachni/
