@@ -26,7 +26,7 @@ COPY README.md .
 
 WORKDIR /opt/patrowl-engines/arachni/libs
 
-RUN apt-get -qq update && apt-get --no-install-recommends install -yq wget ruby bash python python-pip bsdtar make gcc && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
+RUN apt-get -qq update && apt-get install -yq wget ruby bash python python-pip bsdtar make gcc && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 RUN ln -sf $(which bsdtar) $(which tar)
 RUN wget $DL_ARACHNI_LINK -nv
 RUN tar xzf $TGZ_ARACHNI && \
