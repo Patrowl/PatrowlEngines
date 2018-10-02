@@ -31,4 +31,4 @@ def test_owlcode_jar():
 
 if __name__ == '__main__':
     test_generic_features()
-    owlcode_jar()
+    test_owlcode_jar()

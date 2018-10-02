@@ -59,6 +59,7 @@ def _loadconfig():
         this.scanner['status'] = 'unknown'
     else:
         print("Error: config file '{}' not found".format(conf_file))
+        this.scanner['status'] = 'ERROR'
         return { "status": "ERROR", "reason": "config file not found", "details": {
             "filename": conf_file
         }}
@@ -75,7 +76,8 @@ def _loadconfig():
         + " --authentication-username " + this.scanner['username'] \
         + " --authentication-password " + this.scanner['password'] \
         + " --reroute-to-logfile " + BASE_DIR +"/logs"
-    this.proc = subprocess.Popen(cmd, shell=True, stdout=open("/dev/null", "w"), stderr=None)
+    this.proc = subprocess.Popen(cmd, shell=False, stdout=open("/dev/null", "w"), stderr=None)
+    # this.proc = subprocess.Popen(cmd, shell=True, stdout=open("/dev/null", "w"), stderr=None)
 
     print(" * Arachni REST API server successfully started on http://{}:{}/"
           .format(this.scanner['listening_host'], this.scanner['listening_port']))
