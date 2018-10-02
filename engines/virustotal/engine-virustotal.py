@@ -32,8 +32,6 @@ def _loadconfig():
         this.scanner = json.load(json_data)
         #sys.path.append(this.scanner['virustotalapi_bin_path'])
         globals()['virus_total_apis'] = __import__('virus_total_apis')
-        #this.scanner["vt"] = virus_total_apis.PublicApi(this.scanner["apikey"])
-        #this.vt = virus_total_apis.PublicApi(this.scanner["apikey"])
         this.vt = virus_total_apis.PrivateApi(this.scanner["apikeys"][0])
 
         for apikey in this.scanner["apikeys"]:
@@ -86,10 +84,8 @@ def start_scan():
 
 	# Sanitize args :
 	scan_id = str(data['scan_id'])
-	#scan_id = data['scan_id']
 	scan = {
 		'assets':       data['assets'],
-		# 'assets':       [a['value'] for a in data['assets']],
         'threads':      [],
 		'options':      data['options'],
 		'scan_id':      scan_id,
@@ -142,7 +138,6 @@ def _scan_ip(scan_id):
     for asset in assets:
         if not asset in this.scans[scan_id]["findings"]: this.scans[scan_id]["findings"][asset] = {}
         try:
-            #this.scans[scan_id]["findings"][asset]['scan_ip'] = this.vt.get_ip_report(this_ip=asset)
             this.scans[scan_id]["findings"][asset]['scan_ip'] = this.vts[random.randint(0,len(this.vts)-1)].get_ip_report(this_ip=asset)
         except:
             print "API Connexion error (quota?)"; return False
@@ -160,7 +155,6 @@ def _scan_domain(scan_id):
     for asset in assets:
         if not asset in this.scans[scan_id]["findings"]: this.scans[scan_id]["findings"][asset] = {}
         try:
-            #this.scans[scan_id]["findings"][asset]['scan_domain'] = this.vt.get_domain_report(this_domain=asset)
             this.scans[scan_id]["findings"][asset]['scan_domain'] = this.vts[random.randint(0,len(this.vts)-1)].get_domain_report(this_domain=asset)
         except:
             print "API Connexion error (quota?)"; return False
@@ -176,11 +170,8 @@ def _scan_url(scan_id):
         if asset['datatype'] == "url": assets.append(asset['value'])
 
     for asset in assets:
-        #print '_scan_url/this.scans[scan_id]["findings"]:', this.scans[scan_id]["findings"]
-        #print '_scan_url/this.scans[scan_id]["findings"].keys():', this.scans[scan_id]["findings"].keys()
         if not asset in this.scans[scan_id]["findings"].keys(): this.scans[scan_id]["findings"][asset] = {}
         try:
-            #this.scans[scan_id]["findings"][asset]['scan_url'] = this.vt.get_url_report(this_url=asset, scan='1')
             res = this.vts[random.randint(0,len(this.vts)-1)].scan_url(this_url=asset)
             time.sleep(5)
             this.scans[scan_id]["findings"][asset]['scan_url'] = this.vts[random.randint(0,len(this.vts)-1)].get_url_report(this_url=asset, scan='1', allinfo='1')
@@ -232,6 +223,7 @@ def clean():
     res = { "page": "clean" }
     this.scans.clear()
     _loadconfig()
+    res.update({ "status": "SUCCESS" })
     return jsonify(res)
 
 
@@ -322,12 +314,6 @@ def _parse_results(scan_id):
     #print "_parse_report/scan['findings'].keys():", scan['findings'].keys()
 
     for asset in scan['findings'].keys():
-        #print "for/asset:", asset
-        #print "for/scan['findings'][asset]:", scan['findings'][asset]
-        #print "for/this.scans[scan_id]['findings'][asset]:", this.scans[scan_id]['findings'][asset]
-
-        #print "scan['findings'][asset]:", scan['findings'][asset]
-        #print "for/scan['findings'][asset].keys():", scan['findings'][asset].keys()
         # IP SCAN
         if 'scan_ip' in this.scans[scan_id]['findings'][asset].keys():
             results = this.scans[scan_id]['findings'][asset]['scan_ip']['results']
@@ -481,8 +467,6 @@ def _parse_results(scan_id):
 
         # DOMAIN SCAN
         if 'scan_domain' in this.scans[scan_id]['findings'][asset].keys():
-        # if 'scan_domain' in scan['findings'][asset].keys():
-            # results = scan['findings'][asset]['scan_domain']['results']
             results = this.scans[scan_id]['findings'][asset]['scan_domain']['results']
             if results['response_code'] != 1:
                 nb_vulns['info'] += 1
@@ -495,7 +479,6 @@ def _parse_results(scan_id):
                     "solution": "n/a",
                     "metadata": { "tags": ["domain"] },
                     "type": "vt_domain_report",
-                    # "raw": scan['findings'][asset]['scan_domain'],
                     "raw": this.scans[scan_id]['findings'][asset]['scan_domain'],
                     "timestamp": ts
                 })
@@ -910,8 +893,6 @@ def _parse_results(scan_id):
 
         # URL SCAN
         if 'scan_url' in this.scans[scan_id]['findings'][asset].keys():
-        # if 'scan_url' in scan['findings'][asset].keys():
-            # results = scan['findings'][asset]['scan_url']['results']
             results = this.scans[scan_id]['findings'][asset]['scan_url']['results']
             if results['response_code'] != 1:
                 nb_vulns['info'] += 1

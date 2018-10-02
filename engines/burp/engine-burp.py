@@ -393,9 +393,9 @@ def start(base_url = None, spider = False):
     return jsonify(res)
 
 # Deletes the full scan queue map from memory
-@app.route('/engines/burp/stopscan')
+@app.route('/engines/burp/stopscans')
 def stop():
-    res = {	"page": "stopscan" }
+    res = {	"page": "stopscans" }
     url = this.scanurl + '/burp/scanner/scans/active'
     #@todo: catch 'ConnectionError' (wait for engine fully started) before sending request
 

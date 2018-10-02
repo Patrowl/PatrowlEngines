@@ -377,11 +377,23 @@ def stop_scan(scan_id):
     return jsonify(res)
 
 
+# Stop all scans
+@app.route('/engines/owl_dns/stopscans', methods=['GET'])
+def stop():
+    res = { "page": "stopscans" }
+    for scan_id in this.scans.keys():
+        stop_scan(scan_id)
+
+    res.update({"status": "SUCCESS"})
+    return jsonify(res)
+
+
 @app.route('/engines/owl_dns/clean')
 def clean():
     res = { "page": "clean" }
     this.scans.clear()
     _loadconfig()
+    res.update({"status": "SUCCESS"})
     return jsonify(res)
 
 

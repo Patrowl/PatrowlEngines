@@ -3,8 +3,6 @@
 import os, sys, json, time, datetime, threading, random, requests, urlparse, hashlib, optparse
 import xml.etree.ElementTree as ElementTree
 from flask import Flask, request, jsonify, redirect, url_for, send_from_directory
-# from cortex4py.api import CortexApi
-# from cortex4py.api import CortexException
 from cortexapi import CortexApi, CortexException
 
 app = Flask(__name__)
@@ -45,7 +43,7 @@ def _loadconfig():
         _refresh_analyzers()
     else:
         this.scanner["status"] = "ERROR"
-        print "Error: config file '{}' not found".format(conf_file)
+        print ("Error: config file '{}' not found".format(conf_file))
         return { "status": "error", "reason": "config file not found" }
 
 
@@ -209,12 +207,25 @@ def stop_scan(scan_id):
     res.update({"status": "success"})
     return jsonify(res)
 
+# Stop all scans
+@app.route('/engines/cortex/stopscans', methods=['GET'])
+def stop():
+    res = { "page": "stopscans" }
+
+    for scan_id in this.scans.keys():
+        stop_scan(scan_id)
+
+    res.update({"status": "SUCCESS"})
+
+    return jsonify(res)
+
 
 @app.route('/engines/cortex/clean')
 def clean():
     res = { "page": "clean" }
     this.scans.clear()
     _loadconfig()
+    res.update({"status": "SUCCESS"})
     return jsonify(res)
 
 
@@ -316,7 +327,7 @@ def _parse_results(scan_id, results):
     scan = this.scans[scan_id]
     ts = int(time.time() * 1000)
 
-    #print "results: {}".format(results)
+    #print ("results: {}".format(results))
 
     # if failure: return an issue
     if results["status"] == "Failure":
@@ -346,7 +357,7 @@ def _parse_results(scan_id, results):
     if "get_artifacts" in this.scans[scan_id]["options"].keys() and this.scans[scan_id]["options"]["get_artifacts"]:
         description = "Following artefacts have been found during the analyze:\n"
         for artefact in results["report"]["artifacts"]:
-            description += "\n{} ({})".format(artefact["data"], artefact["attributes"]["dataType"])
+            description += "\n{} ({})".format(artefact["data"], artefact["dataType"])
         issue_hash = hashlib.sha1(description).hexdigest()[:6]
 
         issues.append({
@@ -373,33 +384,34 @@ def _parse_results(scan_id, results):
         )
 
     # Taxonomies in summary
-    for taxo in results["report"]["summary"]["taxonomies"]:
-        severity = "info"
-        if taxo["level"] == "info": severity = "info"
-        elif taxo["level"] == "safe": severity = "info"
-        elif taxo["level"] == "suspicious": severity = "medium"
-        elif taxo["level"] == "malicious": severity = "high"
+    if "taxonomies" in results["report"]["summary"].keys():
+        for taxo in results["report"]["summary"]["taxonomies"]:
+            severity = "info"
+            if taxo["level"] == "info": severity = "info"
+            elif taxo["level"] == "safe": severity = "info"
+            elif taxo["level"] == "suspicious": severity = "medium"
+            elif taxo["level"] == "malicious": severity = "high"
 
-        issues.append({
-                "issue_id": len(issues)+1,
-                "severity": severity, "confidence": "certain",
-                "target": {
-                    "addr": [results["data"]],
-                    "protocol": results["dataType"] },
-                "title": "{}: {}={}".format(taxo["namespace"], taxo["predicate"], taxo["value"]),
-                "solution": "n/a",
-                "metadata": { "tags": [
-                    "cortex",
-                    results["dataType"],
-                    results["analyzerName"]
-                    ]
-                },
-                "type": "cortex_report",
-                "timestamp": ts,
-                "description": "Analyzer '{}' stated following taxo:\n{}={}".format(
-                    taxo["namespace"], taxo["predicate"], taxo["value"])
-            }
-        )
+            issues.append({
+                    "issue_id": len(issues)+1,
+                    "severity": severity, "confidence": "certain",
+                    "target": {
+                        "addr": [results["data"]],
+                        "protocol": results["dataType"] },
+                    "title": "{}: {}={}".format(taxo["namespace"], taxo["predicate"], taxo["value"]),
+                    "solution": "n/a",
+                    "metadata": { "tags": [
+                        "cortex",
+                        results["dataType"],
+                        results["analyzerName"]
+                        ]
+                    },
+                    "type": "cortex_report",
+                    "timestamp": ts,
+                    "description": "Analyzer '{}' stated following taxo:\n{}={}".format(
+                        taxo["namespace"], taxo["predicate"], taxo["value"])
+                }
+            )
 
     # Full report
     description = json.dumps(results["report"]["full"], indent=4)

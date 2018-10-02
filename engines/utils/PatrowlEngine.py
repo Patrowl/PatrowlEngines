@@ -19,6 +19,7 @@ def _json_serial(obj):
         return serial
     raise TypeError ("Type not serializable")
 
+
 class PatrowlEngine:
     def __init__(self, app, base_dir, name, max_scans=DEFAULT_APP_MAXSCANS):
         self.app = app
@@ -88,8 +89,16 @@ class PatrowlEngine:
             self.allowed_asset_types = engine_config["allowed_asset_types"]
             self.status = "READY"
         else:
-            #print ("Error: config file '{}' not found".format(conf_file))
+            self.status = "ERROR"
             return { "status": "ERROR", "reason": "config file not found" }
+
+    def reloadconfig(self):
+        res = { "page": "reloadconfig" }
+        self._loadconfig()
+        res.update({"config": {
+            "status": self.status
+        }})
+        return jsonify(res)
 
     def had_options(self, options):
         opts = []
@@ -107,6 +116,7 @@ class PatrowlEngine:
         res = {"page": "clean"}
         self.scans.clear()
         self._loadconfig()
+        res.update({"status": "SUCCESS"})
         return jsonify(res)
 
 
@@ -189,8 +199,6 @@ class PatrowlEngine:
             t._Thread__stop()
         self.scans[scan_id]['status'] = "STOPPED"
         self.scans[scan_id]['finished_at'] = int(time.time() * 1000)
-
-        #print "fn:", self.scans[scan_id]
 
         res.update({"status": "SUCCESS"})
         return jsonify(res)
