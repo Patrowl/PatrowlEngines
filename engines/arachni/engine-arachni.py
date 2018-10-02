@@ -72,7 +72,6 @@ def _loadconfig():
 
     # check if an instance is running, then kill and restart it
     if hasattr(this.proc, 'pid') and psutil.pid_exists(this.proc.pid):
-        #print(" * Terminate PID {}".format(this.proc.pid))
         app.logger.info(" * Terminate PID {}".format(this.proc.pid))
         psutil.Process(this.proc.pid).terminate()
         time.sleep(5)
@@ -573,13 +572,15 @@ def page_not_found(e):
     return jsonify({"page": "not found"})
 
 
+_loadconfig()
+
 @app.before_first_request
 def main():
     if not os.path.exists(BASE_DIR+"/results"):
         os.makedirs(BASE_DIR+"/results")
     if not os.path.exists(BASE_DIR+"/logs"):
         os.makedirs(BASE_DIR+"/logs")
-    _loadconfig()
+    #_loadconfig()
 
 
 if __name__ == '__main__':
