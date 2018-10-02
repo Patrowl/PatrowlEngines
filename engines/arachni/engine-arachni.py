@@ -1,6 +1,7 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
 import os, sys, requests, json, urlparse, datetime, time, subprocess, hashlib, threading, optparse, psutil
+import logging
 from flask import Flask, request, jsonify, redirect, url_for, send_file, send_from_directory
 
 app = Flask(__name__)
@@ -15,6 +16,11 @@ this.proc = None
 this.scanner = {}   # Scanner info
 this.scans = {}     # Active scan list
 requests.packages.urllib3.disable_warnings()
+
+if __name__ != ‘__main__’:
+    gunicorn_logger = logging.getLogger(‘gunicorn.error’)
+    app.logger.handlers = gunicorn_logger.handlers
+    app.logger.setLevel(gunicorn_logger.level)
 
 
 @app.route('/')
@@ -58,7 +64,7 @@ def _loadconfig():
         this.scanner['auth'] = (this.scanner['username'], this.scanner['password'])
         this.scanner['status'] = 'unknown'
     else:
-        print("Error: config file '{}' not found".format(conf_file))
+        app.logger.error("Error: config file '{}' not found".format(conf_file))
         this.scanner['status'] = 'ERROR'
         return { "status": "ERROR", "reason": "config file not found", "details": {
             "filename": conf_file
@@ -66,7 +72,8 @@ def _loadconfig():
 
     # check if an instance is running, then kill and restart it
     if hasattr(this.proc, 'pid') and psutil.pid_exists(this.proc.pid):
-        print(" * Terminate PID {}".format(this.proc.pid))
+        #print(" * Terminate PID {}".format(this.proc.pid))
+        app.logger.info(" * Terminate PID {}".format(this.proc.pid))
         psutil.Process(this.proc.pid).terminate()
         time.sleep(5)
 
@@ -78,8 +85,10 @@ def _loadconfig():
         + " --reroute-to-logfile " + BASE_DIR +"/logs"
     this.proc = subprocess.Popen(cmd, shell=True, stdout=open("/dev/null", "w"), stderr=open("/dev/null", "w"))
     this.scanner['status'] = 'READY'
-    print(" * Arachni REST API server successfully started on http://{}:{}/"
+    app.logger.info(" * Arachni REST API server successfully started on http://{}:{}/"
           .format(this.scanner['listening_host'], this.scanner['listening_port']))
+    # print(" * Arachni REST API server successfully started on http://{}:{}/"
+    #       .format(this.scanner['listening_host'], this.scanner['listening_port']))
 
     return {"status": "READY"}
 
@@ -140,7 +149,7 @@ def status():
 
 def _is_scan_finished(scan_id):
     if not scan_id in this.scans.keys():
-        print("scan_id {} not found".format(scan_id))
+        app.logger.error("scan_id {} not found".format(scan_id))
         return False
 
     if this.scans[scan_id]["status"] in ["FINISHED", "STOPPED"]:
@@ -156,7 +165,7 @@ def _is_scan_finished(scan_id):
             return True
 
     except:
-        print("API connexion error")
+        app.logger.error("API connexion error")
         return False
 
     return False
