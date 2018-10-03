@@ -2,7 +2,6 @@
 
 [![Join the chat at https://gitter.im/Patrowl/Support](https://badges.gitter.im/Patrowl/Support.png)](https://gitter.im/Patrowl/Support)
 [![Build Status](https://travis-ci.com/Patrowl/PatrowlEngines.svg?branch=master)](https://travis-ci.com/Patrowl/PatrowlEngines)
-[![Known Vulnerabilities](https://snyk.io/test/github/Patrowl/PatrowlEngines/badge.svg)](https://snyk.io/test/github/Patrowl/PatrowlEngines)
 ![https://sonarcloud.io/api/project_badges/measure?project=patrowl-engines&metric=alert_status](https://sonarcloud.io/api/project_badges/measure?project=patrowl-engines&metric=alert_status)
 
 # **PatrOwl**
@@ -36,8 +35,23 @@ If you need to contact the project team, send an email to <getsupport@patrowl.io
 # Copyright
 Copyright (C) 2018 Nicolas MATTIOCCO  ([@MaKyOtOx](https://twitter.com/MaKyOtOx) - nicolas@greenlock.fr)
 
-# Travis build status
-- Branch 'master':
-[![Build Status](https://travis-ci.com/Patrowl/PatrowlEngines.svg?branch=master)](https://travis-ci.com/Patrowl/PatrowlEngines)
-- Branch 'develop':
-[![Build Status](https://travis-ci.com/Patrowl/PatrowlEngines.svg?branch=develop)](https://travis-ci.com/Patrowl/PatrowlEngines)
+# Travis (CI) build status
+| Branch  | Status  |
+|---|---|
+| master | [![Build Status](https://travis-ci.com/Patrowl/PatrowlEngines.svg?branch=master)](https://travis-ci.com/Patrowl/PatrowlEngines) |
+| develop | [![Build Status](https://travis-ci.com/Patrowl/PatrowlEngines.svg?branch=develop)](https://travis-ci.com/Patrowl/PatrowlEngines) |
+
+
+# Snyk (Vulnerabilities)  status
+| Engine  | Status  |
+|---|---|
+| arachni  | [![Known Vulnerabilities](https://snyk.io/test/github/Patrowl/PatrowlEngines/badge.svg?targetFile=engines%2Farachni%2Frequirements.txt)](https://snyk.io/test/github/Patrowl/PatrowlEngines?targetFile=engines%2Farachni%2Frequirements.txt)  |
+| cortex  | [![Known Vulnerabilities](https://snyk.io/test/github/Patrowl/PatrowlEngines/badge.svg?targetFile=engines%2Fcortex%2Frequirements.txt)](https://snyk.io/test/github/Patrowl/PatrowlEngines?targetFile=engines%2Fcortex%2Frequirements.txt)  |
+| nessus  | [![Known Vulnerabilities](https://snyk.io/test/github/Patrowl/PatrowlEngines/badge.svg?targetFile=engines%2Fnessus%2Frequirements.txt)](https://snyk.io/test/github/Patrowl/PatrowlEngines?targetFile=engines%2Fnessus%2Frequirements.txt)  |
+| nmap  | [![Known Vulnerabilities](https://snyk.io/test/github/Patrowl/PatrowlEngines/badge.svg?targetFile=engines%2Fnmap%2Frequirements.txt)](https://snyk.io/test/github/Patrowl/PatrowlEngines?targetFile=engines%2Fnmap%2Frequirements.txt)  |
+| owl_code  | [![Known Vulnerabilities](https://snyk.io/test/github/Patrowl/PatrowlEngines/badge.svg?targetFile=engines%2Fowl_code%2Frequirements.txt)](https://snyk.io/test/github/Patrowl/PatrowlEngines?targetFile=engines%2Fowl_code%2Frequirements.txt)  |
+| owl_dns  | [![Known Vulnerabilities](https://snyk.io/test/github/Patrowl/PatrowlEngines/badge.svg?targetFile=engines%2Fowl_dns%2Frequirements.txt)](https://snyk.io/test/github/Patrowl/PatrowlEngines?targetFile=engines%2Fowl_dns%2Frequirements.txt)  |
+| owl_leaks  | [![Known Vulnerabilities](https://snyk.io/test/github/Patrowl/PatrowlEngines/badge.svg?targetFile=engines%2Fowl_leaks%2Frequirements.txt)](https://snyk.io/test/github/Patrowl/PatrowlEngines?targetFile=engines%2Fowl_leaks%2Frequirements.txt)  |
+| ssllabs  | [![Known Vulnerabilities](https://snyk.io/test/github/Patrowl/PatrowlEngines/badge.svg?targetFile=engines%2Fssllabs%2Frequirements.txt)](https://snyk.io/test/github/Patrowl/PatrowlEngines?targetFile=engines%2Fssllabs%2Frequirements.txt)  |
+| urlvoid  | [![Known Vulnerabilities](https://snyk.io/test/github/Patrowl/PatrowlEngines/badge.svg?targetFile=engines%2Furlvoid%2Frequirements.txt)](https://snyk.io/test/github/Patrowl/PatrowlEngines?targetFile=engines%2Furlvoid%2Frequirements.txt)  |
+| virustotal  | [![Known Vulnerabilities](https://snyk.io/test/github/Patrowl/PatrowlEngines/badge.svg?targetFile=engines%2Fvirustotal%2Frequirements.txt)](https://snyk.io/test/github/Patrowl/PatrowlEngines?targetFile=engines%2Fvirustotal%2Frequirements.txt)  |
