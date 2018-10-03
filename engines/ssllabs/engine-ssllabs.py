@@ -1,6 +1,6 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
-import os, sys, requests, json, datetime, time, hashlib, optparse, copy
+import os, sys, requests, json, datetime, time, hashlib, optparse, copy, logging
 from urlparse import urlparse
 from flask import Flask, request, jsonify, redirect, url_for, send_from_directory
 
@@ -10,11 +10,18 @@ APP_HOST = "0.0.0.0"
 APP_PORT = 5004
 APP_MAXSCANS = 10
 
+DEFAULT_API_URL = "https://api.ssllabs.com/api/v2/"
+
 BASE_DIR = os.path.dirname(os.path.realpath(__file__))
 this = sys.modules[__name__]
 this.scanner = {}
 this.scans = {}
 requests.packages.urllib3.disable_warnings()
+
+if __name__ != '__main__':
+    gunicorn_logger = logging.getLogger('gunicorn.error')
+    app.logger.handlers = gunicorn_logger.handlers
+    app.logger.setLevel(gunicorn_logger.level)
 
 '''
 # inputs:
@@ -75,6 +82,8 @@ def _loadconfig():
     if os.path.exists(conf_file):
         json_data = open(conf_file)
         this.scanner = json.load(json_data)
+        if not "api_url" in this.scanner.keys() or this.scanner["api_url"] == "":
+            this.scanner["api_url"] = DEFAULT_API_URL
 
         try:
             r = requests.get(url=this.scanner['api_url'] + 'info', verify=False)
@@ -862,6 +871,11 @@ def page_not_found(e):
 
 @app.before_first_request
 def main():
+    if not os.path.exists(BASE_DIR+'/ssllabs.json'):
+        app.logger.error("Error: config file '{}' not found".format(BASE_DIR+'/ssllabs.json'))
+        sys.exit(4)
+
+    # Check if the results folder exists
     if not os.path.exists(BASE_DIR+"/results"):
         os.makedirs(BASE_DIR+"/results")
     _loadconfig()

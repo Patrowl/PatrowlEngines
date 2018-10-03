@@ -679,7 +679,7 @@ def page_not_found(e):
 @app.before_first_request
 def main():
     if os.getuid() != 0:
-        print "Error: Start the NMAP engine using root privileges !"
+        print ("Error: Start the NMAP engine using root privileges !")
         sys.exit(-1)
     if not os.path.exists(BASE_DIR+"/results"):
         os.makedirs(BASE_DIR+"/results")
