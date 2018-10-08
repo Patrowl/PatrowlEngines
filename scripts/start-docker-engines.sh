@@ -2,11 +2,9 @@
 
 CWD=$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )
 engines_path="$CWD/../engines" # change the path if needed
-docker_port=5100
 
 for engine_dir in $engines_path/*; do
   if [ -f "${engine_dir}/Dockerfile" -a -f "${engine_dir}/${engine_dir##*/}.json" ]; then
-    #echo $engine_dir
     cd $engine_dir
     # get the default port
     engine_port=$(grep "APP_PORT = " engine-${engine_dir##*/}.py | cut -d'=' -f2 | sed 's/^ *//g')
