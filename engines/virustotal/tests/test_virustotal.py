@@ -23,7 +23,7 @@ def test_virustotal_scan_domain():
             "datatype": 'domain'
         }, {
             "id" :'2',
-            "value" :'banque-france.fr',
+            "value" :'greenlock.fr',
             "criticity": 'medium',
             "datatype": 'domain'
         }],
