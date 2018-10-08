@@ -22,11 +22,7 @@ for engine in ${engine_path}/*; do
   if [ -f "${engine}/Dockerfile" ]; then
     cd ${engine}
     echo -n "Building 'patrowl-${engine##*/}' docker image..."
-<<<<<<< HEAD
     if [ $engine = "cortex" ]; then
-=======
-    if [ $PATROWL_ENGINE = "cortex" ]; then
->>>>>>> e370ade472263f4c4fbdf670aabf77ed8f530a37
       docker-compose -f tests/patrowl-tests-cortex_docker_compose.yml up -d &
     else
       docker build --rm --quiet --tag "patrowl-${engine##*/}" . &
