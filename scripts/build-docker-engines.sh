@@ -15,14 +15,18 @@ spinner()
 }
 
 
-curpwd=${PWD}
-engine_path="${PWD}/../engines" # change the path if needed
+curpwd=$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )
+engine_path="${curpwd}/../engines" # change the path if needed
 
 for engine in ${engine_path}/*; do
   if [ -f "${engine}/Dockerfile" ]; then
     cd ${engine}
     echo -n "Building 'patrowl-${engine##*/}' docker image..."
-    docker build --rm --quiet --tag "patrowl-${engine##*/}" . &
+    if [ $engine = "cortex" ]; then
+      docker-compose -f tests/patrowl-tests-cortex_docker_compose.yml up -d &
+    else
+      docker build --rm --quiet --tag "patrowl-${engine##*/}" . &
+    fi
     spinner $!
     echo "Done."
   fi
