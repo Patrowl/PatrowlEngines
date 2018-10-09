@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 ### Generic imports
-import os, sys, threading
+import os, sys, threading, psutil
 from flask import Flask, request, redirect, url_for, jsonify
 from utils.PatrowlEngine import PatrowlEngine, PatrowlEngineFinding, PatrowlEngineScan
 from utils.PatrowlEngineExceptions import PatrowlEngineExceptions
@@ -191,14 +191,10 @@ def _scanjs_thread(scan_id, asset_kw):
         os.makedirs(scan_wd)
 
     for asset_value in asset_values:
-
         checked_files = []
         # create the asset scan workdir
         scan_wd_asset = "{}/{}".format(scan_wd, hashlib.sha1(asset_value).hexdigest()[:6])
         os.makedirs(scan_wd_asset)
-
-
-        #print "asset_value:", asset_value
 
         # Check location and copy files to the workdir
         if not _check_location(scan_id, asset_value, scan_wd_asset):
@@ -219,16 +215,21 @@ def _scanjs_thread(scan_id, asset_kw):
         time.sleep(2)
 
         # Start the scan
-        cmd = 'retire -j --path="{}" --outputformat json --outputpath="{}/oc_{}.json" -v'.format(
-            scan_wd_asset, scan_wd_asset, scan_id)
-        p = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE)
+        report_filename = "{}/oc_{}.json".format(scan_wd_asset, scan_id)
+        cmd = 'retire -j --path="{}" --outputformat json --outputpath="{}" -v'.format(
+            scan_wd_asset, report_filename)
+        #p = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE)
+        p = subprocess.Popen(cmd, shell=True, stdout=open("/dev/null", "w"), stderr=None)
 
         # Wait a little to ensure the report file is completely writen
         p.wait()
         time.sleep(2)
-        report_filename = scan_wd_asset + "/oc_{}.json".format(scan_id)
         if not os.path.exists(report_filename):
             print("report file '{}' not found.".format(report_filename))
+            engine.scans[scan_id]["status"] = "ERROR"
+            if psutil.pid_exists(p):
+                psutil.Process(p).terminate()
+            return
 
         scan_results = json.load(open(report_filename))
 
@@ -239,15 +240,18 @@ def _scanjs_thread(scan_id, asset_kw):
             for result in item["results"]:
                 if "vulnerabilities" not in result.keys(): continue
                 for vuln in result["vulnerabilities"]:
+                    vuln_summary = "n/a"
+                    if "summary" in vuln["identifiers"].keys():
+                        vuln_summary = vuln["identifiers"]["summary"]
                     # Title
                     item_title = "'{}-{}' is vulnerable: '{}'".format(
                         result["component"], result["version"],
-                        vuln["identifiers"]["summary"])
+                        vuln_summary)
 
                     # Description
                     item_description = "An external JavaScript library has been found to be vulnerable:\n\nFilename: {}\nComponent: {}\nVersion: {}\nTitle: {}".format(
                         item["file"], result["component"], result["version"],
-                        vuln["identifiers"]["summary"]
+                        vuln_summary
                     )
 
                     # Check CVE
@@ -270,7 +274,7 @@ def _scanjs_thread(scan_id, asset_kw):
                     findings.append(new_finding)
 
         # findings summary per asset (remove the workdir)
-        checked_files_str = "\n".join([remove_prefix(ff, scan_wd_asset) for ff in checked_files])
+        checked_files_str = "\n".join([remove_prefix(ff, scan_wd_asset) for ff in sorted(checked_files)])
 
         summary_asset_finding_hash = hashlib.sha1(checked_files_str).hexdigest()[:6]
         summary_asset_finding = PatrowlEngineFinding(
@@ -402,7 +406,7 @@ def _scanowaspdc_thread(scan_id, asset_kw):
 
 
         # findings summary per asset (remove the workdir)
-        checked_files_str = "\n".join([remove_prefix(ff, scan_wd_asset) for ff in checked_files])
+        checked_files_str = "\n".join([remove_prefix(ff, scan_wd_asset) for ff in sorted(checked_files)])
 
         summary_asset_finding_hash = hashlib.sha1(checked_files_str).hexdigest()[:6]
         summary_asset_finding = PatrowlEngineFinding(

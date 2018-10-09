@@ -8,7 +8,6 @@ docker login
 for engine in ${engine_path}/*; do
   if [ -f "${engine}/Dockerfile" ]; then
     cd ${engine}
-    cp -Rf ../utils/ utils/
     echo -n "Tag 'patrowl-${engine##*/}' docker image..."
     docker tag patrowl-${engine##*/} patrowl/patrowl-${engine##*/}
     echo -n "Push 'patrowl-${engine##*/}' docker image to the container repo"
