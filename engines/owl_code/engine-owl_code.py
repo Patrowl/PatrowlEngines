@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 ### Generic imports
-import os, sys, threading, psutil
+import os, signal, sys, threading
 from flask import Flask, request, redirect, url_for, jsonify
 from utils.PatrowlEngine import PatrowlEngine, PatrowlEngineFinding, PatrowlEngineScan
 from utils.PatrowlEngineExceptions import PatrowlEngineExceptions
@@ -227,8 +227,9 @@ def _scanjs_thread(scan_id, asset_kw):
         if not os.path.exists(report_filename):
             print("report file '{}' not found.".format(report_filename))
             engine.scans[scan_id]["status"] = "ERROR"
-            if psutil.pid_exists(p):
-                psutil.Process(p).terminate()
+            os.killpg(os.getpgid(p.pid), signal.SIGTERM)
+            # if psutil.pid_exists(p):
+            #     psutil.Process(p).terminate()
             return
 
         scan_results = json.load(open(report_filename))

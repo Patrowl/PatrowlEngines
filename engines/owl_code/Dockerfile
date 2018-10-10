@@ -3,13 +3,13 @@ MAINTAINER Patrowl.io "getsupport@patrowl.io"
 LABEL Name="Patrowl\ Code\ Security\ review\ \(Patrowl engine\)" Version="1.0.0"
 
 # Install dependencies
-RUN apk add --update \
-    wget unzip openjdk8-jre git subversion \
-    python \
-    python-dev \
-    py-pip \
+RUN apk add --update --no-cache \
+    wget unzip openjdk8-jre \
+    git subversion \
+    python python-dev py-pip \
     nodejs nodejs-npm \
-  && rm -rf /var/cache/apk/*
+  && rm -rf /var/cache/apk/* \
+  && rm -rf /tmp/*
 
 # Create the target repo
 RUN mkdir -p /opt/patrowl-engines/owl_code
