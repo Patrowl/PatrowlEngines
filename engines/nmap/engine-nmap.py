@@ -89,12 +89,12 @@ def loadconfig():
         this.scanner['status'] = "READY"
     else:
         print ("Error: config file '{}' not found".format(conf_file))
-        return { "status": "ERROR", "reason": "config file not found" }
+        return {"status": "ERROR", "reason": "config file not found"}
 
 
 @app.route('/engines/nmap/reloadconfig')
 def reloadconfig():
-    res = { "page": "reloadconfig" }
+    res = {"page": "reloadconfig"}
     loadconfig()
     res.update({"config": this.scanner})
     return jsonify(res)
@@ -103,7 +103,7 @@ def reloadconfig():
 @app.route('/engines/nmap/startscan', methods=['POST'])
 def start():
     #@todo: validate parameters and options format
-    res = { "page": "startscan" }
+    res = {"page": "startscan"}
 
 
     # check the scanner is ready to start a new scan
@@ -120,7 +120,7 @@ def start():
     if this.scanner['status'] != "READY":
         res.update({
             "status": "refused",
-            "details" : {
+            "details": {
                 "reason": "scanner not ready",
                 "status": this.scanner['status']
         }})
@@ -128,10 +128,10 @@ def start():
 
     # Load scan parameters
     data = json.loads(request.data)
-    if not 'assets' in data.keys():# or not data['options']['ports']:
+    if 'assets' not in data.keys():
         res.update({
             "status": "refused",
-            "details" : {
+            "details": {
                 "reason": "arg error, something is missing ('assets' ?)"
         }})
         return jsonify(res)
@@ -140,7 +140,7 @@ def start():
     if data['scan_id'] in this.scans.keys():
         res.update({
             "status": "refused",
-            "details" : {
+            "details": {
                 "reason": "scan '{}' already launched".format(data['scan_id']),
         }})
         return jsonify(res)
@@ -163,7 +163,7 @@ def start():
 
     res.update({
         "status": "accepted",
-        "details" : {
+        "details": {
             "scan_id": scan['scan_id']
     }})
 
@@ -177,7 +177,7 @@ def _scan_thread(scan_id):
         if asset["datatype"] not in this.scanner["allowed_asset_types"]:
             return jsonify({
                     "status": "refused",
-                    "details" : {
+                    "details": {
                         "reason": "datatype '{}' not supported for the asset {}.".format(asset["datatype"], asset["value"])
                 }})
         else:
@@ -223,16 +223,16 @@ def _scan_thread(scan_id):
 
 @app.route('/engines/nmap/clean')
 def clean():
-    res = { "page": "clean" }
+    res = {"page": "clean"}
     this.scans.clear()
     loadconfig()
-    res.update({ "status": "SUCCESS" })
+    res.update({"status": "SUCCESS"})
     return jsonify(res)
 
 
 @app.route('/engines/nmap/clean/<scan_id>')
 def clean_scan(scan_id):
-    res = { "page": "clean_scan" }
+    res = {"page": "clean_scan"}
     res.update({"scan_id": scan_id})
 
     if not scan_id in this.scans.keys():
@@ -247,21 +247,21 @@ def clean_scan(scan_id):
 # Stop all scans
 @app.route('/engines/nmap/stopscans')
 def stop():
-    res = { "page": "stopscans" }
+    res = {"page": "stopscans"}
 
     for scan_id in this.scans.keys():
         stop_scan(scan_id)
 
-    res.update({ "status": "SUCCESS" })
+    res.update({"status": "SUCCESS"})
 
     return jsonify(res)
 
 
 @app.route('/engines/nmap/stop/<scan_id>')
 def stop_scan(scan_id):
-    res = { "page": "stopscan" }
+    res = {"page": "stopscan"}
 
-    if not scan_id in this.scans.keys():
+    if scan_id not in this.scans.keys():
         res.update({ "status": "error", "reason": "scan_id '{}' not found".format(scan_id)})
         return jsonify(res)
 
@@ -285,18 +285,18 @@ def stop_scan(scan_id):
 def scan_status(scan_id):
     res = {"page": "status", "status": "UNKNOWN"}
     if not scan_id in this.scans.keys():
-        res.update({ "status": "error", "reason": "scan_id '{}' not found".format(scan_id)})
+        res.update({"status": "error", "reason": "scan_id '{}' not found".format(scan_id)})
         return jsonify(res)
 
     proc = this.scans[scan_id]["proc"]
 
     if this.scans[scan_id]["status"] == "ERROR":
-        res.update({ "status": "error", "reason": "todo"})
+        res.update({"status": "error", "reason": "todo"})
         return jsonify(res)
 
     if hasattr(proc, 'pid'):
         if not psutil.pid_exists(proc.pid):
-            res.update({"status" : "FINISHED" })
+            res.update({"status" : "FINISHED"})
             this.scans[scan_id]["status"] = "FINISHED"
 
         elif psutil.pid_exists(proc.pid) and psutil.Process(proc.pid).status() in ["sleeping", "running"]:
@@ -326,7 +326,7 @@ def scan_status(scan_id):
             #     os.remove(log_path)
             #     res.update({ "status": "READY" })
     else:
-        res.update({ "status": "UNKNOWN" })
+        res.update({"status": "UNKNOWN"})
     return jsonify(res)
 
 
@@ -361,10 +361,7 @@ def status():
 
 @app.route('/engines/nmap/info')
 def info():
-    res = { "page": "info",
-           "engine_config": this.scanner,
-           "scans": this.scans
-           }
+    res = {"page": "info", "engine_config": this.scanner, "scans": this.scans}
     # if this.proc and not this.proc.poll():
     #     res.update({ "proc": { "pid" : this.proc.pid }})
     # else:
@@ -400,17 +397,17 @@ def _parse_report(filename, scan_id):
     target = {}
     try:
         tree = ET.parse(filename)
-    except:
+    except Exception:
         # No Element found in XML file
-        return { "status": "ERROR", "reason": "no issues found" }
+        return {"status": "ERROR", "reason": "no issues found"}
 
     ts = tree.find("taskbegin").get("time")
 
     skip_issue = False
     for host in tree.findall('host'):
         skip_issue = False
-        # get startdate of the host scan
-        #ts = host.get('starttime')
+        #  get startdate of the host scan
+        #  ts = host.get('starttime')
 
         addr_list = []
         addr_type = host.find('address').get('addrtype')
@@ -585,7 +582,7 @@ def _get_vulners_findings(findings):
 
 @app.route('/engines/nmap/getfindings/<scan_id>')
 def getfindings(scan_id):
-    res = { "page": "getfindings", "scan_id": scan_id }
+    res = {"page": "getfindings", "scan_id": scan_id}
     if not scan_id in this.scans.keys():
         res.update({ "status": "error", "reason": "scan_id '{}' not found".format(scan_id)})
         return jsonify(res)
@@ -596,14 +593,13 @@ def getfindings(scan_id):
     status()
     if hasattr(proc, 'pid') and psutil.pid_exists(proc.pid) and psutil.Process(proc.pid).status() in ["sleeping", "running"]:
         #print "scan not finished"
-        res.update({ "status": "error", "reason": "Scan in progress" })
+        res.update({"status": "error", "reason": "Scan in progress"})
         return jsonify(res)
 
     # check if the report is available (exists && scan finished)
     report_filename = BASE_DIR + "/results/nmap_{}.xml".format(scan_id)
     if not os.path.exists(report_filename):
-        #print "file not found"
-        res.update({ "status": "error", "reason": "Report file not available" })
+        res.update({"status": "error", "reason": "Report file not available"})
         return jsonify(res)
 
     issues = _parse_report(report_filename, scan_id)

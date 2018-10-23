@@ -1,8 +1,19 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
-import os, sys, requests, json, urlparse, datetime, time, subprocess, hashlib, threading, optparse, psutil
+import os
+import sys
+import requests
+import json
+import urlparse
+import datetime
+import time
+import subprocess
+import hashlib
+import optparse
+import psutil
 import logging
-from flask import Flask, request, jsonify, redirect, url_for, send_file, send_from_directory
+from flask import Flask
+from flask import request, jsonify, redirect, url_for, send_from_directory
 
 app = Flask(__name__)
 APP_DEBUG = False
@@ -30,25 +41,25 @@ def default():
 
 @app.route('/engines/arachni/')
 def index():
-    return jsonify({ "page": "index" })
+    return jsonify({"page": "index"})
 
 
 @app.route('/engines/arachni/clean')
 def clean():
-    res = { "page": "clean" }
+    res = {"page": "clean"}
     this.scans.clear()
     _loadconfig()
-    res.update({ "status": "SUCCESS" })
+    res.update({"status": "SUCCESS"})
     return jsonify(res)
 
 
 @app.route('/engines/arachni/clean/<scan_id>')
 def clean_scan(scan_id):
-    res = { "page": "clean_scan" }
+    res = {"page": "clean_scan"}
     res.update({"scan_id": scan_id})
 
-    if not scan_id in this.scans.keys():
-        res.update({ "status": "ERROR", "reason": "scan_id '{}' not found".format(scan_id)})
+    if scan_id not in this.scans.keys():
+        res.update({"status": "ERROR", "reason": "scan_id '{}' not found".format(scan_id)})
         return jsonify(res)
 
     this.scans.pop(scan_id)
@@ -66,9 +77,11 @@ def _loadconfig():
     else:
         app.logger.error("Error: config file '{}' not found".format(conf_file))
         this.scanner['status'] = 'ERROR'
-        return { "status": "ERROR", "reason": "config file not found", "details": {
-            "filename": conf_file
-        }}
+        return {
+            "status": "ERROR",
+            "reason": "config file '{}' not found".format(conf_file),
+            "details": {"filename": conf_file}
+        }
 
     # check if an instance is running, then kill and restart it
     if hasattr(this.proc, 'pid') and psutil.pid_exists(this.proc.pid):
@@ -81,7 +94,7 @@ def _loadconfig():
         + " --port " + this.scanner['listening_port'] \
         + " --authentication-username " + this.scanner['username'] \
         + " --authentication-password " + this.scanner['password'] \
-        + " --reroute-to-logfile " + BASE_DIR +"/logs"
+        + " --reroute-to-logfile " + BASE_DIR + "/logs"
     this.proc = subprocess.Popen(cmd, shell=True, stdout=open("/dev/null", "w"), stderr=open("/dev/null", "w"))
     this.scanner['status'] = 'READY'
     app.logger.info(" * Arachni REST API server successfully started on http://{}:{}/"
@@ -91,20 +104,21 @@ def _loadconfig():
 
     return {"status": "READY"}
 
+
 @app.route('/engines/arachni/reloadconfig')
 def reloadconfig():
-    res = { "page": "reloadconfig" }
+    res = {"page": "reloadconfig"}
     res.update(_loadconfig())
     res.update({
         "config": this.scanner,
-        "details" : {"pid": this.proc.pid}
+        "details": {"pid": this.proc.pid}
         })
     return jsonify(res)
 
 
 @app.route('/engines/arachni/info')
 def info():
-    res = { "page": "info" }
+    res = {"page": "info"}
 
     #todo check archni_status
 
@@ -118,12 +132,13 @@ def info():
                 "engine_config": this.scanner
             })
         else:
-            res.update({ "status": "ERROR", "details": {
-                "engine_config": this.scanner }})
-    except:
-        res.update({ "status": "ERROR", "details": "connexion error to the API {}".format(url)})
+            res.update({"status": "ERROR", "details": {
+                "engine_config": this.scanner}})
+    except Exception:
+        res.update({"status": "ERROR", "details": "connexion error to the API {}".format(url)})
 
     return jsonify(res)
+
 
 '''
     # Function 'status()'
@@ -132,7 +147,7 @@ def info():
 '''
 @app.route('/engines/arachni/status')
 def status():
-    res = { "page": "status" }
+    res = {"page": "status"}
     # display the status of the scanner
     this.scanner['status'] = json.loads(info().get_data())['status']
     res.update({"status": this.scanner['status']})
@@ -147,7 +162,7 @@ def status():
 
 
 def _is_scan_finished(scan_id):
-    if not scan_id in this.scans.keys():
+    if scan_id not in this.scans.keys():
         app.logger.error("scan_id {} not found".format(scan_id))
         return False
 
@@ -158,16 +173,16 @@ def _is_scan_finished(scan_id):
         url = this.scanner['api_url'] + "/scans/" + str(this.scans[scan_id]['arachni_scan_id']) + "/summary"
         r = requests.get(url=url, verify=False, auth=this.scanner['auth'])
         #print json.loads(r.text)["status"]
-        if r.status_code == 200 and json.loads(r.text)["status"] == "done" and json.loads(r.text)["busy"] == False:
+        if r.status_code == 200 and json.loads(r.text)["status"] == "done" and json.loads(r.text)["busy"] is False:
             this.scans[scan_id]["status"] = "FINISHED"
             this.scans[scan_id]["finished_at"] = datetime.datetime.now()
             return True
-
-    except:
+    except Exception:
         app.logger.error("API connexion error")
         return False
 
     return False
+
 
 '''
     # Function 'scan_status(scan_id=86a5f993-30c2-47b7-a401-c4ae7e2a1e57)'
@@ -176,10 +191,10 @@ def _is_scan_finished(scan_id):
 '''
 @app.route('/engines/arachni/status/<scan_id>')
 def scan_status(scan_id):
-    res = { "page": "scan_status" }
+    res = {"page": "scan_status"}
 
     if not scan_id in this.scans.keys():
-        res.update({ "status": "error", "reason": "scan_id '{}' not found".format(scan_id)})
+        res.update({"status": "error", "reason": "scan_id '{}' not found".format(scan_id)})
         return jsonify(res)
 
     # check id the scan is finished or not
@@ -190,14 +205,14 @@ def scan_status(scan_id):
         r = requests.get(url=url, verify=False, auth=this.scanner['auth'])
         resp = json.loads(r.text)
         if r.status_code == 200:
-            if resp["status"] == "done" and resp["busy"] == False:
+            if resp["status"] == "done" and resp["busy"] is False:
                 this.scans[scan_id]["status"] = "FINISHED"
                 this.scans[scan_id]["finished_at"] = datetime.datetime.now()
             else:
                 this.scans[scan_id]["status"] = str(resp["status"]).upper()
-    except:
+    except Exception:
         this.scans[scan_id]["status"] = "ERROR"
-        res.update({ "status": "ERROR",	"reason": "API error" })
+        res.update({"status": "ERROR",	"reason": "API error"})
 
     # return the scan parameters and the status
     res.update({
@@ -211,7 +226,7 @@ def scan_status(scan_id):
 
 @app.route('/engines/arachni/startscan', methods=['POST'])
 def start():
-    res = { "page": "startscan"}
+    res = {"page": "startscan"}
 
     # check the scanner is ready to start a new scan
     if len(this.scans) == APP_MAXSCANS:
@@ -224,7 +239,7 @@ def start():
     scan = {}
     data = json.loads(request.data)
 
-    if not 'assets' in data.keys() or not'scan_id' in data.keys():# or not 'base_url' in data['options'].keys():
+    if 'assets' not in data.keys() or 'scan_id' not in data.keys():# or not 'base_url' in data['options'].keys():
         res.update({
 			"status": "ERROR",
 			"reason": "arg error, something is missing (ex: 'assets', 'scan_id')"#, 'options/base_url')"
@@ -236,7 +251,7 @@ def start():
     scan_id = str(data['scan_id'])
 
     if data["scan_id"] in this.scans.keys():
-        res.update({ "status": "ERROR", "reason": "scan already started (scan_id={})".format(data["scan_id"])})
+        res.update({"status": "ERROR", "reason": "scan already started (scan_id={})".format(data["scan_id"])})
         return jsonify(res)
 
     # Initialize the scan parameters
@@ -244,16 +259,16 @@ def start():
     if asset["datatype"] not in this.scanner["allowed_asset_types"]:
         return jsonify({
                 "status": "refused",
-                "details" : {
+                "details": {
                     "reason": "datatype '{}' not supported for the asset {}.".format(asset["datatype"], asset["value"])
             }})
 
-    scan["asset_url"] = list(data['assets'])[0]['value'] # only take the 1st
+    scan["asset_url"] = list(data['assets'])[0]['value']  # only take the 1st
     scan["target_host"] = urlparse.urlparse(scan["asset_url"]).netloc
     scan["target_protocol"] = urlparse.urlparse(scan["asset_url"]).scheme
 
     if 'ports' in data['options'].keys():
-        scan["target_port"] = str(list(data['options']['ports'])[0]) # get the 1st in list
+        scan["target_port"] = str(list(data['options']['ports'])[0])  # get the 1st in list
     elif urlparse.urlparse(scan["asset_url"]).port:
         scan["target_port"] = urlparse.urlparse(scan["asset_url"]).port
     elif scan["target_protocol"] == 'http':
@@ -261,16 +276,22 @@ def start():
     elif scan["target_protocol"] == 'https':
         scan["target_port"] = 443
 
-
     scan["started_at"] = datetime.datetime.now()
     scan["options"] = {}
-    if 'http' in data['options'].keys(): scan["options"].update({"http": data['options']['http']})
-    if 'browser_cluster' in data['options'].keys(): scan["options"].update({"browser_cluster": data['options']['browser_cluster']})
-    if 'scope' in data['options'].keys(): scan["options"].update({"scope": data['options']['scope']})
-    if 'checks' in data['options'].keys(): scan["options"].update({"checks": list(data['options']['checks'])})
-    if 'audit' in data['options'].keys(): scan["options"].update({"audit": data['options']['audit']})
-    if 'no_fingerprinting' in data['options'].keys(): scan["options"].update({"no_fingerprinting": data['options']['no_fingerprinting']})
-    if 'input' in data['options'].keys(): scan["options"].update({"input": data['options']['input']})
+    if 'http' in data['options'].keys():
+        scan["options"].update({"http": data['options']['http']})
+    if 'browser_cluster' in data['options'].keys():
+        scan["options"].update({"browser_cluster": data['options']['browser_cluster']})
+    if 'scope' in data['options'].keys():
+        scan["options"].update({"scope": data['options']['scope']})
+    if 'checks' in data['options'].keys():
+        scan["options"].update({"checks": list(data['options']['checks'])})
+    if 'audit' in data['options'].keys():
+        scan["options"].update({"audit": data['options']['audit']})
+    if 'no_fingerprinting' in data['options'].keys():
+        scan["options"].update({"no_fingerprinting": data['options']['no_fingerprinting']})
+    if 'input' in data['options'].keys():
+        scan["options"].update({"input": data['options']['input']})
 
     url = this.scanner['api_url'] + "/scans"
     post_data = {
@@ -283,24 +304,25 @@ def start():
     try:
         r = requests.post(url=url, data=json.dumps(post_data), verify=False, auth=this.scanner['auth'])
         if r.status_code == 200:
-            res.update({ "status": "accepted"})
+            res.update({"status": "accepted"})
             scan["status"] = "SCANNING"
             scan["arachni_scan_id"] = json.loads(r.text)['id']
-            res.update({ "details": r.text })
+            res.update({"details": r.text})
         else:
-            res.update({ "status": "ERROR", "reason": "something wrong with the API invokation"})
+            res.update({"status": "ERROR", "reason": "something wrong with the API invokation"})
             scan["status"] = "ERROR"
             scan["finished_at"] = datetime.datetime.now()
-    except:
-        res.update({ "status": "ERROR", "reason": "connexion error"})
+    except Exception:
+        res.update({"status": "ERROR", "reason": "connexion error"})
         scan["status"] = "ERROR"
         scan["finished_at"] = datetime.datetime.now()
 
     # Prepare data returned
-    this.scans.update({ scan["scan_id"]: scan})
+    this.scans.update({scan["scan_id"]: scan})
     res.update({"scan": scan})
 
     return jsonify(res)
+
 
 """
 by default, the scan is paused -> report won't be available either
@@ -309,13 +331,12 @@ genresults bydefaut stop/delete the scan in the arachni context
 """
 @app.route('/engines/arachni/stop/<scan_id>')
 def stop_scan(scan_id):
-    res = { "page": "stop" }
+    res = {"page": "stop"}
 
-    if not scan_id in this.scans.keys():
-        res.update({ "status": "ERROR", "reason": "scan_id '{}' not found".format(scan_id)})
+    if scan_id not in this.scans.keys():
+        res.update({"status": "ERROR", "reason": "scan_id '{}' not found".format(scan_id)})
         return jsonify(res)
 
-    resp = None
     try:
         url = this.scanner['api_url'] + "/scans/" + this.scans[scan_id]['arachni_scan_id'] + "/pause"
         r = requests.put(url=url, verify=False, auth=this.scanner['auth'])
@@ -325,18 +346,18 @@ def stop_scan(scan_id):
         else:
             this.scans[scan_id]["status"] = "ERROR"
 
-        res.update({ "status": "success",	"details": "scan successfully stopped" })
-    except:
+        res.update({"status": "success", "details": "scan successfully stopped"})
+    except Exception:
         this.scans[scan_id]["status"] = "ERROR"
-        res.update({ "status": "ERROR",	"reason": "API error" })
-
+        res.update({"status": "ERROR",	"reason": "API error"})
 
     return jsonify(res)
+
 
 # Stop all scans
 @app.route('/engines/arachni/stopscans', methods=['GET'])
 def stop():
-    res = { "page": "stopscans" }
+    res = {"page": "stopscans"}
 
     for scan_id in this.scans.keys():
         stop_scan(scan_id)
@@ -344,6 +365,7 @@ def stop():
     res.update({"status": "SUCCESS"})
 
     return jsonify(res)
+
 
 '''
 # outputs:
@@ -366,12 +388,13 @@ def stop():
 }]}
 '''
 
+
 @app.route('/engines/arachni/getfindings/<scan_id>')
 def getfindings(scan_id):
-    res = { "page": "getfindings" , "scan_id": scan_id}
+    res = {"page": "getfindings", "scan_id": scan_id}
 
     if not _is_scan_finished(scan_id):
-        res.update({ "status": "ERROR", "reason": "scan '{}' not finished".format(scan_id)})
+        res.update({"status": "ERROR", "reason": "scan '{}' not finished".format(scan_id)})
         return jsonify(res)
 
     scan = this.scans[scan_id]
@@ -384,14 +407,17 @@ def getfindings(scan_id):
     try:
         r = requests.get(url=url, verify=False, auth=this.scanner['auth'])
         if r.status_code != 200:
-            res.update({ "status": "ERROR", "reason": "something wrong with the API invokation"})
+            res.update({"status": "ERROR", "reason": "something wrong with the API invokation"})
             return jsonify(res)
-    except:
-        res.update({ "status": "ERROR", "reason": "something wrong with the API invokation"})
+    except Exception:
+        res.update({"status": "ERROR", "reason": "something wrong with the API invokation"})
         return jsonify(res)
 
     scan_results = json.loads(r.text)
-    issues, summary = _parse_report(results=scan_results, asset_name=app_url, asset_host=host, asset_port=port, asset_protocol=protocol)
+    issues, summary = _parse_report(
+        results=scan_results, asset_name=app_url,
+        asset_host=host, asset_port=port, asset_protocol=protocol
+    )
 
     # Definitely delete the scan in the arachni context
     try:
@@ -401,9 +427,8 @@ def getfindings(scan_id):
             this.scans[scan_id]["status"] = "FINISHED"
         else:
             this.scans[scan_id]["status"] = "ERROR"
-    except:
+    except Exception:
         this.scans[scan_id]["status"] = "ERROR"
-
 
     # Store the findings in a file
     with open(BASE_DIR+"/results/arachni_"+str(scan_id)+".json", 'w') as report_file:
@@ -416,8 +441,9 @@ def getfindings(scan_id):
     # remove the scan from the active scan list
     clean_scan(scan_id)
 
-    res.update({ "issues": issues, "summary": summary, "status": "success" })
+    res.update({"issues": issues, "summary": summary, "status": "success"})
     return jsonify(res)
+
 
 def _json_serial(obj):
     """
@@ -428,11 +454,11 @@ def _json_serial(obj):
     if isinstance(obj, datetime.datetime):
         serial = obj.isoformat()
         return serial
-    raise TypeError ("Type not serializable")
+    raise TypeError("Type not serializable")
 
 
 def _parse_report(results, asset_name, asset_host, asset_port, asset_protocol):
-    """Parse the results provided by the scan tool and format them"""
+    """Parse the results provided by the scan tool and format them."""
     issues = []
     summary = {}
     nb_vulns = {
@@ -449,7 +475,8 @@ def _parse_report(results, asset_name, asset_host, asset_port, asset_protocol):
     nb_urls = len(sitemap)
     sitemap_str = ""
     for url in sorted(sitemap.keys()):
-        if sitemap[url] == 200: sitemap_str = "".join((sitemap_str,str(url)+"\n"))
+        if sitemap[url] == 200:
+            sitemap_str = "".join((sitemap_str, str(url)+"\n"))
 
     sitemap_hash = hashlib.sha1(str(sitemap_str)).hexdigest()[:6]
 
@@ -463,7 +490,9 @@ def _parse_report(results, asset_name, asset_host, asset_port, asset_protocol):
             "port_type": 'tcp',
             "protocol": asset_protocol
             },
-        "title": "Sitemap {} (#URL: {}, HASH: {})".format(results["options"]["url"], nb_urls, sitemap_hash),
+        "title": "Sitemap {} (#URL: {}, HASH: {})".format(
+            results["options"]["url"], nb_urls, sitemap_hash
+        ),
         "description": "Sitemap: \n\n{}".format(sitemap_str),
         "solution": "n/a",
         "metadata": {
@@ -477,7 +506,8 @@ def _parse_report(results, asset_name, asset_host, asset_port, asset_protocol):
     # Loop for issues found by the scanner
     for issue in results["issues"]:
         # reword 'informational' -> 'info'
-        if issue['severity'] == "informational": issue['severity'] = "info"
+        if issue['severity'] == "informational":
+            issue['severity'] = "info"
         nb_vulns[issue['severity']] += 1
 
         confidence = ""
@@ -499,8 +529,8 @@ def _parse_report(results, asset_name, asset_host, asset_port, asset_protocol):
             "title": "{} ({} {} [{}])".format(
                 issue['name'],
                 str(issue['vector']['method']).upper(),          # GET, POST, PUT, ..
-                urlparse.urlparse(issue['vector']['url']).path, # /index.php
-                issue['vector']['affected_input_name']),        # query
+                urlparse.urlparse(issue['vector']['url']).path,  # /index.php
+                issue['vector']['affected_input_name']),         # query
             "description": "{}\\n\\nRequest: {}\\n\\nResponse: {}".format(
                 issue['description'],
                 issue['request']['headers_string'],
@@ -538,7 +568,7 @@ def getreport(scan_id):
     filepath = BASE_DIR+"/results/arachni_"+scan_id+".json"
 
     if not os.path.exists(filepath):
-        return jsonify({ "status": "ERROR", "reason": "report file for scan_id '{}' not found".format(scan_id)})
+        return jsonify({"status": "ERROR", "reason": "report file for scan_id '{}' not found".format(scan_id)})
 
     #@todo
     # return send_file(filepath,
@@ -554,7 +584,6 @@ def test():
         return jsonify({"page": "test"})
 
     res = "<h2>Test Page (DEBUG):</h2>"
-    import urllib
     for rule in app.url_map.iter_rules():
         options = {}
         for arg in rule.arguments:
@@ -572,22 +601,31 @@ def page_not_found(e):
     return jsonify({"page": "not found"})
 
 
-_loadconfig()
-
 @app.before_first_request
 def main():
     if not os.path.exists(BASE_DIR+"/results"):
         os.makedirs(BASE_DIR+"/results")
     if not os.path.exists(BASE_DIR+"/logs"):
         os.makedirs(BASE_DIR+"/logs")
-    #_loadconfig()
 
 
+_loadconfig()
 if __name__ == '__main__':
     parser = optparse.OptionParser()
-    parser.add_option("-H", "--host", help="Hostname of the Flask app [default %s]" % APP_HOST, default=APP_HOST)
-    parser.add_option("-P", "--port", help="Port for the Flask app [default %s]" % APP_PORT, default=APP_PORT)
-    parser.add_option("-d", "--debug", action="store_true", dest="debug", help=optparse.SUPPRESS_HELP, default=APP_DEBUG)
+    parser.add_option(
+        "-H", "--host",
+        help="Hostname of the Flask app [default %s]" % APP_HOST,
+        default=APP_HOST)
+    parser.add_option(
+        "-P", "--port",
+        help="Port for the Flask app [default %s]" % APP_PORT,
+        default=APP_PORT)
+    parser.add_option(
+        "-d", "--debug",
+        action="store_true",
+        dest="debug",
+        help=optparse.SUPPRESS_HELP,
+        default=APP_DEBUG)
 
     options, _ = parser.parse_args()
     app.run(debug=options.debug, host=options.host, port=int(options.port))

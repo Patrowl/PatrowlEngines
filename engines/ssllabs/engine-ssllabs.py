@@ -883,7 +883,9 @@ def main():
 
 if __name__ == '__main__':
     parser = optparse.OptionParser()
-    parser.add_option("-H", "--host", help="Hostname of the Flask app [default %s]" % APP_HOST, default=APP_HOST)
+    parser.add_option(
+        "-H", "--host", default=APP_HOST,
+        help="Hostname of the Flask app [default %s]" % APP_HOST)
     parser.add_option("-P", "--port", help="Port for the Flask app [default %s]" % APP_PORT, default=APP_PORT)
     parser.add_option("-d", "--debug", action="store_true", dest="debug", help=optparse.SUPPRESS_HELP)
 

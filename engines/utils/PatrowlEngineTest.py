@@ -92,7 +92,9 @@ class PatrowlEngineTest:
         has_error = False
         while time.time() < timeout_start + max_timeout:
             r = requests.get(url="{}/status/{}".format(self.base_url, TEST_SCAN_ID))
-            if r.json()["status"] == "SCANNING": continue
+            if r.json()["status"] == "SCANNING":
+                time.sleep(3)
+                continue
             elif r.json()["status"] == "FINISHED": break
             elif r.json()["status"] == "ERROR":
                 has_error = True
