@@ -243,7 +243,6 @@ def _search_github_thread(scan_id, asset_kw):
     scan_lock = threading.RLock()
     with scan_lock:
         engine.scans[scan_id]["findings"] = engine.scans[scan_id]["findings"] + findings
-    print engine.scans[scan_id]["findings"]
 
 
 def _search_twitter_thread(scan_id, asset_kw):
@@ -321,8 +320,10 @@ def _search_twitter_thread(scan_id, asset_kw):
     with scan_lock:
         engine.scans[scan_id]["findings"] = engine.scans[scan_id]["findings"] + findings
 
+
 @app.before_first_request
 def main():
+    """First function called."""
     engine._loadconfig()
 
 
