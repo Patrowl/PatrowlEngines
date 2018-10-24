@@ -9,6 +9,6 @@ itsdangerous==0.24
 Jinja2==2.10
 MarkupSafe==1.0
 pythonwhois==2.4.3
-requests==2.18.1
+requests==2.20.0
 urllib3==1.21.1
 Werkzeug==0.14.1
