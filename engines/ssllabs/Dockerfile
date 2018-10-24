@@ -27,4 +27,4 @@ RUN pip install --trusted-host pypi.python.org -r requirements.txt
 EXPOSE 5004
 
 # Run app.py when the container launches
-CMD ["gunicorn", "engine-ssllabs:app", "-b", "0.0.0.0:5004"]
+CMD ["gunicorn", "engine-ssllabs:app", "-b", "0.0.0.0:5004", "--timeout 120", "--graceful-timeout 60"]
