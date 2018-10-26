@@ -14,7 +14,7 @@ Jinja2==2.10
 MarkupSafe==1.0
 netaddr==0.7.19
 pycparser==2.18
-pyOpenSSL==17.2.0
+pyOpenSSL>=17.5.0
 requests==2.20.0
 six==1.10.0
 urllib3==1.22
