@@ -26,4 +26,8 @@ reports
 *.pyc
 **/__pycache__
 **/.pytest_cache
+<<<<<<< HEAD
 engines/travis-config.tar
+=======
+travis-config.tar
+>>>>>>> 141ea7f561cddb43531149eeb5012f726ed96fe3
