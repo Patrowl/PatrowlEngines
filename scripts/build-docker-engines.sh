@@ -23,12 +23,12 @@ for engine in ${engine_path}/*; do
     cd ${engine}
     echo -n "Copying utils dir..."
     rm -rf utils && cp -Rf ../utils/ .
-    echo -n "Building 'patrowl-${engine##*/}' docker image..."
-    if [ $engine = "cortex" ]; then
-      docker-compose -f tests/patrowl-tests-cortex_docker_compose.yml up -d &
-    else
-      docker build --rm --quiet --tag "patrowl-${engine##*/}" . &
-    fi
+    echo -n "Building engine 'patrowl-${engine##*/}' docker image..."
+    # if [ $engine = "cortex" ]; then
+    #   docker-compose -f tests/patrowl-tests-cortex_docker_compose.yml up -d &
+    # else
+    docker build --rm --quiet --tag "patrowl-${engine##*/}" . &
+    # fi
     spinner $!
     echo "Done."
   fi
