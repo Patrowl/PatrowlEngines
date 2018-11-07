@@ -156,10 +156,9 @@ def reloadconfig():
 
 @app.route('/engines/urlvoid/startscan', methods=['POST'])
 def start_scan():
-    # @todo: validate parameters and options format
     res = {"page": "startscan"}
 
-    # check the scanner is ready to start a new scan
+    # Check the scanner is ready to start a new scan
     if len(engine.scans) == APP_MAXSCANS:
         res.update({
             "status": "error",
@@ -178,7 +177,7 @@ def start_scan():
         return jsonify(res)
 
     data = json.loads(request.data)
-    if 'assets' not in data.keys():
+    if 'assets' not in data.keys() or 'scan_id' not in data.keys():
         res.update({
             "status": "refused",
             "details": {
