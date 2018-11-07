@@ -1,6 +1,17 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
-import os, sys, json, time, datetime, threading, random, requests, urllib, urlparse, optparse
+"""URLVoid PatrOwl engine application."""
+
+import os
+import sys
+import json
+import time
+import datetime
+import threading
+import random
+import requests
+import urlparse
+import optparse
 import xml.etree.ElementTree as ElementTree
 from flask import Flask, request, jsonify, redirect, url_for, send_from_directory
 
@@ -16,6 +27,7 @@ this.scanner = {}
 this.scans = {}
 this.keys = []
 
+
 @app.route('/')
 def default():
     return redirect(url_for('index'))
@@ -23,7 +35,7 @@ def default():
 
 @app.route('/engines/urlvoid/', methods=['GET'])
 def index():
-    return jsonify({ "page": "index" })
+    return jsonify({"page": "index"})
 
 
 def _loadconfig():
@@ -39,12 +51,12 @@ def _loadconfig():
 
     else:
         print ("Error: config file '{}' not found".format(conf_file))
-        return { "status": "error", "reason": "config file not found" }
+        return {"status": "error", "reason": "config file not found"}
 
 
 @app.route('/engines/urlvoid/reloadconfig', methods=['GET'])
 def reloadconfig():
-    res = { "page": "reloadconfig" }
+    res = {"page": "reloadconfig"}
     _loadconfig()
     res.update({"config": this.scanner})
     return jsonify(res)
@@ -52,8 +64,8 @@ def reloadconfig():
 
 @app.route('/engines/urlvoid/startscan', methods=['POST'])
 def start_scan():
-    #@todo: validate parameters and options format
-    res = { "page": "startscan" }
+    # @todo: validate parameters and options format
+    res = {"page": "startscan"}
 
     # check the scanner is ready to start a new scan
     if len(this.scans) == APP_MAXSCANS:
@@ -67,7 +79,7 @@ def start_scan():
     if this.scanner['status'] != "READY":
         res.update({
             "status": "refused",
-            "details" : {
+            "details": {
                 "reason": "scanner not ready",
                 "status": this.scanner['status']
         }})
@@ -77,7 +89,7 @@ def start_scan():
     if not 'assets' in data.keys():
         res.update({
             "status": "refused",
-            "details" : {
+            "details": {
                 "reason": "arg error, something is missing ('assets' ?)"
         }})
         return jsonify(res)
@@ -104,7 +116,7 @@ def start_scan():
     if data['scan_id'] in this.scans.keys():
         res.update({
             "status": "refused",
-            "details" : {
+            "details": {
                 "reason": "scan '{}' already launched".format(data['scan_id']),
         }})
         return jsonify(res)
@@ -127,7 +139,7 @@ def start_scan():
 
     res.update({
         "status": "accepted",
-        "details" : {
+        "details": {
             "scan_id": scan['scan_id']
     }})
 
@@ -161,7 +173,7 @@ def get_report(asset,apikey):
 # Stop all scans
 @app.route('/engines/urlvoid/stopscans', methods=['GET'])
 def stop():
-    res = { "page": "stopscans" }
+    res = {"page": "stopscans"}
 
     for scan_id in this.scans.keys():
         stop_scan(scan_id)
@@ -173,15 +185,15 @@ def stop():
 
 @app.route('/engines/urlvoid/stop/<scan_id>', methods=['GET'])
 def stop_scan(scan_id):
-    res = { "page": "stop" }
+    res = {"page": "stop"}
 
     if not scan_id in this.scans.keys():
-        res.update({ "status": "error", "reason": "scan_id '{}' not found".format(scan_id)})
+        res.update({"status": "error", "reason": "scan_id '{}' not found".format(scan_id)})
         return jsonify(res)
 
     scan_status(scan_id)
     if this.scans[scan_id]['status'] != "SCANNING":
-        res.update({ "status": "error", "reason": "scan '{}' is not running (status={})".format(scan_id, this.scans[scan_id]['status'])})
+        res.update({"status": "error", "reason": "scan '{}' is not running (status={})".format(scan_id, this.scans[scan_id]['status'])})
         return jsonify(res)
 
     for t in this.scans[scan_id]['threads']:
@@ -195,7 +207,7 @@ def stop_scan(scan_id):
 
 @app.route('/engines/urlvoid/clean', methods=['GET'])
 def clean():
-    res = { "page": "clean" }
+    res = {"page": "clean"}
     this.scans.clear()
     _loadconfig()
     res.update({"status": "SUCCESS"})
@@ -204,11 +216,11 @@ def clean():
 
 @app.route('/engines/urlvoid/clean/<scan_id>', methods=['GET'])
 def clean_scan(scan_id):
-    res = { "page": "clean_scan" }
+    res = {"page": "clean_scan"}
     res.update({"scan_id": scan_id})
 
     if not scan_id in this.scans.keys():
-        res.update({ "status": "error", "reason": "scan_id '{}' not found".format(scan_id)})
+        res.update({"status": "error", "reason": "scan_id '{}' not found".format(scan_id)})
         return jsonify(res)
 
     this.scans.pop(scan_id)
@@ -218,7 +230,7 @@ def clean_scan(scan_id):
 
 @app.route('/engines/urlvoid/status/<scan_id>', methods=['GET'])
 def scan_status(scan_id):
-    if not scan_id in this.scans.keys():
+    if scan_id not in this.scans.keys():
         return jsonify({
             "status": "ERROR",
             "details": "scan_id '{}' not found".format(scan_id)})
@@ -241,7 +253,7 @@ def scan_status(scan_id):
 
 @app.route('/engines/urlvoid/status', methods=['GET'])
 def status():
-    res = {    "page": "status"}
+    res = {"page": "status"}
 
     if len(this.scans) == APP_MAXSCANS:
         this.scanner['status'] = "BUSY"
@@ -295,10 +307,10 @@ def _parse_results(scan_id):
             issues.append({
                     "issue_id": len(issues)+1,
                     "severity": "high", "confidence": "certain",
-                    "target": { "addr": [asset], "protocol": "http" },
+                    "target": {"addr": [asset], "protocol": "http"},
                     "title": "'{}' identified in urlvoid".format(asset),
                     "solution": "n/a",
-                    "metadata": { "tags": ["http"] },
+                    "metadata": {"tags": ["http"] },
                     "type": "urlvoid_report",
                     "timestamp": ts,
                     "description": description
@@ -309,10 +321,10 @@ def _parse_results(scan_id):
             issues.append({
                     "issue_id": len(issues)+1,
                     "severity": "info", "confidence": "certain",
-                    "target": { "addr": [asset], "protocol": "http" },
+                    "target": {"addr": [asset], "protocol": "http"},
                     "title": "'{}' have not been identified in urlvoid".format(asset),
                     "solution": "n/a",
-                    "metadata": { "tags": ["http"] },
+                    "metadata": {"tags": ["http"] },
                     "type": "urlvoid_report",
                     "timestamp": ts,
                     "description": "{} have not identified in blacklist engines or online reputation tools".format(asset)
@@ -334,17 +346,17 @@ def _parse_results(scan_id):
 
 @app.route('/engines/urlvoid/getfindings/<scan_id>', methods=['GET'])
 def getfindings(scan_id):
-    res = { "page": "getfindings", "scan_id": scan_id }
+    res = {"page": "getfindings", "scan_id": scan_id }
 
     # check if the scan_id exists
     if not scan_id in this.scans.keys():
-        res.update({ "status": "error", "reason": "scan_id '{}' not found".format(scan_id)})
+        res.update({"status": "error", "reason": "scan_id '{}' not found".format(scan_id)})
         return jsonify(res)
 
     # check if the scan is finished
     status()
     if this.scans[scan_id]['status'] != "FINISHED":
-        res.update({ "status": "error", "reason": "scan_id '{}' not finished (status={})".format(scan_id, this.scans[scan_id]['status'])})
+        res.update({"status": "error", "reason": "scan_id '{}' not finished (status={})".format(scan_id, this.scans[scan_id]['status'])})
         return jsonify(res)
 
     issues, summary =  _parse_results(scan_id)
@@ -369,7 +381,7 @@ def getfindings(scan_id):
     # remove the scan from the active scan list
     clean_scan(scan_id)
 
-    res.update({ "scan": scan, "summary": summary, "issues": issues, "status": "success"})
+    res.update({"scan": scan, "summary": summary, "issues": issues, "status": "success"})
     return jsonify(res)
 
 
@@ -390,7 +402,7 @@ def getreport(scan_id):
     filepath = BASE_DIR+"/results/urlvoid_"+scan_id+".json"
 
     if not os.path.exists(filepath):
-        return jsonify({ "status": "error", "reason": "report file for scan_id '{}' not found".format(scan_id)})
+        return jsonify({"status": "error", "reason": "report file for scan_id '{}' not found".format(scan_id)})
 
     return send_from_directory(BASE_DIR+"/results/", "urlvoid_"+scan_id+".json")
 
@@ -415,11 +427,13 @@ def test():
 
 @app.errorhandler(404)
 def page_not_found(e):
+    """Page not found - 404."""
     return jsonify({"page": "not found"})
 
 
 @app.before_first_request
 def main():
+    """First function called."""
     if not os.path.exists(BASE_DIR+"/results"):
         os.makedirs(BASE_DIR+"/results")
     _loadconfig()
@@ -427,9 +441,19 @@ def main():
 
 if __name__ == '__main__':
     parser = optparse.OptionParser()
-    parser.add_option("-H", "--host", help="Hostname of the Flask app [default %s]" % APP_HOST, default=APP_HOST)
-    parser.add_option("-P", "--port", help="Port for the Flask app [default %s]" % APP_PORT, default=APP_PORT)
-    parser.add_option("-d", "--debug", action="store_true", dest="debug", help=optparse.SUPPRESS_HELP)
+    parser.add_option(
+        "-H", "--host",
+        help="Hostname of the Flask app [default %s]" % APP_HOST,
+        default=APP_HOST)
+    parser.add_option(
+        "-P", "--port",
+        help="Port for the Flask app [default %s]" % APP_PORT,
+        default=APP_PORT)
+    parser.add_option(
+        "-d", "--debug",
+        action="store_true",
+        dest="debug",
+        help=optparse.SUPPRESS_HELP)
 
     options, _ = parser.parse_args()
     app.run(debug=options.debug, host=options.host, port=int(options.port))

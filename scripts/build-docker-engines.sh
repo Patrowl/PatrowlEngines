@@ -21,8 +21,10 @@ engine_path="${curpwd}/../engines" # change the path if needed
 for engine in ${engine_path}/*; do
   if [ -f "${engine}/Dockerfile" ]; then
     cd ${engine}
-    echo -n "Copying utils dir..."
-    rm -rf utils && cp -Rf ../utils/ .
+    if [[ -L "utils" && -d "utils" ]]; then
+      echo -n "Copying utils dir..."
+      rm -rf utils && cp -Rf ../utils/ .
+    fi
     echo -n "Building engine 'patrowl-${engine##*/}' docker image..."
     # if [ $engine = "cortex" ]; then
     #   docker-compose -f tests/patrowl-tests-cortex_docker_compose.yml up -d &
