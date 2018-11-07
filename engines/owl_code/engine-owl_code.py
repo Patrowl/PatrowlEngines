@@ -93,6 +93,10 @@ def stop_scan(scan_id): return engine.stop_scan(scan_id)
 def getfindings(scan_id): return engine.getfindings(scan_id)
 
 
+@app.route('/engines/owl_code/getreport/<scan_id>')
+def getreport(scan_id): return engine.getreport(scan_id)
+
+
 @app.route('/engines/owl_code/startscan', methods=['POST'])
 def start_scan():
 
@@ -453,6 +457,7 @@ def _scanowaspdc_thread(scan_id, asset_kw):
 
 @app.before_first_request
 def main():
+    """First function called."""
     if not os.path.exists(APP_BASE_DIR+"/results"):
         os.makedirs(APP_BASE_DIR+"/results")
     if not os.path.exists(APP_BASE_DIR+"/workdirs"):
@@ -461,4 +466,4 @@ def main():
 
 
 if __name__ == '__main__':
-    engine.run_app(app_host=APP_HOST, app_port=APP_PORT)
+    engine.run_app(app_debug=APP_DEBUG, app_host=APP_HOST, app_port=APP_PORT)

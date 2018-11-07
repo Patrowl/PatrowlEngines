@@ -131,6 +131,12 @@ def getfindings(scan_id):
     return engine.getfindings(scan_id)
 
 
+@app.route('/engines/owl_leaks/getreport/<scan_id>')
+def getreport(scan_id):
+    """Get report on finished scans."""
+    return engine.getreport(scan_id)
+
+
 @app.route('/engines/owl_leaks/startscan', methods=['POST'])
 def start_scan():
     """Start a new scan."""
