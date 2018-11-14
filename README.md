@@ -32,6 +32,16 @@ Please [open an issue on GitHub](https://github.com/Patrowl/PatrowlEngines/issue
 
 If you need to contact the project team, send an email to <getsupport@patrowl.io>.
 
+# Roadmap
+- [ ] SSLScan
+- [ ] WhatWeb
+- [ ] CLAIR
+- [ ] OpenVas
+- [ ] Tenable.io
+- [ ] Acunetix
+- [ ] WPScan
+- [ ] DroopScan
+
 # Copyright
 Copyright (C) 2018 Nicolas MATTIOCCO  ([@MaKyOtOx](https://twitter.com/MaKyOtOx) - nicolas@greenlock.fr)
 

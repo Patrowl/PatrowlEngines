@@ -14,7 +14,6 @@ from urlparse import urlparse
 from flask import Flask, request, jsonify
 from PatrowlEnginesUtils.PatrowlEngine import _json_serial
 from PatrowlEnginesUtils.PatrowlEngine import PatrowlEngine
-from PatrowlEnginesUtils.PatrowlEngine import PatrowlEngineFinding
 from PatrowlEnginesUtils.PatrowlEngineExceptions import PatrowlEngineExceptions
 
 app = Flask(__name__)
@@ -769,7 +768,7 @@ def _parse_report(results, asset_name, asset_port):
 
     ciphersuites_str = ""
     for suite in list(details["suites"]["list"]):
-        ciphersuites_str  = "".join((ciphersuites_str, "{} (Strength: {})\n".format(suite["name"], suite["cipherStrength"])))
+        ciphersuites_str = "".join((ciphersuites_str, "{} (Strength: {})\n".format(suite["name"], suite["cipherStrength"])))
     ciphersuites_hash = hashlib.sha1(ciphersuites_str).hexdigest()[:6]
     nb_vulns['info'] += 1
     issues.append({
@@ -794,8 +793,6 @@ def _parse_report(results, asset_name, asset_port):
         "nb_low": nb_vulns["low"],
         "nb_medium": nb_vulns["medium"],
         "nb_high": nb_vulns["high"]
-        #"engine_name": "ssllabs",
-        #"engine_version": engine.scanner["version"]
    }
 
     return issues, summary
