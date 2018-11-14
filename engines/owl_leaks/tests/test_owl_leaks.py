@@ -1,8 +1,5 @@
-import sys, os
 import json, requests, time, random
-
-sys.path.append( os.path.dirname( os.path.dirname( os.path.abspath(__file__) ) ) )
-from utils.PatrowlEngineTest import PatrowlEngineTest
+from PatrowlEnginesUtils.PatrowlEngineTest import PatrowlEngineTest
 
 # Define the engine instance
 pet = PatrowlEngineTest(engine_name="owl_leaks", base_url="http://127.0.0.1:5012/engines/owl_leaks")

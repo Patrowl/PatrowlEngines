@@ -1,15 +1,22 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
+"""Owl_Code PatrOwl engine application."""
 
-### Generic imports
-import os, signal, sys, threading
-from flask import Flask, request, redirect, url_for, jsonify
-from utils.PatrowlEngine import PatrowlEngine, PatrowlEngineFinding, PatrowlEngineScan
-from utils.PatrowlEngineExceptions import PatrowlEngineExceptions
+import os
+import signal
+import threading
+from flask import Flask, request, jsonify
+from PatrowlEnginesUtils.PatrowlEngine import PatrowlEngine
+from PatrowlEnginesUtils.PatrowlEngine import PatrowlEngineFinding
+from PatrowlEnginesUtils.PatrowlEngineExceptions import PatrowlEngineExceptions
 
-# Custom imports
-from datetime import timedelta, date, datetime
-import re, hashlib, time, subprocess, json, shutil, git, svn.remote
+import hashlib
+import time
+import subprocess
+import json
+import shutil
+import git
+import svn.remote
 
 APP_DEBUG = False
 APP_HOST = "0.0.0.0"
@@ -26,8 +33,10 @@ engine = PatrowlEngine(
     max_scans=APP_MAXSCANS
 )
 
+
 @app.errorhandler(404)
 def page_not_found(e): return engine.page_not_found()
+
 
 @app.errorhandler(PatrowlEngineExceptions)
 def handle_invalid_usage(error):
@@ -35,41 +44,58 @@ def handle_invalid_usage(error):
     response.status_code = 404
     return response
 
+
 @app.route('/')
 def default(): return engine.default()
+
 
 @app.route('/engines/owl_code/')
 def index(): return engine.index()
 
+
 @app.route('/engines/owl_code/test')
 def test(): return engine.test()
+
 
 @app.route('/engines/owl_code/reloadconfig')
 def reloadconfig(): return engine.reloadconfig()
 
+
 @app.route('/engines/owl_code/info')
 def info(): return engine.info()
+
 
 @app.route('/engines/owl_code/clean')
 def clean(): return engine.clean()
 
+
 @app.route('/engines/owl_code/clean/<scan_id>')
 def clean_scan(scan_id): return engine.clean_scan(scan_id)
+
 
 @app.route('/engines/owl_code/status')
 def status(): return engine.getstatus()
 
+
 @app.route('/engines/owl_code/status/<scan_id>')
 def status_scan(scan_id): return engine.getstatus_scan(scan_id)
+
 
 @app.route('/engines/owl_code/stopscans')
 def stop(): return engine.stop()
 
+
 @app.route('/engines/owl_code/stop/<scan_id>')
 def stop_scan(scan_id): return engine.stop_scan(scan_id)
 
+
 @app.route('/engines/owl_code/getfindings/<scan_id>')
 def getfindings(scan_id): return engine.getfindings(scan_id)
+
+
+@app.route('/engines/owl_code/getreport/<scan_id>')
+def getreport(scan_id): return engine.getreport(scan_id)
+
 
 @app.route('/engines/owl_code/startscan', methods=['POST'])
 def start_scan():
@@ -89,7 +115,9 @@ def start_scan():
 
     if "scan_owaspdc" in engine.scans[scan_id]["options"].keys() and engine.scans[scan_id]["options"]["scan_owaspdc"] == True:
         for asset in engine.scans[scan_id]["assets"]:
-            th = threading.Thread(target=_scanowaspdc_thread, args=(scan_id, asset["value"],))
+            th = threading.Thread(
+                target=_scanowaspdc_thread,
+                args=(scan_id, asset["value"],))
             th.start()
             engine.scans[scan_id]['threads'].append(th)
 
@@ -104,7 +132,7 @@ def _get_code_from_git_http(asset, wd):
     # Check credentials
     git_username = ""
     git_password = ""
-    #github_access_token = ""
+    # github_access_token = ""
 
     if "git_username" in engine.options.keys() and engine.options["git_username"]:
         git_username = engine.options["git_username"]
@@ -122,6 +150,7 @@ def _get_code_from_git_http(asset, wd):
     # git.Repo.clone_from(asset, wd+"/src", depth=1)
 
     return True
+
 
 def _get_code_from_svn_http(scan_id, asset, wd):
     svn_username = ""
@@ -167,8 +196,6 @@ def _check_location(scan_id, asset, wd):
     #     return "svn+ssh"
     # elif asset.startwith("ssh://git@github.com"):
     #     return "github+ssh"
-
-
     return False
 
 
@@ -185,8 +212,6 @@ def _scanjs_thread(scan_id, asset_kw):
 
     # Create the scan's workdirs
     scan_wd = "{}/workdirs/scan_{}_{}".format(APP_BASE_DIR, scan_id, str(time.time()))
-    if not os.path.exists(APP_BASE_DIR+"/workdirs"):
-        os.makedirs(APP_BASE_DIR+"/workdirs")
     if not os.path.exists(scan_wd):
         os.makedirs(scan_wd)
 
@@ -218,7 +243,7 @@ def _scanjs_thread(scan_id, asset_kw):
         report_filename = "{}/oc_{}.json".format(scan_wd_asset, scan_id)
         cmd = 'retire -j --path="{}" --outputformat json --outputpath="{}" -v'.format(
             scan_wd_asset, report_filename)
-        #p = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE)
+        # p = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE)
         p = subprocess.Popen(cmd, shell=True, stdout=open("/dev/null", "w"), stderr=None)
 
         # Wait a little to ensure the report file is completely writen
@@ -307,8 +332,6 @@ def _scanowaspdc_thread(scan_id, asset_kw):
 
     # Create the scan's workdirs
     scan_wd = "{}/workdirs/scan_{}_{}".format(APP_BASE_DIR, scan_id, str(time.time()))
-    if not os.path.exists(APP_BASE_DIR+"/workdirs"):
-        os.makedirs(APP_BASE_DIR+"/workdirs")
     if not os.path.exists(scan_wd):
         os.makedirs(scan_wd)
 
@@ -318,7 +341,7 @@ def _scanowaspdc_thread(scan_id, asset_kw):
         scan_wd_asset = "{}/{}/src".format(scan_wd, hashlib.sha1(asset_value).hexdigest()[:6])
         os.makedirs(scan_wd_asset)
 
-        #print "scan_wd_asset:", scan_wd_asset
+        # print "scan_wd_asset:", scan_wd_asset
 
         # Check location and copy files to the workdir
         if not _check_location(scan_id, asset_value, scan_wd_asset):
@@ -375,7 +398,7 @@ def _scanowaspdc_thread(scan_id, asset_kw):
                     remove_prefix(item["filePath"], scan_wd_asset),
                     item["fileName"],
                     vuln["description"].encode('utf-8').strip(),
-                    "\n".join([ vs["software"] for vs in vuln["vulnerableSoftware"]])
+                    "\n".join([vs["software"] for vs in vuln["vulnerableSoftware"]])
                 )
 
                 vuln_risks = {}
@@ -434,8 +457,13 @@ def _scanowaspdc_thread(scan_id, asset_kw):
 
 @app.before_first_request
 def main():
+    """First function called."""
+    if not os.path.exists(APP_BASE_DIR+"/results"):
+        os.makedirs(APP_BASE_DIR+"/results")
+    if not os.path.exists(APP_BASE_DIR+"/workdirs"):
+        os.makedirs(APP_BASE_DIR+"/workdirs")
     engine._loadconfig()
 
 
 if __name__ == '__main__':
-    engine.run_app(app_host=APP_HOST, app_port=APP_PORT)
+    engine.run_app(app_debug=APP_DEBUG, app_host=APP_HOST, app_port=APP_PORT)

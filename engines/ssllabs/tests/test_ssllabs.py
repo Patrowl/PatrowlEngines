@@ -1,8 +1,4 @@
-import sys, os
-import json, requests, time, random
-
-sys.path.append( os.path.dirname( os.path.dirname( os.path.abspath(__file__) ) ) )
-from utils.PatrowlEngineTest import PatrowlEngineTest
+from PatrowlEnginesUtils.PatrowlEngineTest import PatrowlEngineTest
 
 # Define the engine instance
 pet = PatrowlEngineTest(engine_name="ssllabs", base_url="http://127.0.0.1:5004/engines/ssllabs")
@@ -16,8 +12,8 @@ def test_ssllabs_check_google():
     pet.custom_test(
         test_name="ssllabs_check_google",
         assets=[{
-            "id" :'1',
-            "value" :'https://www.google.com',
+            "id": '1',
+            "value": 'https://www.google.com',
             "criticity": 'high',
             "datatype": 'url'
         }],
@@ -25,6 +21,7 @@ def test_ssllabs_check_google():
         is_valid=True
     )
 
+
 if __name__ == '__main__':
     test_generic_features()
-    ssllabs_check_google()
+    test_ssllabs_check_google()

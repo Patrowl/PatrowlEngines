@@ -1,62 +1,175 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
-import os, sys, json, time, datetime, urllib, hashlib, threading, socket, operator, random, copy, optparse
-from flask import Flask, request, jsonify, redirect, url_for, send_from_directory
+"""VirusTotal PatrOwl engine application."""
+
+import os
+import sys
+import json
+import time
+import hashlib
+import threading
+import socket
+import operator
+import random
+from flask import Flask, request, jsonify, send_from_directory
+from PatrowlEnginesUtils.PatrowlEngine import _json_serial
+from PatrowlEnginesUtils.PatrowlEngine import PatrowlEngine
+from PatrowlEnginesUtils.PatrowlEngine import PatrowlEngineFinding
+from PatrowlEnginesUtils.PatrowlEngineExceptions import PatrowlEngineExceptions
 
 app = Flask(__name__)
 APP_DEBUG = True
 APP_HOST = "0.0.0.0"
 APP_PORT = 5007
 APP_MAXSCANS = 25
+APP_ENGINE_NAME = "virustotal"
+APP_BASE_DIR = os.path.dirname(os.path.realpath(__file__))
 
-BASE_DIR = os.path.dirname(os.path.realpath(__file__))
 this = sys.modules[__name__]
-this.scanner = {}
-this.scans = {}
 this.vts = []
+
+engine = PatrowlEngine(
+    app=app,
+    base_dir=APP_BASE_DIR,
+    name=APP_ENGINE_NAME,
+    max_scans=APP_MAXSCANS
+)
+
+
+@app.errorhandler(404)
+def page_not_found(e):
+    """Page not found."""
+    return engine.page_not_found()
+
+
+@app.errorhandler(PatrowlEngineExceptions)
+def handle_invalid_usage(error):
+    """Invalid request usage."""
+    response = jsonify(error.to_dict())
+    response.status_code = 404
+    return response
+
 
 @app.route('/')
 def default():
-    return redirect(url_for('index'))
+    """Route by default."""
+    return engine.default()
 
 
 @app.route('/engines/virustotal/')
 def index():
-    return jsonify({ "page": "index" })
+    """Return index page."""
+    return engine.index()
 
 
-def _loadconfig():
-    conf_file = BASE_DIR+'/virustotal.json'
-    if os.path.exists(conf_file):
-        json_data = open(conf_file)
-        this.scanner = json.load(json_data)
-        #sys.path.append(this.scanner['virustotalapi_bin_path'])
-        globals()['virus_total_apis'] = __import__('virus_total_apis')
-        this.vt = virus_total_apis.PrivateApi(this.scanner["apikeys"][0])
+@app.route('/engines/virustotal/liveness')
+def liveness():
+    """Return liveness page."""
+    return engine.liveness()
 
-        for apikey in this.scanner["apikeys"]:
-            this.vts.append(virus_total_apis.PrivateApi(apikey))
-        this.scanner['status'] = "READY"
-    else:
-        print "Error: config file '{}' not found".format(conf_file)
-        return { "status": "error", "reason": "config file not found" }
+
+@app.route('/engines/virustotal/readiness')
+def readiness():
+    """Return readiness page."""
+    return engine.readiness()
+
+
+@app.route('/engines/virustotal/test')
+def test():
+    """Return test page."""
+    return engine.test()
 
 
 @app.route('/engines/virustotal/reloadconfig')
 def reloadconfig():
-	res = { "page": "reloadconfig" }
-	_loadconfig()
-	res.update({"config": this.scanner})
-	return jsonify(res)
+    """Reload the configuration file."""
+    res = {"page": "reloadconfig"}
+    _loadconfig()
+    res.update({"config": {
+        "status": engine.status
+    }})
+    return jsonify(res)
+
+
+@app.route('/engines/virustotal/info')
+def info():
+    """Get info on running engine."""
+    return engine.info()
+
+
+@app.route('/engines/virustotal/clean')
+def clean():
+    """Clean all scans."""
+    return engine.clean()
+
+
+@app.route('/engines/virustotal/clean/<scan_id>')
+def clean_scan(scan_id):
+    """Clean scan identified by id."""
+    return engine.clean_scan(scan_id)
+
+
+@app.route('/engines/virustotal/status')
+def status():
+    """Get status on engine and all scans."""
+    return engine.getstatus()
+
+
+@app.route('/engines/virustotal/status/<scan_id>')
+def status_scan(scan_id):
+    """Get status on scan identified by id."""
+    return engine.getstatus_scan(scan_id)
+
+
+@app.route('/engines/virustotal/stopscans')
+def stop():
+    """Stop all scans."""
+    return engine.stop()
+
+
+@app.route('/engines/virustotal/stop/<scan_id>')
+def stop_scan(scan_id):
+    """Stop scan identified by id."""
+    return engine.stop_scan(scan_id)
+
+
+# @app.route('/engines/virustotal/getfindings/<scan_id>')
+# def getfindings(scan_id):
+#     """Get findings on finished scans."""
+#     return engine.getfindings(scan_id)
+
+
+@app.route('/engines/virustotal/getreport/<scan_id>')
+def getreport(scan_id):
+    """Get report on finished scans."""
+    return engine.getreport(scan_id)
+
+
+def _loadconfig():
+    conf_file = APP_BASE_DIR+'/virustotal.json'
+    if os.path.exists(conf_file):
+        json_data = open(conf_file)
+        engine.scanner = json.load(json_data)
+        # sys.path.append(engine.scanner['virustotalapi_bin_path'])
+        globals()['virus_total_apis'] = __import__('virus_total_apis')
+
+        this.vts = []
+        for apikey in engine.scanner["apikeys"]:
+            this.vts.append(virus_total_apis.PrivateApi(apikey))
+        del engine.scanner["apikeys"]
+        engine.scanner['status'] = "READY"
+    else:
+        print("Error: config file '{}' not found".format(conf_file))
+        return {"status": "error", "reason": "config file not found"}
 
 
 @app.route('/engines/virustotal/startscan', methods=['POST'])
 def start_scan():
-	#@todo: validate parameters and options format
-	res = {	"page": "startscan" }
+    # @todo: validate parameters and options format
+	res = {"page": "startscan"}
 
     # check the scanner is ready to start a new scan
-	if len(this.scans) == APP_MAXSCANS:
+	if len(engine.scans) == APP_MAXSCANS:
 		res.update({
 			"status": "error",
 			"reason": "Scan refused: max concurrent active scans reached ({})".format(APP_MAXSCANS)
@@ -64,12 +177,12 @@ def start_scan():
 		return jsonify(res)
 
 	status()
-	if this.scanner['status'] != "READY":
+	if engine.scanner['status'] != "READY":
 		res.update({
 			"status": "refused",
-			"details" : {
+			"details": {
 				"reason": "scanner not ready",
-                "status": this.scanner['status']
+                "status": engine.scanner['status']
 		}})
 		return jsonify(res)
 
@@ -77,7 +190,7 @@ def start_scan():
 	if not 'assets' in data.keys():
 		res.update({
 			"status": "refused",
-			"details" : {
+			"details": {
 				"reason": "arg error, something is missing ('assets' ?)"
 		}})
 		return jsonify(res)
@@ -94,22 +207,22 @@ def start_scan():
         'findings':     {}
 	}
 
-	this.scans.update({scan_id: scan})
+	engine.scans.update({scan_id: scan})
 
 	if 'do_scan_ip' in scan['options'].keys() and data['options']['do_scan_ip']:
 		th = threading.Thread(target=_scan_ip, args=(scan_id,))
 		th.start()
-		this.scans[scan_id]['threads'].append(th)
+		engine.scans[scan_id]['threads'].append(th)
 
 	if 'do_scan_domain' in scan['options'].keys() and data['options']['do_scan_domain']:
 		th = threading.Thread(target=_scan_domain, args=(scan_id,))
 		th.start()
-		this.scans[scan_id]['threads'].append(th)
+		engine.scans[scan_id]['threads'].append(th)
 
 	if 'do_scan_url' in scan['options'].keys() and data['options']['do_scan_url']:
 		th = threading.Thread(target=_scan_url, args=(scan_id,))
 		th.start()
-		this.scans[scan_id]['threads'].append(th)
+		engine.scans[scan_id]['threads'].append(th)
 
 	res.update({
 		"status": "accepted",
@@ -124,184 +237,76 @@ def __is_ip_addr(host):
     res = False
     try:
         res = socket.gethostbyname(host) == host
-    except:
+    except Exception:
         pass
     return res
 
 
 def _scan_ip(scan_id):
     assets = []
-    for asset in this.scans[scan_id]['assets']:
+    for asset in engine.scans[scan_id]['assets']:
         if asset['datatype'] == "ip" and __is_ip_addr(asset['value']):
             assets.append(asset['value'])
 
     for asset in assets:
-        if not asset in this.scans[scan_id]["findings"]: this.scans[scan_id]["findings"][asset] = {}
+        if not asset in engine.scans[scan_id]["findings"]:
+            engine.scans[scan_id]["findings"][asset] = {}
         try:
-            this.scans[scan_id]["findings"][asset]['scan_ip'] = this.vts[random.randint(0,len(this.vts)-1)].get_ip_report(this_ip=asset)
-        except:
-            print "API Connexion error (quota?)"; return False
+            engine.scans[scan_id]["findings"][asset]['scan_ip'] = this.vts[random.randint(0,len(this.vts)-1)].get_ip_report(this_ip=asset)
+        except Exception:
+            print("API Connexion error (quota?)"); return False
 
         # API Quota (todo: review this)
-        #if not asset == assets[-1]: time.sleep(30)
+        # if not asset == assets[-1]: time.sleep(30)
     return True
 
 
 def _scan_domain(scan_id):
     assets = []
-    for asset in this.scans[scan_id]['assets']:
-        if asset['datatype'] == "domain": assets.append(asset['value'])
+    for asset in engine.scans[scan_id]['assets']:
+        if asset['datatype'] == "domain":
+            assets.append(asset['value'])
 
     for asset in assets:
-        if not asset in this.scans[scan_id]["findings"]: this.scans[scan_id]["findings"][asset] = {}
+        if not asset in engine.scans[scan_id]["findings"]:
+            engine.scans[scan_id]["findings"][asset] = {}
         try:
-            this.scans[scan_id]["findings"][asset]['scan_domain'] = this.vts[random.randint(0,len(this.vts)-1)].get_domain_report(this_domain=asset)
-        except:
-            print "API Connexion error (quota?)"; return False
+            engine.scans[scan_id]["findings"][asset]['scan_domain'] = this.vts[random.randint(0,len(this.vts)-1)].get_domain_report(this_domain=asset)
+        except Exception:
+            print("API Connexion error (quota?)"); return False
 
         # API Quota (todo: review this)
-        #if not asset == this.scans[scan_id]['assets'][-1]: time.sleep(30)
+        # if not asset == engine.scans[scan_id]['assets'][-1]: time.sleep(30)
     return True
 
 
 def _scan_url(scan_id):
     assets = []
-    for asset in this.scans[scan_id]['assets']:
-        if asset['datatype'] == "url": assets.append(asset['value'])
+    for asset in engine.scans[scan_id]['assets']:
+        if asset['datatype'] == "url":
+            assets.append(asset['value'])
 
     for asset in assets:
-        if not asset in this.scans[scan_id]["findings"].keys(): this.scans[scan_id]["findings"][asset] = {}
+        if not asset in engine.scans[scan_id]["findings"].keys():
+            engine.scans[scan_id]["findings"][asset] = {}
         try:
             res = this.vts[random.randint(0,len(this.vts)-1)].scan_url(this_url=asset)
             time.sleep(5)
-            this.scans[scan_id]["findings"][asset]['scan_url'] = this.vts[random.randint(0,len(this.vts)-1)].get_url_report(this_url=asset, scan='1', allinfo='1')
+            engine.scans[scan_id]["findings"][asset]['scan_url'] = this.vts[random.randint(0,len(this.vts)-1)].get_url_report(this_url=asset, scan='1', allinfo='1')
 
-        except:
-            print "API Connexion error (quota?)"; return False
+        except Exception:
+            print("API Connexion error (quota?)"); return False
 
         # API Quota (todo: review this)
-        #if not asset == this.scans[scan_id]['assets'][-1]: time.sleep(30)
+        # if not asset == engine.scans[scan_id]['assets'][-1]: time.sleep(30)
     return True
-
-
-@app.route('/engines/virustotal/stop/<scan_id>')
-def stop_scan(scan_id):
-    res = { "page": "stop" }
-
-    if not scan_id in this.scans.keys():
-        res.update({ "status": "error", "reason": "scan_id '{}' not found".format(scan_id)})
-        return jsonify(res)
-
-    scan_status(scan_id)
-    if this.scans[scan_id]['status'] != "SCANNING":
-        res.update({ "status": "error", "reason": "scan '{}' is not running (status={})".format(scan_id, this.scans[scan_id]['status'])})
-        return jsonify(res)
-
-    for t in this.scans[scan_id]['threads']:
-        t._Thread__stop()
-    this.scans[scan_id]['status'] = "STOPPED"
-    this.scans[scan_id]['finished_at'] = int(time.time() * 1000)
-
-    res.update({"status": "success"})
-    return jsonify(res)
-
-
-# Stop all scans
-@app.route('/engines/virustotal/stopscans', methods=['GET'])
-def stop():
-    res = { "page": "stopscans" }
-
-    for scan_id in this.scans.keys():
-        stop_scan(scan_id)
-
-    res.update({"status": "SUCCESS"})
-
-    return jsonify(res)
-
-@app.route('/engines/virustotal/clean')
-def clean():
-    res = { "page": "clean" }
-    this.scans.clear()
-    _loadconfig()
-    res.update({ "status": "SUCCESS" })
-    return jsonify(res)
-
-
-@app.route('/engines/virustotal/clean/<scan_id>')
-def clean_scan(scan_id):
-    res = { "page": "clean_scan" }
-    res.update({"scan_id": scan_id})
-
-    if not scan_id in this.scans.keys():
-        res.update({ "status": "error", "reason": "scan_id '{}' not found".format(scan_id)})
-        return jsonify(res)
-
-    this.scans.pop(scan_id)
-    res.update({"status": "removed"})
-    return jsonify(res)
-
-
-@app.route('/engines/virustotal/status/<scan_id>')
-def scan_status(scan_id):
-    if not scan_id in this.scans.keys():
-        return jsonify({
-            "status": "ERROR",
-            "details": "scan_id '{}' not found".format(scan_id)})
-
-    all_threads_finished = False
-    for t in this.scans[scan_id]['threads']:
-        if t.isAlive():
-            this.scans[scan_id]['status'] = "SCANNING"
-            all_threads_finished = False
-            break
-        else:
-            all_threads_finished = True
-
-    if all_threads_finished and len(this.scans[scan_id]['threads']) >=1:
-        this.scans[scan_id]['status'] = "FINISHED"
-        this.scans[scan_id]['finished_at'] = int(time.time() * 1000)
-
-    return jsonify({"status": this.scans[scan_id]['status']})
-
-
-@app.route('/engines/virustotal/status')
-def status():
-	res = {	"page": "status"}
-
-	if len(this.scans) == APP_MAXSCANS:
-		this.scanner['status'] = "BUSY"
-	else:
-		this.scanner['status'] = "READY"
-
-	scans = []
-	for scan_id in this.scans.keys():
-		scan_status(scan_id)
-		scans.append({scan_id: {
-            "status": this.scans[scan_id]['status'],
-            "started_at": this.scans[scan_id]['started_at'],
-            "assets": this.scans[scan_id]['assets']
-        }})
-
-	res.update({
-        "nb_scans": len(this.scans),
-        "status": this.scanner['status'],
-        "scanner": this.scanner,
-        "scans": scans})
-
-	return jsonify(res)
-
-
-@app.route('/engines/virustotal/info')
-def info():
-    status()
-    return jsonify({"page": "info",	"engine_config": this.scanner})
 
 
 def _parse_results(scan_id):
     issues = []
     summary = {}
 
-    scan = this.scans[scan_id]
+    scan = engine.scans[scan_id]
 
     nb_vulns = {
         "info": 0,
@@ -311,24 +316,24 @@ def _parse_results(scan_id):
     }
     ts = int(time.time() * 1000)
 
-    #print "_parse_report/scan['findings'].keys():", scan['findings'].keys()
+    # print "_parse_report/scan['findings'].keys():", scan['findings'].keys()
 
     for asset in scan['findings'].keys():
         # IP SCAN
-        if 'scan_ip' in this.scans[scan_id]['findings'][asset].keys():
-            results = this.scans[scan_id]['findings'][asset]['scan_ip']['results']
+        if 'scan_ip' in engine.scans[scan_id]['findings'][asset].keys():
+            results = engine.scans[scan_id]['findings'][asset]['scan_ip']['results']
             if results['response_code'] != 1:
                 nb_vulns['info'] += 1
                 issues.append({
                     "issue_id": len(issues)+1,
                     "severity": "info", "confidence": "certain",
-                    "target": { "addr": [asset], "protocol": "ip" },
+                    "target": {"addr": [asset], "protocol": "ip"},
                     "title": "IP '{}' not found in VT records".format(asset),
                     "description": "IP '{}' not found in VT records".format(asset),
                     "solution": "n/a",
-                    "metadata": { "tags": ["ip"] },
+                    "metadata": {"tags": ["ip"]},
                     "type": "vt_ip_report",
-                    "raw": this.scans[scan_id]['findings'][asset]['scan_ip'],
+                    "raw": engine.scans[scan_id]['findings'][asset]['scan_ip'],
                     # "raw": scan['findings'][asset]['scan_ip'],
                     "timestamp": ts
                 })
@@ -345,12 +350,12 @@ def _parse_results(scan_id):
                     issues.append({
                         "issue_id": len(issues)+1,
                         "severity": "info", "confidence": "certain",
-                        "target": { "addr": [asset], "protocol": "ip" },
+                        "target": {"addr": [asset], "protocol": "ip"},
                         "title": "Resolved hostnames for '{}' (#: {}, HASH: {})".format(asset, len(results['resolutions']), resolutions_hash),
                         "description": "Hostnames that have resolved to this IP address. VirusTotal resolve it when a file or URL related to this IP address is seen:\n{}".format(
                             resolutions_str),
                         "solution": "n/a",
-                        "metadata": { "tags": ["ip", "detection"] },
+                        "metadata": {"tags": ["ip", "detection"]},
                         "type": "ip_resolutions",
                         "raw": {"resolutions": results['resolutions']},
                         "timestamp": ts
@@ -368,12 +373,12 @@ def _parse_results(scan_id):
                     issues.append({
                         "issue_id": len(issues)+1,
                         "severity": "info", "confidence": "certain",
-                        "target": { "addr": [asset], "protocol": "ip" },
+                        "target": {"addr": [asset], "protocol": "ip"},
                         "title": "URLs hosted at '{}' (#: {}, HASH: {})".format(asset, len(results['detected_urls']), detected_url_hash),
                         "description": "URLs hosted at this IP address that have url scanner postive detections:\n{}".format(
                             detected_url_str),
                         "solution": "n/a",
-                        "metadata": { "tags": ["ip", "url"] },
+                        "metadata": {"tags": ["ip", "url"]},
                         "type": "ip_detected_urls",
                         "raw": {"detected_urls": results['detected_urls']},
                         "timestamp": ts
@@ -392,12 +397,12 @@ def _parse_results(scan_id):
                     issues.append({
                         "issue_id": len(issues)+1,
                         "severity": "medium", "confidence": "certain",
-                        "target": { "addr": [asset], "protocol": "ip" },
+                        "target": {"addr": [asset], "protocol": "ip"},
                         "title": "Downloaded files from '{}', with no antivirus detections (#: {}, HASH: {})".format(asset, len(results['undetected_downloaded_samples']), undetected_samples_hash),
                         "description": "Latest 100 files that have been downloaded from this IP address, with no antivirus detections:\n{}".format(
                             undetected_samples_str),
                         "solution": "n/a",
-                        "metadata": { "tags": ["ip", "samples"] },
+                        "metadata": {"tags": ["ip", "samples"]},
                         "type": "ip_undetected_samples",
                         "raw": {"undetected_downloaded_samples": results['undetected_downloaded_samples']},
                         "timestamp": ts
@@ -416,12 +421,12 @@ def _parse_results(scan_id):
                     issues.append({
                         "issue_id": len(issues)+1,
                         "severity": "high", "confidence": "certain",
-                        "target": { "addr": [asset], "protocol": "ip" },
+                        "target": {"addr": [asset], "protocol": "ip"},
                         "title": "Files communicating with '{}' when sandboxed (#: {}, HASH: {})".format(asset, len(results['detected_communicating_samples']), detected_samples_hash),
                         "description": "Latest 100 files submitted to VirusTotal that are detected by one or more antivirus solutions and communicate with the IP address provided when executed in a sandboxed environment:\n{}".format(
                             detected_samples_str),
                         "solution": "n/a",
-                        "metadata": { "tags": ["ip", "samples"] },
+                        "metadata": {"tags": ["ip", "samples"]},
                         "type": "ip_detected_samples",
                         "raw": {"detected_communicating_samples": results['detected_communicating_samples']},
                         "timestamp": ts
@@ -433,14 +438,14 @@ def _parse_results(scan_id):
                 issues.append({
                     "issue_id": len(issues)+1,
                     "severity": "info", "confidence": "certain",
-                    "target": { "addr": [asset], "protocol": "ip" },
+                    "target": {"addr": [asset], "protocol": "ip"},
                     "title": "ASN info for '{}' (ASN: {})".format(asset, results['asn']),
                     "description": "ASN info for '{}':\n{}".format(
                         asset, as_info),
                     "solution": "n/a",
-                    "metadata": { "tags": ["ip", "asn", "country"] },
+                    "metadata": {"tags": ["ip", "asn", "country"]},
                     "type": "ip_asn",
-                    "raw": {"asn": results['asn'], "as_owner": results['as_owner'], "country": results['country'] },
+                    "raw": {"asn": results['asn'], "as_owner": results['as_owner'], "country": results['country']},
                     "timestamp": ts
                 })
 
@@ -451,7 +456,7 @@ def _parse_results(scan_id):
                 issues.append({
                     "issue_id": len(issues)+1,
                     "severity": "info", "confidence": "certain",
-                    "target": { "addr": [asset], "protocol": "ip" },
+                    "target": {"addr": [asset], "protocol": "ip"},
                     "title": "[Scan Summary] IP report for '{}' (HASH: {})".format(asset, ip_hash),
                     "description": "IP Report for '{}':\n\n{}\n\nResolutions: \n{}\n\nDetected URLs: \n{}\n\nFiles downloaded w/o antivirus detection: \n{}\n\nFiles communicating with the asset: \n{}".format(
                         asset, as_info, resolutions_str, detected_url_str,
@@ -459,27 +464,27 @@ def _parse_results(scan_id):
                     "solution": "n/a",
                     "metadata": {
                         "tags": ["ip"],
-                        "links": ["https://www.virustotal.com/en/ip-address/{}/information/".format(asset)] },
+                        "links": ["https://www.virustotal.com/en/ip-address/{}/information/".format(asset)]},
                     "type": "ip_report",
                     "raw": results,
                     "timestamp": ts
                 })
 
         # DOMAIN SCAN
-        if 'scan_domain' in this.scans[scan_id]['findings'][asset].keys():
-            results = this.scans[scan_id]['findings'][asset]['scan_domain']['results']
+        if 'scan_domain' in engine.scans[scan_id]['findings'][asset].keys():
+            results = engine.scans[scan_id]['findings'][asset]['scan_domain']['results']
             if results['response_code'] != 1:
                 nb_vulns['info'] += 1
                 issues.append({
                     "issue_id": len(issues)+1,
                     "severity": "info", "confidence": "certain",
-                    "target": { "addr": [asset], "protocol": "domain" },
+                    "target": {"addr": [asset], "protocol": "domain"},
                     "title": "Domain '{}' not found in VT records".format(asset),
                     "description": "Domain '{}' not found in VT records".format(asset),
                     "solution": "n/a",
-                    "metadata": { "tags": ["domain"] },
+                    "metadata": {"tags": ["domain"]},
                     "type": "vt_domain_report",
-                    "raw": this.scans[scan_id]['findings'][asset]['scan_domain'],
+                    "raw": engine.scans[scan_id]['findings'][asset]['scan_domain'],
                     "timestamp": ts
                 })
             else:
@@ -491,11 +496,11 @@ def _parse_results(scan_id):
                     issues.append({
                         "issue_id": len(issues)+1,
                         "severity": "info", "confidence": "certain",
-                        "target": { "addr": [asset], "protocol": "domain" },
+                        "target": {"addr": [asset], "protocol": "domain"},
                         "title": "Domain categories for '{}': '{}'".format(asset, domain_categories),
                         "description": "Domain categories (BitDefender, Websense ThreatSeeker, ...): '{}'".format(domain_categories),
                         "solution": "n/a",
-                        "metadata": { "tags": ["domain", "categories"] },
+                        "metadata": {"tags": ["domain", "categories"]},
                         "type": "domain_categories",
                         "raw": {"categories": results['categories']},
                         "timestamp": ts
@@ -508,13 +513,13 @@ def _parse_results(scan_id):
                     issues.append({
                         "issue_id": len(issues)+1,
                         "severity": "info", "confidence": "certain",
-                        "target": { "addr": [asset], "protocol": "domain" },
+                        "target": {"addr": [asset], "protocol": "domain"},
                         "title": "Domain whois for '{}' (HASH: {})".format(
                             asset, hashlib.sha1(results['whois']).hexdigest()[:6]),
                         "description": "Domain whois for '{}':\n\n{}".format(
                             asset, results['whois']),
                         "solution": "n/a",
-                        "metadata": { "tags": ["domain", "whois"] },
+                        "metadata": {"tags": ["domain", "whois"]},
                         "type": "domain_whois",
                         "raw": {"whois": results['whois']},
                         "timestamp": ts
@@ -530,13 +535,13 @@ def _parse_results(scan_id):
                     issues.append({
                         "issue_id": len(issues)+1,
                         "severity": "info", "confidence": "certain",
-                        "target": { "addr": [asset], "protocol": "domain" },
+                        "target": {"addr": [asset], "protocol": "domain"},
                         "title": "Domain siblings found for '{}' (HASH: {})".format(
                             asset, domain_siblings_hash),
                         "description": "Domain siblings found for'{}':\n\n{}".format(
                             asset, domain_siblings_str),
                         "solution": "n/a",
-                        "metadata": { "tags": ["domain", "siblings"] },
+                        "metadata": {"tags": ["domain", "siblings"]},
                         "type": "domain_siblings",
                         "raw": {"domain_siblings": sorted(results['domain_siblings'])},
                         "timestamp": ts
@@ -555,12 +560,12 @@ def _parse_results(scan_id):
                     issues.append({
                         "issue_id": len(issues)+1,
                         "severity": "info", "confidence": "certain",
-                        "target": { "addr": [asset], "protocol": "domain" },
+                        "target": {"addr": [asset], "protocol": "domain"},
                         "title": "Resolved IPs for '{}' (#: {}, HASH: {})".format(asset, len(results['resolutions']), resolutions_hash),
                         "description": "IPs that have been resolved to this domain address. VirusTotal resolve it when a file or URL related to this IP address is seen:\n{}".format(
                             resolutions_str),
                         "solution": "n/a",
-                        "metadata": { "tags": ["domain", "resolution"] },
+                        "metadata": {"tags": ["domain", "resolution"]},
                         "type": "domain_resolutions",
                         "raw": {"domain_siblings": results['resolutions']},
                         "timestamp": ts
@@ -578,12 +583,12 @@ def _parse_results(scan_id):
                     issues.append({
                         "issue_id": len(issues)+1,
                         "severity": "info", "confidence": "certain",
-                        "target": { "addr": [asset], "protocol": "domain" },
+                        "target": {"addr": [asset], "protocol": "domain"},
                         "title": "Subdomains found for '{}' (HASH: {})".format(asset, subdomains_hash),
                         "description": "Subdomains found for '{}':\n\n{}".format(
                             asset, subdomains_str),
                         "solution": "n/a",
-                        "metadata": { "tags": ["domain", "subdomains"] },
+                        "metadata": {"tags": ["domain", "subdomains"]},
                         "type": "subdomain_list",
                         "raw": {"subdomain_list": sorted(results['subdomains'])},
                         "timestamp": ts
@@ -602,12 +607,12 @@ def _parse_results(scan_id):
                     issues.append({
                         "issue_id": len(issues)+1,
                         "severity": "info", "confidence": "certain",
-                        "target": { "addr": [asset], "protocol": "domain" },
+                        "target": {"addr": [asset], "protocol": "domain"},
                         "title": "URLs hosted at '{}' (#: {}, HASH: {})".format(asset, len(results['detected_urls']), detected_url_hash),
                         "description": "URLs hosted at this domain address that have url scanner postive detections:\n{}".format(
                             detected_url_str),
                         "solution": "n/a",
-                        "metadata": { "tags": ["domain", "url"] },
+                        "metadata": {"tags": ["domain", "url"]},
                         "type": "domain_detected_urls",
                         "raw": {"detected_urls": results['detected_urls']},
                         "timestamp": ts
@@ -627,12 +632,12 @@ def _parse_results(scan_id):
                     issues.append({
                         "issue_id": len(issues)+1,
                         "severity": "high", "confidence": "certain",
-                        "target": { "addr": [asset], "protocol": "domain" },
+                        "target": {"addr": [asset], "protocol": "domain"},
                         "title": "Files communicating with '{}' when sandboxed (HASH: {})".format(asset, detected_samples_hash),
                         "description": "Latest 100 files submitted to VirusTotal that are detected by one or more antivirus solutions and communicate with the domain address provided when executed in a sandboxed environment:\n{}".format(
                             detected_samples_str),
                         "solution": "n/a",
-                        "metadata": { "tags": ["domain", "samples"] },
+                        "metadata": {"tags": ["domain", "samples"]},
                         "type": "ip_detected_samples",
                         "raw": {"detected_communicating_samples": results['detected_communicating_samples']},
                         "timestamp": ts
@@ -652,12 +657,12 @@ def _parse_results(scan_id):
                     issues.append({
                         "issue_id": len(issues)+1,
                         "severity": "medium", "confidence": "certain",
-                        "target": { "addr": [asset], "protocol": "domain" },
+                        "target": {"addr": [asset], "protocol": "domain"},
                         "title": "Downloaded files from '{}', with no antivirus detections (HASH: {})".format(asset, undetected_samples_hash),
                         "description": "Latest 100 files that have been downloaded from this domain address, with no antivirus detections:\n{}".format(
                             undetected_samples_str),
                         "solution": "n/a",
-                        "metadata": { "tags": ["domain", "samples"] },
+                        "metadata": {"tags": ["domain", "samples"]},
                         "type": "ip_undetected_samples",
                         "raw": {"undetected_downloaded_samples": results['undetected_downloaded_samples']},
                         "timestamp": ts
@@ -681,7 +686,7 @@ def _parse_results(scan_id):
                     issues.append({
                         "issue_id": len(issues)+1,
                         "severity": "high", "confidence": "certain",
-                        "target": { "addr": [asset], "protocol": "domain" },
+                        "target": {"addr": [asset], "protocol": "domain"},
                         "title": "Downloaded files containing '{}' among their strings, with antivirus detections (HASH: {})".format(asset, detected_referrer_samples_hash),
                         "description": "100 Most recent samples that contain the given domain among their strings and detected by at least one AV:\n{}".format(
                             detected_referrer_samples_str),
@@ -710,7 +715,7 @@ def _parse_results(scan_id):
                     issues.append({
                         "issue_id": len(issues)+1,
                         "severity": "medium", "confidence": "certain",
-                        "target": { "addr": [asset], "protocol": "domain" },
+                        "target": {"addr": [asset], "protocol": "domain"},
                         "title": "Downloaded files containing '{}' among their strings, with partial antivirus detections (HASH: {})".format(asset, undetected_referrer_samples_hash),
                         "description": "100 Most recent samples that contain the given domain among their strings and not detected by at least one AV:\n{}".format(
                             undetected_referrer_samples_str),
@@ -736,12 +741,12 @@ def _parse_results(scan_id):
                     issues.append({
                         "issue_id": len(issues)+1,
                         "severity": "medium", "confidence": "certain",
-                        "target": { "addr": [asset], "protocol": "domain" },
+                        "target": {"addr": [asset], "protocol": "domain"},
                         "title": "Pcaps found for '{}' (HASH: {})".format(asset, pcaps_hash),
                         "description": "Pcaps found for '{}':\n\n{}".format(
                             asset, pcaps_str),
                         "solution": "n/a",
-                        "metadata": { "tags": ["domain", "pcap"] },
+                        "metadata": {"tags": ["domain", "pcap"]},
                         "type": "domain_pcaps",
                         "raw": {"pcaps": sorted(results['pcaps'])},
                         "timestamp": ts
@@ -760,12 +765,12 @@ def _parse_results(scan_id):
                     issues.append({
                         "issue_id": len(issues)+1,
                         "severity": "info", "confidence": "certain",
-                        "target": { "addr": [asset], "protocol": "domain" },
+                        "target": {"addr": [asset], "protocol": "domain"},
                         "title": "Web-Of-Trust (WOT) info for '{}' (HASH: {})".format(asset, wot_hash),
                         "description": "Web-Of-Trust (WOT) info for '{}':\n\n{}".format(
                             asset, wot_str),
                         "solution": "n/a",
-                        "metadata": { "tags": ["domain", "wot", "reputation"] },
+                        "metadata": {"tags": ["domain", "wot", "reputation"]},
                         "type": "domain_wot_info",
                         "raw": {"wot_info": results['WOT domain info']},
                         "timestamp": ts
@@ -779,12 +784,12 @@ def _parse_results(scan_id):
                             issues.append({
                                 "issue_id": len(issues)+1,
                                 "severity": "medium", "confidence": "certain",
-                                "target": { "addr": [asset], "protocol": "domain" },
+                                "target": {"addr": [asset], "protocol": "domain"},
                                 "title": "Web-Of-Trust (WOT) reputation level of '{}' is 'Good'".format(asset),
                                 "description": "Web-Of-Trust (WOT) reputation level of '{}' is 'Good':\n\n{}".format(
                                     asset, wot_str),
                                 "solution": "n/a",
-                                "metadata": { "tags": ["domain", "wot", "reputation"] },
+                                "metadata": {"tags": ["domain", "wot", "reputation"]},
                                 "type": "domain_wot_badlevel",
                                 "raw": {"wot_info": results['WOT domain info']},
                                 "timestamp": ts
@@ -794,12 +799,12 @@ def _parse_results(scan_id):
                             issues.append({
                                 "issue_id": len(issues)+1,
                                 "severity": "high", "confidence": "certain",
-                                "target": { "addr": [asset], "protocol": "domain" },
+                                "target": {"addr": [asset], "protocol": "domain"},
                                 "title": "Web-Of-Trust (WOT) reputation level of '{}' is '{}'".format(asset, results['WOT domain info'][record_key]),
                                 "description": "Web-Of-Trust (WOT) reputation level of '{}' is '{}':\n\n{}".format(
                                     asset, results['WOT domain info'][record_key], wot_str),
                                 "solution": "n/a",
-                                "metadata": { "tags": ["domain", "wot", "reputation"] },
+                                "metadata": {"tags": ["domain", "wot", "reputation"]},
                                 "type": "domain_wot_badlevel",
                                 "raw": {"wot_info": results['WOT domain info']},
                                 "timestamp": ts
@@ -818,13 +823,13 @@ def _parse_results(scan_id):
                     issues.append({
                         "issue_id": len(issues)+1,
                         "severity": "info", "confidence": "certain",
-                        "target": { "addr": [asset], "protocol": "domain" },
+                        "target": {"addr": [asset], "protocol": "domain"},
                         "title": "Webutation info for '{}' (Verdict: {}, HASH: {})".format(
                             asset, results['Webutation domain info']['Verdict'], webutation_hash),
                         "description": "Webutation info for '{}':\n\n{}".format(
                             asset, webutation_str),
                         "solution": "n/a",
-                        "metadata": { "tags": ["domain", "reputation"] },
+                        "metadata": {"tags": ["domain", "reputation"]},
                         "type": "domain_webutation_info",
                         "raw": {"webutation_info": results['Webutation domain info']},
                         "timestamp": ts
@@ -835,13 +840,13 @@ def _parse_results(scan_id):
                         issues.append({
                             "issue_id": len(issues)+1,
                             "severity": "info", "confidence": "certain",
-                            "target": { "addr": [asset], "protocol": "domain" },
+                            "target": {"addr": [asset], "protocol": "domain"},
                             "title": "Webutation for '{}' reveals to be '{}'".format(
                                 asset, results['Webutation domain info']['Verdict']),
                             "description": "Webutation for '{}' reveals to be '{}:\n\n{}".format(
                                 asset, results['Webutation domain info']['Verdict'], webutation_str),
                             "solution": "n/a",
-                            "metadata": { "tags": ["domain", "reputation"] },
+                            "metadata": {"tags": ["domain", "reputation"]},
                             "type": "domain_webutation_verdict",
                             "raw": {"webutation_info": results['Webutation domain info']},
                             "timestamp": ts
@@ -851,13 +856,13 @@ def _parse_results(scan_id):
                         issues.append({
                             "issue_id": len(issues)+1,
                             "severity": "medium", "confidence": "certain",
-                            "target": { "addr": [asset], "protocol": "domain" },
+                            "target": {"addr": [asset], "protocol": "domain"},
                             "title": "Webutation score for '{}' is set to '{}'".format(
                                 asset, results['Webutation domain info']['Safety score']),
                             "description": "Webutation score for '{}' is set to '{}':\n\n{}".format(
                                 asset, results['Webutation domain info']['Safety score'], webutation_str),
                             "solution": "n/a",
-                            "metadata": { "tags": ["domain", "reputation"] },
+                            "metadata": {"tags": ["domain", "reputation"]},
                             "type": "domain_webutation_badverdict",
                             "raw": {"webutation_info": results['Webutation domain info']},
                             "timestamp": ts
@@ -875,7 +880,7 @@ def _parse_results(scan_id):
                 issues.append({
                     "issue_id": len(issues)+1,
                     "severity": "info", "confidence": "certain",
-                    "target": { "addr": [asset], "protocol": "domain" },
+                    "target": {"addr": [asset], "protocol": "domain"},
                     "title": "[Scan Summary] Domain report for '{}' (HASH: {})".format(asset, domain_hash),
                     "description": "Domain Report for '{}':\n\n{}\n\nCategories: \n{}\n\nWhois: \n{}\n\nSibling domains: \n{}\n\nResolutions: \n{}\n\nDetected samples: \n{}\n\nUndetected samples: \n{}\n\nDetected referrer samples: \n{}\n\nUndetected referrer samples: \n{}\n\nPcaps: \n{}\n\nWeb-Of-Trust (WOT) info: \n{}\n\nWebutation: \n{}".format(
                         asset, domain_categories, domain_whois, domain_siblings_str,
@@ -884,7 +889,7 @@ def _parse_results(scan_id):
                         detected_referrer_samples_str, undetected_referrer_samples_str,
                         pcaps_str, wot_str, webutation_str),
                     "solution": "n/a",
-                    "metadata": { "tags": ["domain"] },
+                    "metadata": {"tags": ["domain"]},
                     "type": "domain_report",
                     "raw": results,
                     "timestamp": ts
@@ -892,18 +897,18 @@ def _parse_results(scan_id):
 
 
         # URL SCAN
-        if 'scan_url' in this.scans[scan_id]['findings'][asset].keys():
-            results = this.scans[scan_id]['findings'][asset]['scan_url']['results']
+        if 'scan_url' in engine.scans[scan_id]['findings'][asset].keys():
+            results = engine.scans[scan_id]['findings'][asset]['scan_url']['results']
             if results['response_code'] != 1:
                 nb_vulns['info'] += 1
                 issues.append({
                     "issue_id": len(issues)+1,
                     "severity": "info", "confidence": "certain",
-                    "target": { "addr": [asset], "protocol": "url" },
+                    "target": {"addr": [asset], "protocol": "url"},
                     "title": "URL '{}' not found in VT records".format(asset),
                     "description": "URL '{}' not found in VT records".format(asset),
                     "solution": "n/a",
-                    "metadata": { "tags": ["url"] },
+                    "metadata": {"tags": ["url"]},
                     "type": "vt_url_report",
                     "raw": results,
                     "timestamp": ts
@@ -926,13 +931,13 @@ def _parse_results(scan_id):
                 issues.append({
                     "issue_id": len(issues)+1,
                     "severity": "info", "confidence": "certain",
-                    "target": { "addr": [asset], "protocol": "url" },
+                    "target": {"addr": [asset], "protocol": "url"},
                     "title": "[Scan Summary] URL report for '{}' (Score: {}/{}, HASH: {})".format(
                         asset, results['positives'], results['total'], url_hash),
                     "description": "URL report for '{}' ({}/{}):\n\n{}".format(
                         asset, results['positives'], results['total'], url_str),
                     "solution": "n/a",
-                    "metadata": { "tags": ["url"] },
+                    "metadata": {"tags": ["url"]},
                     "type": "vt_url_report",
                     "raw": results,
                     "timestamp": ts
@@ -943,13 +948,13 @@ def _parse_results(scan_id):
                     issues.append({
                         "issue_id": len(issues)+1,
                         "severity": "high", "confidence": "certain",
-                        "target": { "addr": [asset], "protocol": "url" },
+                        "target": {"addr": [asset], "protocol": "url"},
                         "title": "URL scan for '{}' detected at least 1 positive match (Score: {}/{}, HASH: {})".format(
                             asset, results['positives'], results['total'], url_hash),
                         "description": "URL report for '{}' stated at least 1 positive match ({}/{}):\n\n{}".format(
                             asset, results['positives'], results['total'], url_str),
                         "solution": "n/a",
-                        "metadata": { "tags": ["url"] },
+                        "metadata": {"tags": ["url"]},
                         "type": "vt_url_positivematch",
                         "raw": results,
                         "timestamp": ts
@@ -962,7 +967,7 @@ def _parse_results(scan_id):
         "nb_medium": nb_vulns["medium"],
         "nb_high": nb_vulns["high"],
         "engine_name": "virustotal",
-        "engine_version": this.scanner["version"]
+        "engine_version": engine.scanner["version"]
     }
 
     return issues, summary
@@ -973,29 +978,29 @@ def getfindings(scan_id):
 	res = {	"page": "getfindings", "scan_id": scan_id }
 
     # check if the scan_id exists
-	if not scan_id in this.scans.keys():
-		res.update({ "status": "error", "reason": "scan_id '{}' not found".format(scan_id)})
+	if not scan_id in engine.scans.keys():
+		res.update({"status": "error", "reason": "scan_id '{}' not found".format(scan_id)})
 		return jsonify(res)
 
     # check if the scan is finished
 	status()
-	if this.scans[scan_id]['status'] != "FINISHED":
-		res.update({ "status": "error", "reason": "scan_id '{}' not finished (status={})".format(scan_id, this.scans[scan_id]['status'])})
+	if engine.scans[scan_id]['status'] != "FINISHED":
+		res.update({"status": "error", "reason": "scan_id '{}' not finished (status={})".format(scan_id, engine.scans[scan_id]['status'])})
 		return jsonify(res)
 
 	issues, summary =  _parse_results(scan_id)
 
 	scan = {
         "scan_id": scan_id,
-        "assets": this.scans[scan_id]['assets'],
-        "options": this.scans[scan_id]['options'],
-        "status": this.scans[scan_id]['status'],
-        "started_at": this.scans[scan_id]['started_at'],
-        "finished_at": this.scans[scan_id]['finished_at']
+        "assets": engine.scans[scan_id]['assets'],
+        "options": engine.scans[scan_id]['options'],
+        "status": engine.scans[scan_id]['status'],
+        "started_at": engine.scans[scan_id]['started_at'],
+        "finished_at": engine.scans[scan_id]['finished_at']
     }
 
-    #Store the findings in a file
-	with open(BASE_DIR+"/results/virustotal_"+scan_id+".json", 'w') as report_file:
+    # Store the findings in a file
+	with open(APP_BASE_DIR+"/results/virustotal_"+scan_id+".json", 'w') as report_file:
 		json.dump({
             "scan": scan,
             "summary": summary,
@@ -1005,67 +1010,17 @@ def getfindings(scan_id):
     # remove the scan from the active scan list
 	clean_scan(scan_id)
 
-	res.update({ "scan": scan, "summary": summary, "issues": issues, "status": "success"})
+	res.update({"scan": scan, "summary": summary, "issues": issues, "status": "success"})
 	return jsonify(res)
-
-
-def _json_serial(obj):
-    """
-        JSON serializer for objects not serializable by default json code
-        Used for datetime serialization when the results are written in file
-    """
-
-    if isinstance(obj, datetime.datetime) or isinstance(obj, datetime.date):
-        serial = obj.isoformat()
-        return serial
-    raise TypeError ("Type not serializable ({})".format(obj))
-
-
-@app.route('/engines/virustotal/getreport/<scan_id>')
-def getreport(scan_id):
-    filepath = BASE_DIR+"/results/virustotal_"+scan_id+".json"
-
-    if not os.path.exists(filepath):
-        return jsonify({ "status": "error", "reason": "report file for scan_id '{}' not found".format(scan_id)})
-
-    return send_from_directory(BASE_DIR+"/results/", "virustotal_"+scan_id+".json")
-
-
-@app.route('/engines/virustotal/test')
-def test():
-    if not APP_DEBUG:
-        return jsonify({"page": "test"})
-
-    res = "<h2>Test Page (DEBUG):</h2>"
-    for rule in app.url_map.iter_rules():
-        options = {}
-        for arg in rule.arguments:
-            options[arg] = "[{0}]".format(arg)
-
-        methods = ','.join(rule.methods)
-        url = url_for(rule.endpoint, **options)
-        res += urllib.url2pathname("{0:50s} {1:20s} <a href='{2}'>{2}</a><br/>".format(rule.endpoint, methods, url))
-
-    return res
-
-
-@app.errorhandler(404)
-def page_not_found(e):
-    return jsonify({"page": "not found"})
 
 
 @app.before_first_request
 def main():
-    if not os.path.exists(BASE_DIR+"/results"):
-        os.makedirs(BASE_DIR+"/results")
+    """First function called."""
+    if not os.path.exists(APP_BASE_DIR+"/results"):
+        os.makedirs(APP_BASE_DIR+"/results")
     _loadconfig()
 
 
 if __name__ == '__main__':
-    parser = optparse.OptionParser()
-    parser.add_option("-H", "--host", help="Hostname of the Flask app [default %s]" % APP_HOST, default=APP_HOST)
-    parser.add_option("-P", "--port", help="Port for the Flask app [default %s]" % APP_PORT, default=APP_PORT)
-    parser.add_option("-d", "--debug", action="store_true", dest="debug", help=optparse.SUPPRESS_HELP)
-
-    options, _ = parser.parse_args()
-    app.run(debug=options.debug, host=options.host, port=int(options.port))
+    engine.run_app(app_debug=APP_DEBUG, app_host=APP_HOST, app_port=APP_PORT)

@@ -1,17 +1,21 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
+"""Owl_Leaks PatrOwl engine application.
 
-### Generic imports
-import os, sys, threading
-from flask import Flask, request, redirect, url_for, jsonify
-from utils.PatrowlEngine import PatrowlEngine, PatrowlEngineFinding, PatrowlEngineScan
-from utils.PatrowlEngineExceptions import PatrowlEngineExceptions
+Known ratio:
+- Github searches: 30 per minute
+- Twitter: 450 per 15-min window
+"""
 
-# Custom imports
+import os
+import threading
+from flask import Flask, request, jsonify
+from PatrowlEnginesUtils.PatrowlEngine import PatrowlEngine
+from PatrowlEnginesUtils.PatrowlEngine import PatrowlEngineFinding
+from PatrowlEnginesUtils.PatrowlEngineExceptions import PatrowlEngineExceptions
 from github import Github
 from twitter import Twitter, OAuth
-from datetime import timedelta, date, datetime
-import re, hashlib
+import hashlib
 
 APP_DEBUG = False
 APP_HOST = "0.0.0.0"
@@ -29,58 +33,113 @@ engine = PatrowlEngine(
     max_scans=APP_MAXSCANS
 )
 
-## RATIO
-# Github searches: 30 per minute
-# Twitter: 450 per 15-min window
-
 @app.errorhandler(404)
-def page_not_found(e): return engine.page_not_found()
+def page_not_found(e):
+    """Page not found."""
+    return engine.page_not_found()
+
 
 @app.errorhandler(PatrowlEngineExceptions)
 def handle_invalid_usage(error):
+    """Invalid request usage."""
     response = jsonify(error.to_dict())
     response.status_code = 404
     return response
 
+
 @app.route('/')
-def default(): return engine.default()
+def default():
+    """Route by default."""
+    return engine.default()
+
 
 @app.route('/engines/owl_leaks/')
-def index(): return engine.index()
+def index():
+    """Return index page."""
+    return engine.index()
+
+
+@app.route('/engines/owl_leaks/liveness')
+def liveness():
+    """Return liveness page."""
+    return engine.liveness()
+
+
+@app.route('/engines/owl_leaks/readiness')
+def readiness():
+    """Return readiness page."""
+    return engine.readiness()
+
 
 @app.route('/engines/owl_leaks/test')
-def test(): return engine.test()
+def test():
+    """Return test page."""
+    return engine.test()
+
 
 @app.route('/engines/owl_leaks/reloadconfig')
-def reloadconfig(): return engine.reloadconfig()
+def reloadconfig():
+    """Reload the configuration file."""
+    return engine.reloadconfig()
+
 
 @app.route('/engines/owl_leaks/info')
-def info(): return engine.info()
+def info():
+    """Get info on running engine."""
+    return engine.info()
+
 
 @app.route('/engines/owl_leaks/clean')
-def clean(): return engine.clean()
+def clean():
+    """Clean all scans."""
+    return engine.clean()
+
 
 @app.route('/engines/owl_leaks/clean/<scan_id>')
-def clean_scan(scan_id): return engine.clean_scan(scan_id)
+def clean_scan(scan_id):
+    """Clean scan identified by id."""
+    return engine.clean_scan(scan_id)
+
 
 @app.route('/engines/owl_leaks/status')
-def status(): return engine.getstatus()
+def status():
+    """Get status on engine and all scans."""
+    return engine.getstatus()
+
 
 @app.route('/engines/owl_leaks/status/<scan_id>')
-def status_scan(scan_id): return engine.getstatus_scan(scan_id)
+def status_scan(scan_id):
+    """Get status on scan identified by id."""
+    return engine.getstatus_scan(scan_id)
+
 
 @app.route('/engines/owl_leaks/stopscans')
-def stop(): return engine.stop()
+def stop():
+    """Stop all scans."""
+    return engine.stop()
+
 
 @app.route('/engines/owl_leaks/stop/<scan_id>')
-def stop_scan(scan_id): return engine.stop_scan(scan_id)
+def stop_scan(scan_id):
+    """Stop scan identified by id."""
+    return engine.stop_scan(scan_id)
+
 
 @app.route('/engines/owl_leaks/getfindings/<scan_id>')
-def getfindings(scan_id): return engine.getfindings(scan_id)
+def getfindings(scan_id):
+    """Get findings on finished scans."""
+    return engine.getfindings(scan_id)
+
+
+@app.route('/engines/owl_leaks/getreport/<scan_id>')
+def getreport(scan_id):
+    """Get report on finished scans."""
+    return engine.getreport(scan_id)
+
 
 @app.route('/engines/owl_leaks/startscan', methods=['POST'])
 def start_scan():
-
+    """Start a new scan."""
     # Check params and prepare the PatrowlEngineScan
     res = engine.init_scan(request.data)
     if "status" in res.keys() and res["status"] != "INIT":
@@ -155,7 +214,7 @@ def _search_github_thread(scan_id, asset_kw):
             "Content ({} bits):{}".format(git_code.size, git_code.decoded_content)
         isolution = "Check if the snippet is legit or not. " + \
             "If not, see internal procedures for incident reaction."
-        issue_id+=1
+        issue_id += 1
 
         new_finding = PatrowlEngineFinding(
             issue_id=issue_id, type="github_leak_code", title=ititle,
@@ -181,7 +240,7 @@ def _search_github_thread(scan_id, asset_kw):
             "Content: {}".format(git_issue.body)
         isolution = "Check if the snippet is legit or not. " + \
             "If not, see internal procedures for incident reaction."
-        issue_id+=1
+        issue_id += 1
 
         new_finding = PatrowlEngineFinding(
             issue_id=issue_id, type="github_leak_issue", title=ititle,
@@ -205,7 +264,7 @@ def _search_github_thread(scan_id, asset_kw):
             "Content: {}".format(git_repo.description.encode('ascii', 'ignore'))
         isolution = "Check if the snippet is legit or not. " + \
             "If not, see internal procedures for incident reaction."
-        issue_id+=1
+        issue_id += 1
 
         new_finding = PatrowlEngineFinding(
             issue_id=issue_id, type="github_leak_repo", title=ititle,
@@ -230,7 +289,7 @@ def _search_github_thread(scan_id, asset_kw):
             "Bio: {}".format(ibio)
         isolution = "Check if the user is legit or not. " + \
             "If not, see internal procedures for incident reaction."
-        issue_id+=1
+        issue_id += 1
 
         new_finding = PatrowlEngineFinding(
             issue_id=issue_id, type="github_leak_user", title=ititle,
@@ -259,9 +318,9 @@ def _search_twitter_thread(scan_id, asset_kw):
 
 
     # Set the Max count
-    max_count=APP_SEARCH_TWITTER_MAX_COUNT_DEFAULT
-    extra_kw=""
-    since=""
+    max_count = APP_SEARCH_TWITTER_MAX_COUNT_DEFAULT
+    extra_kw = ""
+    since = ""
     if "search_twitter_options" in engine.scans[scan_id]["options"].keys() and engine.scans[scan_id]["options"]["search_twitter_options"] is not None:
         if "max_count" in engine.scans[scan_id]["options"]["search_twitter_options"].keys() and engine.scans[scan_id]["options"]["search_twitter_options"]["max_count"] is not None and isinstance(engine.scans[scan_id]["options"]["search_twitter_options"]["max_count"], int):
             max_count = engine.scans[scan_id]["options"]["search_twitter_options"]["max_count"]
@@ -270,10 +329,10 @@ def _search_twitter_thread(scan_id, asset_kw):
         if "since" in engine.scans[scan_id]["options"]["search_twitter_options"].keys() and engine.scans[scan_id]["options"]["search_twitter_options"]["since"] is not None and isinstance(engine.scans[scan_id]["options"]["search_twitter_options"]["since"], basestring):
             since = "since:{}".format(engine.scans[scan_id]["options"]["search_twitter_options"]["since"])
 
-    #WARNING a query should not exceed 500 chars, including filters and operators
-    #print "query_string :", "\""+asset_kw+"\" "+extra_kw+" "+since+" -filter:retweets", "len:", len("\""+asset_kw+"\" "+extra_kw+" "+since+" -filter:retweets")
+    # WARNING a query should not exceed 500 chars, including filters and operators
+    # print "query_string :", "\""+asset_kw+"\" "+extra_kw+" "+since+" -filter:retweets", "len:", len("\""+asset_kw+"\" "+extra_kw+" "+since+" -filter:retweets")
     results = twitter.search.tweets(q="\""+asset_kw+"\" "+extra_kw+" -filter:retweets", count=max_count)
-    #print results
+    # print results
 
     if len(results["statuses"]) == 0: # no results
         metalink = "https://twitter.com/search"+results["search_metadata"]["refresh_url"]
@@ -293,11 +352,11 @@ def _search_twitter_thread(scan_id, asset_kw):
 
     else:
         for tweet in results["statuses"]:
-            #print "id:", tweet["id"], "text:", tweet["text"]
+            # print "id:", tweet["id"], "text:", tweet["text"]
             # print "user_id:", tweet["user"]["id"], "user_name:", tweet["user"]["name"], "user_nickname:", tweet["user"]["screen_name"]
             # print "tweet_url:", "https://twitter.com/i/web/status/"+tweet["id_str"]
 
-            issue_id+=1
+            issue_id += 1
             tw_hash = hashlib.sha1(tweet["text"]).hexdigest()[:6]
 
             metalink = "https://twitter.com/search"+results["search_metadata"]["refresh_url"]
@@ -324,6 +383,8 @@ def _search_twitter_thread(scan_id, asset_kw):
 @app.before_first_request
 def main():
     """First function called."""
+    if not os.path.exists(APP_BASE_DIR+"/results"):
+        os.makedirs(APP_BASE_DIR+"/results")
     engine._loadconfig()
 
 
