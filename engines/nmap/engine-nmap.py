@@ -1,6 +1,6 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
-import os, subprocess, signal, sys, psutil, json, uuid, optparse, threading, urllib, time, hashlib
+import os, subprocess, sys, psutil, json, optparse, threading, urllib, time, hashlib
 from urlparse import urlparse
 from copy import deepcopy
 from flask import Flask, request, jsonify, redirect, url_for, send_file
@@ -14,7 +14,7 @@ APP_MAXSCANS = 20
 
 BASE_DIR = os.path.dirname(os.path.realpath(__file__))
 this = sys.modules[__name__]
-this.proc = None # to delete
+this.proc = None  # to delete
 this.scanner = {}
 this.scan_id = 1
 this.scans = {}
@@ -78,7 +78,7 @@ def default():
 
 @app.route('/engines/nmap/')
 def index():
-    return jsonify({ "page": "index" })
+    return jsonify({"page": "index"})
 
 
 def loadconfig():
@@ -212,7 +212,6 @@ def _scan_thread(scan_id):
         if opt_key == "script_args": # /!\ @todo / Security issue: Sanitize parameters here
             cmd += " --script-args {}".format(options.get(opt_key))
 
-
     this.scans[scan_id]["proc_cmd"] = "not set!!"
     with open(log_path, "w") as stderr:
         this.scans[scan_id]["proc"] = subprocess.Popen(cmd, shell=True, stdout=open("/dev/null", "w"), stderr=None)
@@ -235,8 +234,8 @@ def clean_scan(scan_id):
     res = {"page": "clean_scan"}
     res.update({"scan_id": scan_id})
 
-    if not scan_id in this.scans.keys():
-        res.update({ "status": "error", "reason": "scan_id '{}' not found".format(scan_id)})
+    if scan_id not in this.scans.keys():
+        res.update({"status": "error", "reason": "scan_id '{}' not found".format(scan_id)})
         return jsonify(res)
 
     this.scans.pop(scan_id)
@@ -262,7 +261,7 @@ def stop_scan(scan_id):
     res = {"page": "stopscan"}
 
     if scan_id not in this.scans.keys():
-        res.update({ "status": "error", "reason": "scan_id '{}' not found".format(scan_id)})
+        res.update({"status": "error", "reason": "scan_id '{}' not found".format(scan_id)})
         return jsonify(res)
 
     proc = this.scans[scan_id]["proc"]
@@ -272,10 +271,10 @@ def stop_scan(scan_id):
         #os.killpg(os.getpgid(proc.pid), signal.SIGTERM)
         if psutil.pid_exists(proc.pid):
             psutil.Process(proc.pid).terminate()
-        res.update({"status" : "TERMINATED",
+        res.update({"status": "TERMINATED",
             "details": {
-                "pid" : proc.pid,
-                "cmd" : this.scans[scan_id]["proc_cmd"],
+                "pid": proc.pid,
+                "cmd": this.scans[scan_id]["proc_cmd"],
                 "scan_id": scan_id}
         })
     return jsonify(res)
@@ -284,7 +283,7 @@ def stop_scan(scan_id):
 @app.route('/engines/nmap/status/<scan_id>')
 def scan_status(scan_id):
     res = {"page": "status", "status": "UNKNOWN"}
-    if not scan_id in this.scans.keys():
+    if scan_id not in this.scans.keys():
         res.update({"status": "error", "reason": "scan_id '{}' not found".format(scan_id)})
         return jsonify(res)
 
@@ -296,18 +295,18 @@ def scan_status(scan_id):
 
     if hasattr(proc, 'pid'):
         if not psutil.pid_exists(proc.pid):
-            res.update({"status" : "FINISHED"})
+            res.update({"status": "FINISHED"})
             this.scans[scan_id]["status"] = "FINISHED"
 
         elif psutil.pid_exists(proc.pid) and psutil.Process(proc.pid).status() in ["sleeping", "running"]:
             res.update({
-                "status" : "SCANNING",
+                "status": "SCANNING",
                 "info": {
-                    "pid" : proc.pid,
-                    "cmd": this.scans[scan_id]["proc_cmd"] }
+                    "pid": proc.pid,
+                    "cmd": this.scans[scan_id]["proc_cmd"]}
             })
         elif psutil.pid_exists(proc.pid) and psutil.Process(proc.pid).status() == "zombie":
-            res.update({"status" : "FINISHED" })
+            res.update({"status" : "FINISHED"})
             this.scans[scan_id]["status"] = "FINISHED"
             psutil.Process(proc.pid).terminate()
             #Check for errors
@@ -324,7 +323,7 @@ def scan_status(scan_id):
             #     })
             #     stop()
             #     os.remove(log_path)
-            #     res.update({ "status": "READY" })
+            #     res.update({"status": "READY"})
     else:
         res.update({"status": "UNKNOWN"})
     return jsonify(res)
@@ -350,8 +349,8 @@ def status():
         scan_status(scan)
         scans.update({scan: {
             "status": this.scans[scan]["status"],
-            "proc_cmd": this.scans[scan]["proc_cmd"],
-            "assets": this.scans[scan]["assets"],
+            # "proc_cmd": this.scans[scan]["proc_cmd"],
+            # "assets": this.scans[scan]["assets"],
             "options": this.scans[scan]["options"],
             "nb_findings": this.scans[scan]["nb_findings"],
         }})
@@ -361,11 +360,15 @@ def status():
 
 @app.route('/engines/nmap/info')
 def info():
-    res = {"page": "info", "engine_config": this.scanner, "scans": this.scans}
+    res = {
+        "page": "info",
+        "engine_config": this.scanner,
+        "scans": this.scans
+    }
     # if this.proc and not this.proc.poll():
-    #     res.update({ "proc": { "pid" : this.proc.pid }})
+    #     res.update({"proc": {"pid" : this.proc.pid }})
     # else:
-    #     res.update({ "proc": None })
+    #     res.update({"proc": None })
     return jsonify(res)
 
 
@@ -403,9 +406,7 @@ def _parse_report(filename, scan_id):
 
     ts = tree.find("taskbegin").get("time")
 
-    skip_issue = False
     for host in tree.findall('host'):
-        skip_issue = False
         #  get startdate of the host scan
         #  ts = host.get('starttime')
 
@@ -472,7 +473,7 @@ def _parse_report(filename, scan_id):
                 target.update({
                     "protocol": proto,
                     "port_id": portid,
-                    "port_state": port_state })
+                    "port_state": port_state})
 
                 res.append(deepcopy(_add_issue(scan_id, target, ts,
                     "Port '{}/{}' is {}".format(proto, portid, port_state),
@@ -482,7 +483,7 @@ def _parse_report(filename, scan_id):
                 # get service information if available
                 if port.find('service') is not None and port.find('state').get('state') not in ["filtered", "closed"]:
                     svc_name = port.find('service').get('name')
-                    target.update({ "service": svc_name })
+                    target.update({"service": svc_name})
 
                     # Check if a CPE has been identified
                     cpe_info=""
@@ -583,8 +584,8 @@ def _get_vulners_findings(findings):
 @app.route('/engines/nmap/getfindings/<scan_id>')
 def getfindings(scan_id):
     res = {"page": "getfindings", "scan_id": scan_id}
-    if not scan_id in this.scans.keys():
-        res.update({ "status": "error", "reason": "scan_id '{}' not found".format(scan_id)})
+    if scan_id not in this.scans.keys():
+        res.update({"status": "error", "reason": "scan_id '{}' not found".format(scan_id)})
         return jsonify(res)
 
     proc = this.scans[scan_id]["proc"]
@@ -592,7 +593,7 @@ def getfindings(scan_id):
     # check if the scan is finished
     status()
     if hasattr(proc, 'pid') and psutil.pid_exists(proc.pid) and psutil.Process(proc.pid).status() in ["sleeping", "running"]:
-        #print "scan not finished"
+        # print "scan not finished"
         res.update({"status": "error", "reason": "Scan in progress"})
         return jsonify(res)
 
@@ -624,7 +625,6 @@ def getfindings(scan_id):
             "issues": issues
         }, report_file, default=_json_serial)
 
-
     res.update({
         "scan": scan,
         "summary": summary,
@@ -636,15 +636,15 @@ def getfindings(scan_id):
 
 @app.route('/engines/nmap/getreport/<scan_id>')
 def getreport(scan_id):
-    if not scan_id in this.scans.keys():
-        return jsonify({ "status": "ERROR", "reason": "scan_id '{}' not found".format(scan_id)})
+    if scan_id not in this.scans.keys():
+        return jsonify({"status": "ERROR", "reason": "scan_id '{}' not found".format(scan_id)})
 
     # remove the scan from the active scan list
     clean_scan(scan_id)
 
     filepath = BASE_DIR+"/results/nmap_"+scan_id+".json"
     if not os.path.exists(filepath):
-        return jsonify({ "status": "ERROR", "reason": "report file for scan_id '{}' not found".format(scan_id)})
+        return jsonify({"status": "ERROR", "reason": "report file for scan_id '{}' not found".format(scan_id)})
 
     return send_file(filepath,
         mimetype='application/json',

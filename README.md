@@ -42,6 +42,9 @@ If you need to contact the project team, send an email to <getsupport@patrowl.io
 - [ ] WPScan
 - [ ] DroopScan
 
+# Security contact
+Please disclose any security-related issues or vulnerabilities by emailing security@patrowl.io, instead of using the public issue tracker.
+
 # Copyright
 Copyright (C) 2018 Nicolas MATTIOCCO  ([@MaKyOtOx](https://twitter.com/MaKyOtOx) - nicolas@greenlock.fr)
 
@@ -50,7 +53,6 @@ Copyright (C) 2018 Nicolas MATTIOCCO  ([@MaKyOtOx](https://twitter.com/MaKyOtOx)
 |---|---|
 | master | [![Build Status](https://travis-ci.com/Patrowl/PatrowlEngines.svg?branch=master)](https://travis-ci.com/Patrowl/PatrowlEngines) |
 | develop | [![Build Status](https://travis-ci.com/Patrowl/PatrowlEngines.svg?branch=develop)](https://travis-ci.com/Patrowl/PatrowlEngines) |
-
 
 # Snyk (Vulnerabilities)  status
 | Engine  | Status  |
