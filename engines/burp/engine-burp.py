@@ -4,7 +4,6 @@ import json, os, subprocess, sys, requests, urlparse, datetime
 from flask import Flask, request, jsonify, redirect, url_for
 
 app = Flask(__name__)
-#APP_DEBUG = True
 APP_DEBUG = False
 APP_HOST = "0.0.0.0"
 APP_PORT = 5003
@@ -19,21 +18,6 @@ this.scans = {}
 
 requests.packages.urllib3.disable_warnings()
 
-'''
-this.scans =
-    {  "86a5f993-30c2-47b7-a401-c4ae7e2a1e57": {
-            "scan_id": "86a5f993-30c2-47b7-a401-c4ae7e2a1e57",
-            "target_host": '8.8.8.8',
-            "target_port": '443',
-            "baseurl": "/",
-            "owner_id": 2,
-            "status": "DONE",
-            "started_at": 143545645774,
-            "finished_at": 143545649001,
-            "report_filename": "/fakepath/ssllab_report_86a5f993-30c2-47b7-a401-c4ae7e2a1e57_xxx"
-        }},
-
-'''
 
 @app.route('/')
 def default():

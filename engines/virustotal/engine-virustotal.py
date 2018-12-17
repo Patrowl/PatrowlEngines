@@ -166,15 +166,15 @@ def _loadconfig():
 @app.route('/engines/virustotal/startscan', methods=['POST'])
 def start_scan():
     # @todo: validate parameters and options format
-	res = {"page": "startscan"}
+    res = {"page": "startscan"}
 
     # check the scanner is ready to start a new scan
-	if len(engine.scans) == APP_MAXSCANS:
-		res.update({
-			"status": "error",
-			"reason": "Scan refused: max concurrent active scans reached ({})".format(APP_MAXSCANS)
-		})
-		return jsonify(res)
+    if len(engine.scans) == APP_MAXSCANS:
+        res.update({
+            "status": "error",
+            "reason": "Scan refused: max concurrent active scans reached ({})".format(APP_MAXSCANS)
+        })
+        return jsonify(res)
 
 	status()
 	if engine.scanner['status'] != "READY":
@@ -187,7 +187,7 @@ def start_scan():
 		return jsonify(res)
 
 	data = json.loads(request.data)
-	if not 'assets' in data.keys():
+	if 'assets' not in data.keys():
 		res.update({
 			"status": "refused",
 			"details": {
@@ -226,7 +226,7 @@ def start_scan():
 
 	res.update({
 		"status": "accepted",
-		"details" : {
+		"details": {
 			"scan_id": scan_id
 	}})
 
@@ -249,12 +249,13 @@ def _scan_ip(scan_id):
             assets.append(asset['value'])
 
     for asset in assets:
-        if not asset in engine.scans[scan_id]["findings"]:
+        if asset not in engine.scans[scan_id]["findings"]:
             engine.scans[scan_id]["findings"][asset] = {}
         try:
             engine.scans[scan_id]["findings"][asset]['scan_ip'] = this.vts[random.randint(0,len(this.vts)-1)].get_ip_report(this_ip=asset)
         except Exception:
-            print("API Connexion error (quota?)"); return False
+            print("API Connexion error (quota?)")
+            return False
 
         # API Quota (todo: review this)
         # if not asset == assets[-1]: time.sleep(30)
@@ -273,7 +274,8 @@ def _scan_domain(scan_id):
         try:
             engine.scans[scan_id]["findings"][asset]['scan_domain'] = this.vts[random.randint(0,len(this.vts)-1)].get_domain_report(this_domain=asset)
         except Exception:
-            print("API Connexion error (quota?)"); return False
+            print("API Connexion error (quota?)")
+            return False
 
         # API Quota (todo: review this)
         # if not asset == engine.scans[scan_id]['assets'][-1]: time.sleep(30)
@@ -287,7 +289,7 @@ def _scan_url(scan_id):
             assets.append(asset['value'])
 
     for asset in assets:
-        if not asset in engine.scans[scan_id]["findings"].keys():
+        if asset not in engine.scans[scan_id]["findings"].keys():
             engine.scans[scan_id]["findings"][asset] = {}
         try:
             res = this.vts[random.randint(0,len(this.vts)-1)].scan_url(this_url=asset)
@@ -295,7 +297,8 @@ def _scan_url(scan_id):
             engine.scans[scan_id]["findings"][asset]['scan_url'] = this.vts[random.randint(0,len(this.vts)-1)].get_url_report(this_url=asset, scan='1', allinfo='1')
 
         except Exception:
-            print("API Connexion error (quota?)"); return False
+            print("API Connexion error (quota?)")
+            return False
 
         # API Quota (todo: review this)
         # if not asset == engine.scans[scan_id]['assets'][-1]: time.sleep(30)
@@ -307,7 +310,6 @@ def _parse_results(scan_id):
     summary = {}
 
     scan = engine.scans[scan_id]
-
     nb_vulns = {
         "info": 0,
         "low": 0,
@@ -975,10 +977,10 @@ def _parse_results(scan_id):
 
 @app.route('/engines/virustotal/getfindings/<scan_id>')
 def getfindings(scan_id):
-	res = {	"page": "getfindings", "scan_id": scan_id }
+    res = {	"page": "getfindings", "scan_id": scan_id }
 
     # check if the scan_id exists
-	if not scan_id in engine.scans.keys():
+	if scan_id not in engine.scans.keys():
 		res.update({"status": "error", "reason": "scan_id '{}' not found".format(scan_id)})
 		return jsonify(res)
 

@@ -39,5 +39,5 @@ RUN pip install --trusted-host pypi.python.org -r requirements.txt
 EXPOSE 5001
 USER alpine
 
-# Run app.py when the container launches
+# Run app when the container launches
 CMD ["sudo", "gunicorn", "engine-nmap:app", "-b", "0.0.0.0:5001"]

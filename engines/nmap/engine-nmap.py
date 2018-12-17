@@ -102,9 +102,7 @@ def reloadconfig():
 
 @app.route('/engines/nmap/startscan', methods=['POST'])
 def start():
-    #@todo: validate parameters and options format
     res = {"page": "startscan"}
-
 
     # check the scanner is ready to start a new scan
     if len(this.scans) == APP_MAXSCANS:
@@ -306,7 +304,7 @@ def scan_status(scan_id):
                     "cmd": this.scans[scan_id]["proc_cmd"]}
             })
         elif psutil.pid_exists(proc.pid) and psutil.Process(proc.pid).status() == "zombie":
-            res.update({"status" : "FINISHED"})
+            res.update({"status": "FINISHED"})
             this.scans[scan_id]["status"] = "FINISHED"
             psutil.Process(proc.pid).terminate()
             #Check for errors
@@ -325,7 +323,7 @@ def scan_status(scan_id):
             #     os.remove(log_path)
             #     res.update({"status": "READY"})
     else:
-        res.update({"status": "UNKNOWN"})
+        res.update({"status": "ERROR"})
     return jsonify(res)
 
 
@@ -465,7 +463,8 @@ def _parse_report(filename, scan_id):
         if host.find('ports') is not None:
             for port in host.find('ports'):
             # for port in host.find('ports'):
-                if port.tag == 'extraports': continue
+                if port.tag == 'extraports':
+                    continue
                 proto = port.get('protocol')
                 portid = port.get('portid')
                 port_state = port.find('state').get('state')
@@ -486,14 +485,14 @@ def _parse_report(filename, scan_id):
                     target.update({"service": svc_name})
 
                     # Check if a CPE has been identified
-                    cpe_info=""
-                    cpe_link=None
-                    cpe_refs={}
+                    cpe_info = ""
+                    cpe_link = None
+                    cpe_refs = {}
                     if port.find('service').find("cpe") is not None:
                         cpe_vector = port.find('service').find("cpe").text
                         cpe_link = _get_cpe_link(cpe_vector)
                         cpe_info = "\n The following CPE vector has been identified: {}".format(cpe_vector)
-                        cpe_refs={"CPE": [cpe_vector]}
+                        cpe_refs = {"CPE": [cpe_vector]}
 
                     res.append(deepcopy(_add_issue(scan_id, target, ts,
                         "Service '{}' is running on port '{}/{}'".format(svc_name, proto, portid),
@@ -538,7 +537,6 @@ def _parse_report(filename, scan_id):
                             type="port_script",
                             tags=[script_id])))
 
-
         # get script results - generate issues
         if host.find('hostscript') is not None:
             for script in host.find('hostscript'):
@@ -558,8 +556,10 @@ def _parse_report(filename, scan_id):
 
     return res
 
+
 def _get_cpe_link(cpe):
     return "https://nvd.nist.gov/vuln/search/results?adv_search=true&cpe={}".format(cpe)
+
 
 # custom functions for Vulners issues
 def _get_vulners_findings(findings):
@@ -574,11 +574,10 @@ def _get_vulners_findings(findings):
             cpe_info = line.strip()
         if vulners_cve.startswith('CVE-'):
             vulners_cvss = cols[1]
-            if vulners_cvss > max_cvss: max_cvss = vulners_cvss
-            #print "cve:", vulners_cve, "-> cvss:",vulners_cvss
+            if vulners_cvss > max_cvss:
+                max_cvss = vulners_cvss
             cve_list.append(vulners_cve)
             cve_links.append(cols[2].strip())
-    #print "max_cvss:", max_cvss
     return float(max_cvss), cve_list, cve_links, cpe_info
 
 @app.route('/engines/nmap/getfindings/<scan_id>')
