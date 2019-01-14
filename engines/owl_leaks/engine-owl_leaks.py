@@ -33,6 +33,7 @@ engine = PatrowlEngine(
     max_scans=APP_MAXSCANS
 )
 
+
 @app.errorhandler(404)
 def page_not_found(e):
     """Page not found."""
@@ -197,7 +198,7 @@ def _search_github_thread(scan_id, asset_kw):
     #             except:
     #                 print "bad datetime format"
 
-    g = Github(engine.options["github_username"], engine.options["github_password"]) # rate limit = 30 requests/min
+    g = Github(engine.options["github_username"], engine.options["github_password"])  # rate limit = 30 requests/min
     # g = Github(engine.options["github_api_token"])
 
     for git_code in g.search_code("\'"+asset_kw+"\'", sort="indexed", order="desc"):

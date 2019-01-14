@@ -1,0 +1,65 @@
+{
+  "name": "SSLScan",
+  "version": "2",
+  "description": "SSL Scanner based on SSLScan",
+  "allowed_asset_types": ["domain", "fqdn", "url", "ip"],
+  "options": {
+    "bin_path": "/opt/patrowl-engines/sslscan/libs/sslscan/sslscan",
+    "show-certificate": {
+      "type": "optional",
+      "value": "--show-certificate"
+    },
+    "no-check-certificate": {
+      "type": "optional",
+      "value": "--no-check-certificate"
+    },
+    "ssl2-only": {
+      "type": "optional",
+      "value": "--ssl2"
+    },
+    "ssl3-only": {
+      "type": "optional",
+      "value": "--ssl3"
+    },
+    "tls10-only": {
+      "type": "optional",
+      "value": "--tls10"
+    },
+    "tls11-only": {
+      "type": "optional",
+      "value": "--tls11"
+    },
+    "tls12-only": {
+      "type": "optional",
+      "value": "--tls12"
+    },
+    "tlsall": {
+      "type": "optional",
+      "value": "--tlsall"
+    },
+    "show_ocsp_status": {
+      "type": "optional",
+      "value": "--oscp"
+    },
+    "no-ciphersuites": {
+      "type": "optional",
+      "value": "--no-ciphersuites"
+    },
+    "no-renegociation": {
+      "type": "optional",
+      "value": "--no-renegociation"
+    },
+    "no-fallback": {
+      "type": "optional",
+      "value": "--no-fallback"
+    },
+    "no-compression": {
+      "type": "optional",
+      "value": "--no-compression"
+    },
+    "no-heartbleed": {
+      "type": "optional",
+      "value": "--no-heartbleed"
+    }
+  }
+}

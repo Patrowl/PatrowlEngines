@@ -1,9 +1,19 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
-import os, subprocess, sys, json, requests, time, urlparse, hashlib, re, optparse, datetime, optparse
+
 from nessrest import ness6rest
 from flask import Flask, request, jsonify, redirect, url_for, send_from_directory
 from werkzeug.utils import secure_filename
+import os
+import sys
+import json
+import requests
+import time
+import urlparse
+import hashlib
+import re
+import datetime
+import optparse
 
 
 app = Flask(__name__)
@@ -19,6 +29,7 @@ this = sys.modules[__name__]
 this.nessscan = None
 this.scanner = {}
 this.scans = {}
+
 
 @app.route('/')
 def default():
@@ -64,7 +75,7 @@ def reloadconfig():
 
 @app.route('/engines/nessus/_upload_policy', methods=['POST'])
 def _upload_policy():
-    res = {	"page": "_upload_policy"}
+    res = {"page": "_upload_policy"}
 
     #@TODO
 
@@ -94,7 +105,7 @@ def getfindings(scan_id):
 
     # check the scan status
     scan_status(scan_id)
-    if not this.scans[scan_id]['status'] in ['FINISHED', 'STOPPED']:
+    if this.scans[scan_id]['status'] not in ['FINISHED', 'STOPPED']:
         res.update({"status": "error", "reason": "scan_id '{}' not finished".format(scan_id)})
         return jsonify(res)
 
@@ -148,7 +159,6 @@ def getfindings(scan_id):
                 "severity": "info"
             })
 
-
     block_summary.update({"hosts": sum_hosts})
 
     vulnerabilities = this.nessscan.res['vulnerabilities']
@@ -158,20 +168,20 @@ def getfindings(scan_id):
             this.nessscan.action(action="scans/"+nessscan_id+'/hosts/'+str(h['host_id'])+'/plugins/'+str(v['plugin_id']), method="GET")
             hostvulns = this.nessscan.res
 
-            #print "plugin attributes:", hostvulns['info']['plugindescription']['pluginattributes']
+            # print "plugin attributes:", hostvulns['info']['plugindescription']['pluginattributes']
             for hv in hostvulns['outputs']:
                 #convert severity numbers
                 if hv['severity'] == 0: hv['severity'] = 'info'
                 if hv['severity'] == 1: hv['severity'] = 'low'
                 if hv['severity'] == 2: hv['severity'] = 'medium'
                 if hv['severity'] == 3: hv['severity'] = 'high'
-                if hv['severity'] == 4: hv['severity'] = 'high' #'critical'
+                if hv['severity'] == 4: hv['severity'] = 'high'  # 'critical'
 
                 _port = list(hv['ports'].keys())
                 _porttype = _port[0].split(" / ")[1]
                 _portid = _port[0].split(" / ")[0]
 
-                plugin_output=re.sub('\nDate:.*\n','\n', str(hv['plugin_output']))
+                plugin_output = re.sub('\nDate:.*\n', '\n', str(hv['plugin_output']))
                 finding_hash = hashlib.sha1(plugin_output).hexdigest()[:6]
                 finding_type = str(hostvulns['info']['plugindescription']['pluginattributes']['plugin_information']['plugin_family']).lower().replace(" ", "_")
                 finding_title = str(hostvulns['info']['plugindescription']['pluginattributes']['synopsis']) + " (" + _porttype + "/" + _portid + ") - " + finding_hash
@@ -191,7 +201,7 @@ def getfindings(scan_id):
 
                 # metadata vuln_refs ('ref_information')
                 if 'ref_information' in hostvulns['info']['plugindescription']['pluginattributes'].keys():
-                    vuln_refs = {}  #{"CWE": "180, 120"}
+                    vuln_refs = {}  # {"CWE": "180, 120"}
                     for ref in hostvulns['info']['plugindescription']['pluginattributes']['ref_information']['ref']:
                         vuln_refs.update({
                             ref["name"]: ', '.join(ref['values']['value'])
@@ -230,7 +240,6 @@ def getfindings(scan_id):
 
             issue_id += 1
 
-
     # Generate a generic finding if not finding has been found on assets
     for a in this.scans[scan_id]["assets"]:
         if a not in host_list:
@@ -268,7 +277,7 @@ def getfindings(scan_id):
         "summary": block_summary,
         "issues": block_issues
     })
-    # remove the scan from the active scan list
+    # Remove the scan from the active scan list
     clean_scan(scan_id)
 
     return jsonify(res)
@@ -347,8 +356,8 @@ def _get_local_policy(policy=None):
 
 @app.route('/engines/nessus/startscan', methods=['POST'])
 def start_scan():
-	#@todo: validate parameters and options format
-    res = {	"page": "startscan"}
+	# @todo: validate parameters and options format
+    res = {"page": "startscan"}
 
     # check the scanner is ready to start a new scan
     if len(this.scans) == APP_MAXSCANS:
@@ -362,7 +371,7 @@ def start_scan():
     if this.scanner['status'] != "READY":
         res.update({
 			"status": "refused",
-			"details" : {
+			"details": {
 				"reason": "scanner not ready",
                 "status": this.scanner['status']
 		}})
@@ -386,7 +395,7 @@ def start_scan():
 
     # Check the policy is already uploaded to the scanner
     # Todo
-    #tmp_res = requests.post(url_for('_get_custom_policy'), data=request.data)
+    # tmp_res = requests.post(url_for('_get_custom_policy'), data=request.data)
 
     # # joke.begin() -- makeitbeautifly()
     # s = str(tmp_res.response)
@@ -522,7 +531,7 @@ def status():
                 'engine_version': scan.res['scanners'][0]['engine_version'],
                 'engine_build': scan.res['scanners'][0]['engine_build'],
                 'scan_count': scan.res['scanners'][0]['scan_count']
-            }})
+             }})
         else:
             this.scanner['status'] = "ERROR"
             res.update({'status': 'ERROR', 'reason': 'Nessus engine not available'})
@@ -534,7 +543,6 @@ def status():
 
 @app.route('/engines/nessus/status/<scan_id>', methods=['GET'])
 def scan_status(scan_id):
-    res = {"page": "scan_status"}
     scan_id = str(scan_id)
 
     if scan_id not in this.scans.keys():

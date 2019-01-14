@@ -19,6 +19,8 @@ engines/owl_leaks/owl_leaks.json
 engines/owl_code/workdirs/*
 engines/owl_code/libs/*
 engines/owl_code/owl_code.json
+engines/sslscan/libs/*
+engines/sslscan/sslscan.json
 env
 results
 reports
@@ -26,8 +28,5 @@ reports
 *.pyc
 **/__pycache__
 **/.pytest_cache
-<<<<<<< HEAD
+**/node_modules
 engines/travis-config.tar
-=======
-travis-config.tar
->>>>>>> 141ea7f561cddb43531149eeb5012f726ed96fe3

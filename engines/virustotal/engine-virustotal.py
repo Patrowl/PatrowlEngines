@@ -11,10 +11,9 @@ import threading
 import socket
 import operator
 import random
-from flask import Flask, request, jsonify, send_from_directory
+from flask import Flask, request, jsonify
 from PatrowlEnginesUtils.PatrowlEngine import _json_serial
 from PatrowlEnginesUtils.PatrowlEngine import PatrowlEngine
-from PatrowlEnginesUtils.PatrowlEngine import PatrowlEngineFinding
 from PatrowlEnginesUtils.PatrowlEngineExceptions import PatrowlEngineExceptions
 
 app = Flask(__name__)
@@ -977,22 +976,22 @@ def _parse_results(scan_id):
 
 @app.route('/engines/virustotal/getfindings/<scan_id>')
 def getfindings(scan_id):
-    res = {	"page": "getfindings", "scan_id": scan_id }
+    res = {	"page": "getfindings", "scan_id": scan_id}
 
     # check if the scan_id exists
-	if scan_id not in engine.scans.keys():
-		res.update({"status": "error", "reason": "scan_id '{}' not found".format(scan_id)})
-		return jsonify(res)
+    if scan_id not in engine.scans.keys():
+        res.update({"status": "error", "reason": "scan_id '{}' not found".format(scan_id)})
+        return jsonify(res)
 
     # check if the scan is finished
-	status()
-	if engine.scans[scan_id]['status'] != "FINISHED":
-		res.update({"status": "error", "reason": "scan_id '{}' not finished (status={})".format(scan_id, engine.scans[scan_id]['status'])})
-		return jsonify(res)
+    status()
+    if engine.scans[scan_id]['status'] != "FINISHED":
+        res.update({"status": "error", "reason": "scan_id '{}' not finished (status={})".format(scan_id, engine.scans[scan_id]['status'])})
+        return jsonify(res)
 
-	issues, summary =  _parse_results(scan_id)
+    issues, summary = _parse_results(scan_id)
 
-	scan = {
+    scan = {
         "scan_id": scan_id,
         "assets": engine.scans[scan_id]['assets'],
         "options": engine.scans[scan_id]['options'],
@@ -1002,18 +1001,23 @@ def getfindings(scan_id):
     }
 
     # Store the findings in a file
-	with open(APP_BASE_DIR+"/results/virustotal_"+scan_id+".json", 'w') as report_file:
-		json.dump({
+    with open(APP_BASE_DIR+"/results/virustotal_"+scan_id+".json", 'w') as report_file:
+        json.dump({
             "scan": scan,
             "summary": summary,
             "issues": issues
         }, report_file, default=_json_serial)
 
     # remove the scan from the active scan list
-	clean_scan(scan_id)
+    clean_scan(scan_id)
 
-	res.update({"scan": scan, "summary": summary, "issues": issues, "status": "success"})
-	return jsonify(res)
+    res.update({
+        "scan": scan,
+        "summary": summary,
+        "issues": issues,
+        "status": "success"
+    })
+    return jsonify(res)
 
 
 @app.before_first_request

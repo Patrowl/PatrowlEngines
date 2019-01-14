@@ -3,6 +3,7 @@
 [![Join the chat at https://gitter.im/Patrowl/Support](https://badges.gitter.im/Patrowl/Support.png)](https://gitter.im/Patrowl/Support)
 [![Build Status](https://travis-ci.com/Patrowl/PatrowlEngines.svg?branch=master)](https://travis-ci.com/Patrowl/PatrowlEngines)
 ![https://sonarcloud.io/api/project_badges/measure?project=patrowl-engines&metric=alert_status](https://sonarcloud.io/api/project_badges/measure?project=patrowl-engines&metric=alert_status)
+[![Codacy Badge](https://api.codacy.com/project/badge/Grade/dd892594b17c4b6db850ed519a1596c1)](https://www.codacy.com/app/MaKyOtOx/PatrowlEngines)
 
 # **PatrOwl**
 [PatrOwl](https://www.patrowl.io/) is a scalable, free and open-source solution for orchestrating Security Operations.
