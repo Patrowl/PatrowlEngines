@@ -234,45 +234,46 @@ def _parse_xml_results(scan_id, asset, asset_port):
         target_addrs=[asset])
     findings.append(new_finding)
 
-    # Finding: Supported ciphersuites
-    issue_id += 1
-    ciphersuites_issue = _get_ciphersuites(
-        items=scan_results.findall("cipher"),
-        issue_id=issue_id, asset=asset, asset_port=asset_port)
-    if ciphersuites_issue:
-        findings.append(ciphersuites_issue)
+    if scan_results:
+        # Finding: Supported ciphersuites
+        issue_id += 1
+        ciphersuites_issue = _get_ciphersuites(
+            items=scan_results.findall("cipher"),
+            issue_id=issue_id, asset=asset, asset_port=asset_port)
+        if ciphersuites_issue:
+            findings.append(ciphersuites_issue)
 
-    # Finding: Certificate
-    issue_id += 1
-    certificate_pem_issue = _get_certificate_blob(
-        cert_blob=scan_results.find("certificate").find("certificate-blob"),
-        issue_id=issue_id, asset=asset, asset_port=asset_port)
-    if certificate_pem_issue:
-        findings.append(certificate_pem_issue)
+        # Finding: Certificate
+        issue_id += 1
+        certificate_pem_issue = _get_certificate_blob(
+            cert_blob=scan_results.find("certificate").find("certificate-blob"),
+            issue_id=issue_id, asset=asset, asset_port=asset_port)
+        if certificate_pem_issue:
+            findings.append(certificate_pem_issue)
 
-    # Finding: Certificate is expired ?
-    issue_id += 1
-    is_cert_expired_issue = _is_certificate_expired(
-        cert_tags=scan_results.find(".//certificate/expired/.."),
-        issue_id=issue_id, asset=asset, asset_port=asset_port)
-    if is_cert_expired_issue:
-        findings.append(is_cert_expired_issue)
+        # Finding: Certificate is expired ?
+        issue_id += 1
+        is_cert_expired_issue = _is_certificate_expired(
+            cert_tags=scan_results.find(".//certificate/expired/.."),
+            issue_id=issue_id, asset=asset, asset_port=asset_port)
+        if is_cert_expired_issue:
+            findings.append(is_cert_expired_issue)
 
-    # Finding: Certificate is self-signed ?
-    issue_id += 1
-    is_cert_selfsigned_issue = _is_certificate_selfsigned(
-        cert_tags=scan_results.find(".//certificate/self-signed/.."),
-        issue_id=issue_id, asset=asset, asset_port=asset_port)
-    if is_cert_selfsigned_issue:
-        findings.append(is_cert_selfsigned_issue)
+        # Finding: Certificate is self-signed ?
+        issue_id += 1
+        is_cert_selfsigned_issue = _is_certificate_selfsigned(
+            cert_tags=scan_results.find(".//certificate/self-signed/.."),
+            issue_id=issue_id, asset=asset, asset_port=asset_port)
+        if is_cert_selfsigned_issue:
+            findings.append(is_cert_selfsigned_issue)
 
-    # Finding: Heartbleed
-    issue_id += 1
-    hb_vuln = _get_heartbleed_vuln(
-        items=scan_results.findall("heartbleed"),
-        issue_id=issue_id, asset=asset, asset_port=asset_port)
-    if hb_vuln:
-        findings.append(hb_vuln)
+        # Finding: Heartbleed
+        issue_id += 1
+        hb_vuln = _get_heartbleed_vuln(
+            items=scan_results.findall("heartbleed"),
+            issue_id=issue_id, asset=asset, asset_port=asset_port)
+        if hb_vuln:
+            findings.append(hb_vuln)
 
     # Write results under mutex
     scan_lock = threading.RLock()

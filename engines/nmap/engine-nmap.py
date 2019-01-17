@@ -177,7 +177,7 @@ def _scan_thread(scan_id):
                     "status": "refused",
                     "details": {
                         "reason": "datatype '{}' not supported for the asset {}.".format(asset["datatype"], asset["value"])
-                }})
+            }})
         else:
             # extract the net location from urls if needed
             if asset["datatype"] == 'url':
@@ -192,7 +192,7 @@ def _scan_thread(scan_id):
     ports = None
     if "ports" in this.scans[scan_id]['options'].keys():
         ports = ",".join(this.scans[scan_id]['options']['ports'])
-    #del this.scans[scan_id]['options']['ports']
+    # del this.scans[scan_id]['options']['ports']
     options = this.scans[scan_id]['options']
     log_path = BASE_DIR+"/logs/" + scan_id +".error"
 
