@@ -16,6 +16,7 @@ env:
 - PATROWL_ENGINE="ssllabs" ENGINE_PORT=5004
 - PATROWL_ENGINE="urlvoid" ENGINE_PORT=5008
 - PATROWL_ENGINE="virustotal" ENGINE_PORT=5007
+- PATROWL_ENGINE="sslscan" ENGINE_PORT=5014
 before_install:
 - cd engines
 - openssl aes-256-cbc -K $encrypted_18b0e45d2454_key -iv $encrypted_18b0e45d2454_iv -in travis-config.tar.enc -out travis-config.tar -d

@@ -175,29 +175,29 @@ def start_scan():
         })
         return jsonify(res)
 
-	status()
-	if engine.scanner['status'] != "READY":
-		res.update({
-			"status": "refused",
-			"details": {
-				"reason": "scanner not ready",
+    status()
+    if engine.scanner['status'] != "READY":
+        res.update({
+            "status": "refused",
+            "details": {
+                "reason": "scanner not ready",
                 "status": engine.scanner['status']
-		}})
-		return jsonify(res)
+        }})
+        return jsonify(res)
 
-	data = json.loads(request.data)
-	if 'assets' not in data.keys():
-		res.update({
-			"status": "refused",
-			"details": {
-				"reason": "arg error, something is missing ('assets' ?)"
-		}})
-		return jsonify(res)
+    data = json.loads(request.data)
+    if 'assets' not in data.keys():
+        res.update({
+            "status": "refused",
+            "details": {
+                "reason": "arg error, something is missing ('assets' ?)"
+        }})
+        return jsonify(res)
 
 	# Sanitize args :
-	scan_id = str(data['scan_id'])
-	scan = {
-		'assets':       data['assets'],
+    scan_id = str(data['scan_id'])
+    scan = {
+        'assets':       data['assets'],
         'threads':      [],
 		'options':      data['options'],
 		'scan_id':      scan_id,
@@ -206,30 +206,30 @@ def start_scan():
         'findings':     {}
 	}
 
-	engine.scans.update({scan_id: scan})
+    engine.scans.update({scan_id: scan})
 
-	if 'do_scan_ip' in scan['options'].keys() and data['options']['do_scan_ip']:
+    if 'do_scan_ip' in scan['options'].keys() and data['options']['do_scan_ip']:
 		th = threading.Thread(target=_scan_ip, args=(scan_id,))
 		th.start()
 		engine.scans[scan_id]['threads'].append(th)
 
-	if 'do_scan_domain' in scan['options'].keys() and data['options']['do_scan_domain']:
+    if 'do_scan_domain' in scan['options'].keys() and data['options']['do_scan_domain']:
 		th = threading.Thread(target=_scan_domain, args=(scan_id,))
 		th.start()
 		engine.scans[scan_id]['threads'].append(th)
 
-	if 'do_scan_url' in scan['options'].keys() and data['options']['do_scan_url']:
+    if 'do_scan_url' in scan['options'].keys() and data['options']['do_scan_url']:
 		th = threading.Thread(target=_scan_url, args=(scan_id,))
 		th.start()
 		engine.scans[scan_id]['threads'].append(th)
 
-	res.update({
+    res.update({
 		"status": "accepted",
 		"details": {
 			"scan_id": scan_id
 	}})
 
-	return jsonify(res)
+    return jsonify(res)
 
 
 def __is_ip_addr(host):
@@ -291,7 +291,7 @@ def _scan_url(scan_id):
         if asset not in engine.scans[scan_id]["findings"].keys():
             engine.scans[scan_id]["findings"][asset] = {}
         try:
-            res = this.vts[random.randint(0,len(this.vts)-1)].scan_url(this_url=asset)
+            this.vts[random.randint(0,len(this.vts)-1)].scan_url(this_url=asset)
             time.sleep(5)
             engine.scans[scan_id]["findings"][asset]['scan_url'] = this.vts[random.randint(0,len(this.vts)-1)].get_url_report(this_url=asset, scan='1', allinfo='1')
 
@@ -648,9 +648,12 @@ def _parse_results(scan_id):
                 undetected_samples_str = ""
                 if 'undetected_downloaded_samples' in results.keys() and len(results['undetected_downloaded_samples']) > 0:
                     # sort by sha256
+                    undetected_referrer_samples_links = []
                     for record in sorted(results['undetected_downloaded_samples'], key=operator.itemgetter('sha256')):
+                        link = "https://www.virustotal.com/#/file/{}".format(record['sha256'])
                         entry = "{} (total: {}, positives: {})".format(
-                            record['sha256'], record['total'], record['positives'])
+                            link, record['total'], record['positives'])
+                        undetected_referrer_samples_links.append(link)
                         undetected_samples_str = "".join((undetected_samples_str, entry+"\n"))
                     undetected_samples_hash = hashlib.sha1(undetected_samples_str).hexdigest()[:6]
 
@@ -663,7 +666,10 @@ def _parse_results(scan_id):
                         "description": "Latest 100 files that have been downloaded from this domain address, with no antivirus detections:\n{}".format(
                             undetected_samples_str),
                         "solution": "n/a",
-                        "metadata": {"tags": ["domain", "samples"]},
+                        "metadata": {
+                            "tags": ["domain", "samples"],
+                            "links": undetected_referrer_samples_links
+                        },
                         "type": "ip_undetected_samples",
                         "raw": {"undetected_downloaded_samples": results['undetected_downloaded_samples']},
                         "timestamp": ts
@@ -730,7 +736,6 @@ def _parse_results(scan_id):
                         "timestamp": ts
                     })
 
-                #pcaps
                 pcaps_str = ""
                 if 'pcaps' in results.keys() and len(results['pcaps']) > 0:
                     # sort by hostname

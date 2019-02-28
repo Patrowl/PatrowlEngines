@@ -1,6 +1,16 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
-import os, subprocess, sys, psutil, json, optparse, threading, urllib, time, hashlib
+import os
+import subprocess
+import sys
+import psutil
+import json
+import optparse
+import threading
+import urllib
+import time
+import hashlib
+import datetime
 from urlparse import urlparse
 from copy import deepcopy
 from flask import Flask, request, jsonify, redirect, url_for, send_file
@@ -19,44 +29,6 @@ this.scanner = {}
 this.scan_id = 1
 this.scans = {}
 
-'''
-# inputs:
-{"assets": [{
-    "id" :'3',
-    "value" :'8.8.8.8',
-    "criticity": 'low',
-    "datatype": 'ip'
-    }, {...}],
- "options": {
-    "ports": ['53', '56', '80', '443', '8080'],
-    "no_ping": True,
-    "no_dns": True,
-    "scan_udp": True,
-    "detect_service_version": True,
-    "detect_os": True,
-    "script_scan": True }
- }
-
-# outputs:
-{"page": "report",
-"scan_id": 1212,
-"status": "success",
-"issues": [{
-    "issue_id": 1,
-    "severity": 'high',
-    "confidence": 'certain',
-    "target": {
-        "addr": 8.8.8.8,
-        "addr_type": 'ipv4',
-        "hostnames": [ 'google-dns-a.google.com']
-    },
-    "title": 'host is up',
-    "description": 'The host 8.8.8.8 has been found alive',
-    "type": 'host_availability',
-    "timestamp": 143545645775
-}]}
-
-'''
 
 # Generic functions
 def shellquote(s):
@@ -67,7 +39,7 @@ def _json_serial(obj):
     if isinstance(obj, datetime.datetime):
         serial = obj.isoformat()
         return serial
-    raise TypeError ("Type not serializable")
+    raise TypeError("Type not serializable")
 
 
 # Route actions
@@ -194,7 +166,7 @@ def _scan_thread(scan_id):
         ports = ",".join(this.scans[scan_id]['options']['ports'])
     # del this.scans[scan_id]['options']['ports']
     options = this.scans[scan_id]['options']
-    log_path = BASE_DIR+"/logs/" + scan_id +".error"
+    log_path = BASE_DIR+"/logs/" + scan_id + ".error"
 
     cmd = this.scanner['path'] + " -vvv " + " ".join(hosts) + \
         " -oX "+BASE_DIR+"/results/nmap_" + scan_id + ".xml"
@@ -203,11 +175,11 @@ def _scan_thread(scan_id):
     for opt_key in options.keys():
         if opt_key in this.scanner['options'] and options.get(opt_key) and opt_key not in ["ports", "script", "script_args", "script_output_fields"]:
             cmd += " {}".format(this.scanner['options'][opt_key]['value'])
-        if opt_key == "ports" and ports is not None: # /!\ @todo / Security issue: Sanitize parameters here
+        if opt_key == "ports" and ports is not None:  # /!\ @todo / Security issue: Sanitize parameters here
             cmd += " -p{}".format(ports)
-        if opt_key == "script" and options.get(opt_key).endswith('.nse'): # /!\ @todo / Security issue: Sanitize parameters here
+        if opt_key == "script" and options.get(opt_key).endswith('.nse'):  # /!\ @todo / Security issue: Sanitize parameters here
             cmd += " --script {}".format(options.get(opt_key))
-        if opt_key == "script_args": # /!\ @todo / Security issue: Sanitize parameters here
+        if opt_key == "script_args":  # /!\ @todo / Security issue: Sanitize parameters here
             cmd += " --script-args {}".format(options.get(opt_key))
 
     this.scans[scan_id]["proc_cmd"] = "not set!!"
@@ -264,9 +236,9 @@ def stop_scan(scan_id):
 
     proc = this.scans[scan_id]["proc"]
     if hasattr(proc, 'pid'):
-        #his.proc.terminate()
-        #proc.kill()
-        #os.killpg(os.getpgid(proc.pid), signal.SIGTERM)
+        # his.proc.terminate()
+        # proc.kill()
+        # os.killpg(os.getpgid(proc.pid), signal.SIGTERM)
         if psutil.pid_exists(proc.pid):
             psutil.Process(proc.pid).terminate()
         res.update({"status": "TERMINATED",
@@ -307,7 +279,7 @@ def scan_status(scan_id):
             res.update({"status": "FINISHED"})
             this.scans[scan_id]["status"] = "FINISHED"
             psutil.Process(proc.pid).terminate()
-            #Check for errors
+            # Check for errors
             # log_path = BASE_DIR+"/logs/" + scan_id +".error"
             #
             # if os.path.isfile(log_path) and os.stat(log_path).st_size != 0:
@@ -363,14 +335,10 @@ def info():
         "engine_config": this.scanner,
         "scans": this.scans
     }
-    # if this.proc and not this.proc.poll():
-    #     res.update({"proc": {"pid" : this.proc.pid }})
-    # else:
-    #     res.update({"proc": None })
     return jsonify(res)
 
 
-def _add_issue(scan_id, target, ts, title, desc, type, severity = "info", confidence = "certain", vuln_refs = {}, links = [], tags = [], risk = {}):
+def _add_issue(scan_id, target, ts, title, desc, type, severity="info", confidence="certain", vuln_refs={}, links=[], tags=[], risk={}):
     this.scans[scan_id]["nb_findings"] = this.scans[scan_id]["nb_findings"] + 1
     issue = {
         "issue_id": this.scans[scan_id]["nb_findings"],
@@ -404,6 +372,8 @@ def _parse_report(filename, scan_id):
 
     ts = tree.find("taskbegin").get("time")
 
+    unidentified_assets = set([a["value"] for a in this.scans[scan_id]["assets"]])
+
     for host in tree.findall('host'):
         #  get startdate of the host scan
         #  ts = host.get('starttime')
@@ -412,7 +382,7 @@ def _parse_report(filename, scan_id):
         addr_type = host.find('address').get('addrtype')
 
         has_hostnames = False
-        # find hostnames
+        # Find hostnames
         for hostnames in host.findall('hostnames'):
             for hostname in hostnames._children:
                 if hostname.get("type") == "user":
@@ -420,7 +390,7 @@ def _parse_report(filename, scan_id):
                     addr = hostname.get("name")
                     addr_list.append(hostname.get("name"))
 
-        # get IP address otherwise
+        # Get IP address otherwise
         if not has_hostnames:
             addr = host.find('address').get('addr')
             addr_list.append(addr)
@@ -430,10 +400,14 @@ def _parse_report(filename, scan_id):
             if a["datatype"] == "url" and urlparse(a["value"]).netloc in addr_list:
                 addr_list.append(a["value"])
 
+        # Initialize the 'target' value
         target = {
             "addr": addr_list,
             "addr_type": addr_type,
         }
+
+        # Add the addr_list to identified_assets (post exec: spot unresolved assets)
+        unidentified_assets = unidentified_assets.difference(set(addr_list))
 
         # get host status
         status = host.find('status').get('state')
@@ -554,6 +528,15 @@ def _parse_report(filename, scan_id):
                                 "The script '{}' revealed following information: \n'{}' was identified to '{}'".format(script.get('id'), elem.get("key"), elem.text),
                                 type="host_script_advanced")))
 
+    for unidentified_asset in unidentified_assets:
+        target = {
+            "addr": [unidentified_asset],
+            "addr_type": "tcp",
+        }
+        res.append(deepcopy(_add_issue(scan_id, target, ts,
+            "Failed to resolve '{}'".format(unidentified_asset),
+            "The asset '{}' was not resolved by the engine.".format(unidentified_asset),
+            type="nmap_error_unresolved")))
     return res
 
 
@@ -579,6 +562,7 @@ def _get_vulners_findings(findings):
             cve_list.append(vulners_cve)
             cve_links.append(cols[2].strip())
     return float(max_cvss), cve_list, cve_links, cpe_info
+
 
 @app.route('/engines/nmap/getfindings/<scan_id>')
 def getfindings(scan_id):

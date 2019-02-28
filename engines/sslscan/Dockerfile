@@ -1,4 +1,4 @@
-FROM alpine:latest
+FROM alpine:3.8
 MAINTAINER Patrowl.io "sgetupport@patrowl.io"
 LABEL Name="SSLScan\ \(Patrowl engine\)" Version="1.0.0"
 
@@ -20,7 +20,7 @@ RUN apk add --no-cache build-base git perl zlib-dev libc6-compat && \
     cd sslscan && \
     make static && make install && \
     cd / && rm -rf sslscan && \
-    apk del build-base git perl zlib-dev libc6-compat
+    apk del .build-deps build-base git perl zlib-dev libc6-compat
 
 #WORKDIR /opt/patrowl-engines/sslscan/libs
 #RUN apk add --no-cache curl bash procps drill git coreutils
