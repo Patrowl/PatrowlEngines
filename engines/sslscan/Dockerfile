@@ -1,6 +1,8 @@
-FROM alpine:3.8
+FROM alpine:latest
 MAINTAINER Patrowl.io "sgetupport@patrowl.io"
 LABEL Name="SSLScan\ \(Patrowl engine\)" Version="1.0.0"
+
+ENV CFLAGS "-D__USE_GNU"
 
 # Set the working directory
 RUN mkdir -p /opt/patrowl-engines/sslscan
@@ -15,12 +17,20 @@ COPY requirements.txt .
 COPY README.md .
 
 WORKDIR /opt/patrowl-engines/sslscan/libs
-RUN apk add --no-cache build-base git perl zlib-dev libc6-compat && \
+RUN apk add --update --no-cache \
+      build-base \
+      git \
+      perl \
+      zlib-dev \
+      libc6-compat \
+      openssl \
+      python \
+      python-dev \
+      py-pip && \
     git clone https://github.com/rbsec/sslscan.git && \
     cd sslscan && \
-    make static && make install && \
-    cd / && rm -rf sslscan && \
-    apk del .build-deps build-base git perl zlib-dev libc6-compat
+    make static && \
+    rm -rf /var/cache/apk/*
 
 #WORKDIR /opt/patrowl-engines/sslscan/libs
 #RUN apk add --no-cache curl bash procps drill git coreutils
