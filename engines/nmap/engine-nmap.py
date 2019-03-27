@@ -385,7 +385,7 @@ def _parse_report(filename, scan_id):
         # Find hostnames
         for hostnames in host.findall('hostnames'):
             for hostname in hostnames._children:
-                if hostname.get("type") == "user":
+                if hostname.get("type") in ["user", "PTR"]:
                     has_hostnames = True
                     addr = hostname.get("name")
                     addr_list.append(hostname.get("name"))
