@@ -1,0 +1,7 @@
+{
+  "name": "Skeleton API",
+  "version": "1.0.0",
+  "description": "Skeleton API",
+  "allowed_asset_types": ["fqdn","ip","domain"],
+  "options": {}
+}
