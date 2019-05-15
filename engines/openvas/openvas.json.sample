@@ -1,0 +1,13 @@
+{
+  "name": "Openvas API",
+  "version": "1.0.0",
+  "description": "Openvas API",
+  "allowed_asset_types": ["fqdn","ip","domain"],
+  "options": {
+     "omp_host":         { "type": "required", "value": "www.openvas.com"},
+     "omp_port":         { "type": "optional", "value": "9390"},
+     "omp_username":     { "type": "optional", "value": "admin"},
+     "omp_password":     { "type": "optional", "value": "P@ssw0rd"},
+     "task_id":          { "type": "optional", "value": "369c2ae1-3292-4bab-a330-e70d0e988b02"}
+  }
+}
