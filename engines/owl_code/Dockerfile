@@ -46,8 +46,6 @@ COPY __init__.py .
 COPY engine-owl_code.py .
 COPY requirements.txt .
 COPY owl_code.json.sample owl_code.json
-#COPY utils/ utils/
-# COPY libs/ libs/
 
 # Install python modules
 RUN pip install --upgrade pip
