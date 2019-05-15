@@ -257,7 +257,7 @@ def _scan_urls(scan_id):
 
 
 def get_report(asset):
-    """Get URLVoid XML report."""
+    """Get Skeleton XML report."""
 
     result_code = os.system("host {} >/dev/null 2>&1".format(asset))
     issues = []

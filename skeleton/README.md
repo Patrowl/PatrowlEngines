@@ -3,29 +3,8 @@ Skeleton REST API engine
 
 Add this in *PatrowlManager* :
 
-```var/etc/supervisord-celery0.conf
-program:celery-skeleton]
-command=celery worker --hostname=skeleton-node@%%n --app=app -l info -Q scan-skeleton,monitor-skeleton --purge --without-mingle --without-gossip -Ofair
-stdout_logfile=var/log/celeryd.skeleton.log
-stderr_logfile=var/log/celeryderr.skeleton.log
-autostart=true
-autorestart=true
-startsecs=5
-stopwaitsecs=60
-killasgroup=true
-priority=990
-```
-
 ```
 systemctl restart supervisord.service
-```
-
-
-```assets/models.py
-    {
-        "name": "Skeleton",
-        "datatypes": ["fqdn","ip","domain"]
-    },
 ```
 
 
@@ -46,7 +25,6 @@ systemctl restart supervisord.service
 python manage.py loaddata var/data/engines.Engine.json
 ```
 
-
 ````var/data/engines.EnginePolicy.json
   {
     "model": "engines.enginepolicy",
@@ -57,7 +35,7 @@ python manage.py loaddata var/data/engines.Engine.json
       "name": "Skeleton policy",
       "default": false,
       "description": "Skeleton policy",
-      "options": "{\"max_timeout\":3600,\"search_github\":true}",
+      "options": "{\"max_timeout\":3600,\"xxxxx\":true}",
       "file": "",
       "status": "",
       "is_default": false,
