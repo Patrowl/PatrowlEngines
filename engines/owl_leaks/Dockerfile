@@ -22,7 +22,6 @@ COPY __init__.py .
 COPY engine-owl_leaks.py .
 COPY requirements.txt .
 COPY owl_leaks.json.sample owl_leaks.json
-COPY utils/ utils/
 
 # Install python modules
 RUN pip install --upgrade pip
