@@ -10,7 +10,7 @@ greenlet==0.4.15
 gunicorn==19.9.0
 idna==2.5
 itsdangerous==0.24
-Jinja2==2.10
+Jinja2>=2.10.1
 MarkupSafe==1.0
 more-itertools==4.3.0
 pathlib2==2.3.2

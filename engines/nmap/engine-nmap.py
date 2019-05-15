@@ -60,8 +60,13 @@ def loadconfig():
         this.scanner = json.load(json_data)
         this.scanner['status'] = "READY"
     else:
+        this.scanner['status'] = "ERROR"
         print ("Error: config file '{}' not found".format(conf_file))
-        return {"status": "ERROR", "reason": "config file not found"}
+        return {"status": "ERROR", "reason": "config file not found."}
+    if not os.path.isfile(this.scanner['path']):
+        this.scanner['status'] = "ERROR"
+        print ("Error: path to nmap '{}' not found".format(this.scanner['path']))
+        return {"status": "ERROR", "reason": "path to nmap binary not found."}
 
 
 @app.route('/engines/nmap/reloadconfig')

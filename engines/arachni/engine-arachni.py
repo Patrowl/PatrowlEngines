@@ -321,6 +321,8 @@ def start():
     this.scans.update({scan["scan_id"]: scan})
     res.update({"scan": scan})
 
+    print(res)
+
     return jsonify(res)
 
 
