@@ -234,7 +234,7 @@ def _parse_xml_results(scan_id, asset, asset_port):
         target_addrs=[asset])
     findings.append(new_finding)
 
-    if scan_results:
+    if scan_results is not None:
         # Finding: Supported ciphersuites
         issue_id += 1
         ciphersuites_issue = _get_ciphersuites(

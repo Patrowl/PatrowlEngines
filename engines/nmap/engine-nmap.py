@@ -570,7 +570,7 @@ def _get_vulners_findings(findings):
                 max_cvss = vulners_cvss
             cve_list.append(vulners_cve)
             cve_links.append(cols[2].strip())
-    return float(max_cvss), cve_list.sort(), cve_links.sort(), cpe_info
+    return float(max_cvss), sorted(cve_list), sorted(cve_links), cpe_info
 
 
 @app.route('/engines/nmap/getfindings/<scan_id>')
