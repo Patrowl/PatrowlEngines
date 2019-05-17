@@ -60,8 +60,13 @@ def loadconfig():
         this.scanner = json.load(json_data)
         this.scanner['status'] = "READY"
     else:
+        this.scanner['status'] = "ERROR"
         print ("Error: config file '{}' not found".format(conf_file))
-        return {"status": "ERROR", "reason": "config file not found"}
+        return {"status": "ERROR", "reason": "config file not found."}
+    if not os.path.isfile(this.scanner['path']):
+        this.scanner['status'] = "ERROR"
+        print ("Error: path to nmap '{}' not found".format(this.scanner['path']))
+        return {"status": "ERROR", "reason": "path to nmap binary not found."}
 
 
 @app.route('/engines/nmap/reloadconfig')
@@ -479,7 +484,11 @@ def _parse_report(filename, scan_id):
                 for port_script in port.findall('script'):
                     script_id = port_script.get('id')
                     script_output = port_script.get('output')
-                    script_hash = hashlib.sha1(script_output).hexdigest()[:6]
+                    # Disable hash for some script_id
+                    if script_id in ["fingerprint-strings"]:
+                       script_hash = "None"
+                    else:
+                        script_hash = hashlib.sha1(script_output).hexdigest()[:6]
 
                     if script_id == "vulners":
                         port_max_cvss, port_cve_list, port_cve_links, port_cpe = _get_vulners_findings(script_output)
@@ -493,7 +502,7 @@ def _parse_report(filename, scan_id):
                             port_severity = "low"
 
                         res.append(deepcopy(_add_issue(scan_id, target, ts,
-                            "Nmap script '{}' detected findings on port {}/{} (HASH: {})".format(script_id, proto, portid, script_hash),
+                            "Nmap script '{}' detected findings on port {}/{}".format(script_id, proto, portid),
                             "The script '{}' detected following findings:\n{}"
                                 .format(script_id, script_output),
                             severity=port_severity,
@@ -505,7 +514,7 @@ def _parse_report(filename, scan_id):
                             )))
                     else:
                         res.append(deepcopy(_add_issue(scan_id, target, ts,
-                            "Nmap script '{}' detected findings on port {}/{} (HASH: {})".format(script_id, proto, portid, script_hash),
+                            "Nmap script '{}' detected findings on port {}/{}".format(script_id, proto, portid),
                             "The script '{}' detected following findings:\n{}"
                                 .format(script_id, script_output),
                             type="port_script",
@@ -561,7 +570,7 @@ def _get_vulners_findings(findings):
                 max_cvss = vulners_cvss
             cve_list.append(vulners_cve)
             cve_links.append(cols[2].strip())
-    return float(max_cvss), cve_list, cve_links, cpe_info
+    return float(max_cvss), sorted(cve_list), sorted(cve_links), cpe_info
 
 
 @app.route('/engines/nmap/getfindings/<scan_id>')

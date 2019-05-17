@@ -7,7 +7,7 @@ future==0.16.0
 gunicorn==19.9.0
 idna==2.6
 itsdangerous==0.24
-Jinja2==2.10
+Jinja2>=2.10.1
 json2html==1.2.1
 MarkupSafe==1.0
 python-magic==0.4.15

@@ -28,7 +28,8 @@ ENV version_url=https://jeremylong.github.io/DependencyCheck/current.txt
 ENV download_url=https://dl.bintray.com/jeremy-long/owasp
 RUN wget -qO- -O /tmp/current.txt ${version_url}                            && \
     version=$(cat /tmp/current.txt)                                         && \
-    file="dependency-check-${version}-release.zip"                          && \
+    file="dependency-check-3.3.2-release.zip"                          && \
+    # file="dependency-check-${version}-release.zip"                          && \
     wget "$download_url/$file"                                              && \
     unzip ${file}                                                           && \
     rm ${file}                                                              && \
@@ -45,7 +46,6 @@ COPY __init__.py .
 COPY engine-owl_code.py .
 COPY requirements.txt .
 COPY owl_code.json.sample owl_code.json
-COPY utils/ utils/
 
 # Install python modules
 RUN pip install --upgrade pip

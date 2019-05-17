@@ -26,6 +26,7 @@ results
 reports
 .scannerwork
 *.pyc
+*.swp
 **/__pycache__
 **/.pytest_cache
 **/node_modules

@@ -5,7 +5,7 @@ Flask-Cors==3.0.7
 functools32==3.2.3.post2
 gunicorn==19.9.0
 itsdangerous==0.24
-Jinja2==2.10
+Jinja2>=2.10.1
 jsonschema==2.6.0
 MarkupSafe==1.0
 mistune==0.8.4

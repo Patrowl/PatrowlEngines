@@ -1,7 +1,7 @@
 ## Description
 Nessus engine (online service)
 
-## Dependancies
+## Dependencies
 - Python 2.7 + pip
 - Nessus instance
 - See requirements.txt for others python packages (use "pip install -r requirements.txt")

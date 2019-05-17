@@ -23,7 +23,7 @@ def default():
 
 @app.route('/engines/owl_dns/')
 def index():
-    return jsonify({ "page": "index" })
+    return jsonify({"page": "index"})
 
 
 def _loadconfig():
@@ -39,12 +39,12 @@ def _loadconfig():
 
     else:
         print "Error: config file '{}' not found".format(conf_file)
-        return { "status": "error", "reason": "config file not found" }
+        return {"status": "error", "reason": "config file not found"}
 
 
 @app.route('/engines/owl_dns/reloadconfig')
 def reloadconfig():
-    res = { "page": "reloadconfig" }
+    res = {"page": "reloadconfig"}
     _loadconfig()
     res.update({"config": this.scanner})
     return jsonify(res)
@@ -53,7 +53,7 @@ def reloadconfig():
 @app.route('/engines/owl_dns/startscan', methods=['POST'])
 def start_scan():
     #@todo: validate parameters and options format
-    res = { "page": "startscan" }
+    res = {"page": "startscan"}
 
     # check the scanner is ready to start a new scan
     if len(this.scans) == APP_MAXSCANS:
@@ -67,17 +67,17 @@ def start_scan():
     if this.scanner['status'] != "READY":
         res.update({
             "status": "refused",
-            "details" : {
+            "details": {
                 "reason": "scanner not ready",
                 "status": this.scanner['status']
         }})
         return jsonify(res)
 
     data = json.loads(request.data)
-    if not 'assets' in data.keys():
+    if 'assets' not in data.keys():
         res.update({
             "status": "refused",
-            "details" : {
+            "details": {
                 "reason": "arg error, something is missing ('assets' ?)"
         }})
         return jsonify(res)
@@ -93,8 +93,6 @@ def start_scan():
         'started_at':   int(time.time() * 1000),
         'findings':     {}
     }
-
-    #print "scan:", scan
 
     this.scans.update({scan_id: scan})
 
@@ -157,7 +155,7 @@ def start_scan():
 
     res.update({
         "status": "accepted",
-        "details" : {
+        "details": {
             "scan_id": scan['scan_id']
     }})
 
@@ -168,17 +166,18 @@ def __is_ip_addr(host):
     res = False
     try:
         res = socket.gethostbyname(host) == host
-    except:
+    except Exception:
         pass
     return res
+
 
 def __is_domain(host):
     res = False
     try:
         if not __is_ip_addr(host):
-            #print str(pythonwhois.net.get_whois_raw(host))
-            res = not "No entries found" in str(pythonwhois.net.get_whois_raw(host))
-    except:
+            # print str(pythonwhois.net.get_whois_raw(host))
+            res = "No entries found" not in str(pythonwhois.net.get_whois_raw(host))
+    except Exception:
         pass
     return res
 
@@ -188,14 +187,14 @@ def _dns_resolve(scan_id, asset, check_subdomains=False):
 
     res.update({asset: __dns_resolve_asset(asset)})
 
-    #scan_lock = threading.RLock()
+    # scan_lock = threading.RLock()
     with this.scan_lock:
         this.scans[scan_id]["findings"]["dns_resolve"] = res
 
     if check_subdomains:
         res_dom = {}
         subdomains = _subdomain_enum(scan_id, asset)
-        #print "subdomains:", subdomains
+        # print "subdomains:", subdomains
         for a in subdomains.keys():
             for s in subdomains[a]:
                 data = __dns_resolve_asset(s)
@@ -256,7 +255,8 @@ def _get_whois(scan_id, asset):
 
     #for asset in this.scans[scan_id]['assets']:
     # check the asset is a valid domain name
-    if not __is_domain(asset): return res
+    if not __is_domain(asset):
+        return res
 
     raw = pythonwhois.net.get_whois_raw(str(asset))
     if "No match for " in raw[0]:
@@ -294,12 +294,11 @@ def _subdomain_bruteforce(scan_id, asset):
         "mantis", "nagios", "owa", "outlook", "zabbix"
     ]
 
-
     valid_sudoms = []
     for sub in SUB_LIST:
         subdom = ".".join((sub, asset))
         results = __dns_resolve_asset(subdom)
-        #print subdom, ":", results
+        # print subdom, ":", results
 
         if len(results) > 0:
             valid_sudoms.append(subdom)
@@ -308,7 +307,7 @@ def _subdomain_bruteforce(scan_id, asset):
     # @todo: mutex on this.scans[scan_id]['findings']['subdomains_list']
     if 'subdomains_list' in this.scans[scan_id]['findings'].keys():
         if asset in this.scans[scan_id]['findings']['subdomains_list']:
-            if not subdom in this.scans[scan_id]['findings']['subdomains_list'][asset]:
+            if subdom not in this.scans[scan_id]['findings']['subdomains_list'][asset]:
                 this.scans[scan_id]['findings']['subdomains_list'][asset].extend(valid_sudoms)
         else:
             this.scans[scan_id]['findings']['subdomains_list'][asset] = valid_sudoms
@@ -320,7 +319,7 @@ def _subdomain_bruteforce(scan_id, asset):
     # @todo: mutex on this.scans[scan_id]['findings']['subdomains_resolve']
 
 
-    #print this.scans[scan_id]['findings']['subdomains_list']
+    # print this.scans[scan_id]['findings']['subdomains_list']
     return res
 
 
@@ -341,7 +340,7 @@ def _subdomain_enum(scan_id, asset):
     if 'subdomains_list' in this.scans[scan_id]['findings'].keys():
         if asset in this.scans[scan_id]['findings']['subdomains_list']:
             for subdom in sub_res:
-                if not subdom in this.scans[scan_id]['findings']['subdomains_list'][asset]:
+                if subdom not in this.scans[scan_id]['findings']['subdomains_list'][asset]:
                     this.scans[scan_id]['findings']['subdomains_list'][asset].extend(sub_res)
         else:
             # with this.scan_lock:
@@ -351,21 +350,21 @@ def _subdomain_enum(scan_id, asset):
         this.scans[scan_id]['findings']['subdomains_list'] = {}
         this.scans[scan_id]['findings']['subdomains_list'][asset] = sub_res
 
-    #time.sleep(2)
+    # time.sleep(2)
     return res
 
 
 @app.route('/engines/owl_dns/stop/<scan_id>')
 def stop_scan(scan_id):
-    res = { "page": "stop" }
+    res = {"page": "stop"}
 
-    if not scan_id in this.scans.keys():
-        res.update({ "status": "error", "reason": "scan_id '{}' not found".format(scan_id)})
+    if scan_id not in this.scans.keys():
+        res.update({"status": "error", "reason": "scan_id '{}' not found".format(scan_id)})
         return jsonify(res)
 
     scan_status(scan_id)
     if this.scans[scan_id]['status'] != "SCANNING":
-        res.update({ "status": "error", "reason": "scan '{}' is not running (status={})".format(scan_id, this.scans[scan_id]['status'])})
+        res.update({"status": "error", "reason": "scan '{}' is not running (status={})".format(scan_id, this.scans[scan_id]['status'])})
         return jsonify(res)
 
     for t in this.scans[scan_id]['threads']:
@@ -380,7 +379,7 @@ def stop_scan(scan_id):
 # Stop all scans
 @app.route('/engines/owl_dns/stopscans', methods=['GET'])
 def stop():
-    res = { "page": "stopscans" }
+    res = {"page": "stopscans"}
     for scan_id in this.scans.keys():
         stop_scan(scan_id)
 
@@ -390,7 +389,7 @@ def stop():
 
 @app.route('/engines/owl_dns/clean')
 def clean():
-    res = { "page": "clean" }
+    res = {"page": "clean"}
     this.scans.clear()
     _loadconfig()
     res.update({"status": "SUCCESS"})
@@ -399,11 +398,11 @@ def clean():
 
 @app.route('/engines/owl_dns/clean/<scan_id>')
 def clean_scan(scan_id):
-    res = { "page": "clean_scan" }
+    res = {"page": "clean_scan"}
     res.update({"scan_id": scan_id})
 
     if not scan_id in this.scans.keys():
-        res.update({ "status": "error", "reason": "scan_id '{}' not found".format(scan_id)})
+        res.update({"status": "error", "reason": "scan_id '{}' not found".format(scan_id)})
         return jsonify(res)
 
     this.scans.pop(scan_id)
@@ -665,7 +664,8 @@ def _parse_results(scan_id):
         # advanced whois info
         if 'do_advanced_whois' in scan['options'].keys() and scan['options']['do_advanced_whois']:
             for asset in scan['findings']['whois'].keys():
-                if "errors" in scan['findings']['whois'][asset].keys(): continue
+                if "errors" in scan['findings']['whois'][asset].keys():
+                    continue
 
                 issue = {
                     "severity": "info", "confidence": "certain",
@@ -789,7 +789,7 @@ def _parse_results(scan_id):
                 })
                 issues.append(dom_expiration_date)
 
-                #Raise alarms at 6 months (low), 3 months (medium), 2 weeks (high) or when expired (high)
+                # Raise alarms at 6 months (low), 3 months (medium), 2 weeks (high) or when expired (high)
                 exp_date = max(scan['findings']['whois'][asset]['expiration_date'])
                 six_month_later = datetime.datetime.now() + datetime.timedelta(days=365/2)
                 three_month_later = datetime.datetime.now() + datetime.timedelta(days=90)
@@ -866,7 +866,7 @@ def _parse_results(scan_id):
         "nb_low": nb_vulns["low"],
         "nb_medium": nb_vulns["medium"],
         "nb_high": nb_vulns["high"],
-        #"delta_time": results["delta_time"],
+        # "delta_time": results["delta_time"],
         "engine_name": "owl_dns",
         "engine_version": this.scanner["version"]
     }
@@ -876,25 +876,25 @@ def _parse_results(scan_id):
 
 @app.route('/engines/owl_dns/getfindings/<scan_id>')
 def getfindings(scan_id):
-    res = { "page": "getfindings", "scan_id": scan_id }
+    res = {"page": "getfindings", "scan_id": scan_id }
 
     # check if the scan_id exists
-    if not scan_id in this.scans.keys():
-        res.update({ "status": "error", "reason": "scan_id '{}' not found".format(scan_id)})
+    if scan_id not in this.scans.keys():
+        res.update({"status": "error", "reason": "scan_id '{}' not found".format(scan_id)})
         return jsonify(res)
 
     # check if the scan is finished
     status()
     if this.scans[scan_id]['status'] != "FINISHED":
-        res.update({ "status": "error", "reason": "scan_id '{}' not finished (status={})".format(scan_id, this.scans[scan_id]['status'])})
+        res.update({"status": "error", "reason": "scan_id '{}' not finished (status={})".format(scan_id, this.scans[scan_id]['status'])})
         return jsonify(res)
 
-    issues, summary =  _parse_results(scan_id)
+    issues, summary = _parse_results(scan_id)
     scan = {
         "scan_id": scan_id
     }
 
-    #Store the findings in a file
+    # Store the findings in a file
     with open(BASE_DIR+"/results/owl_dns_"+scan_id+".json", 'w') as report_file:
         json.dump({
             "scan": scan,
@@ -905,7 +905,7 @@ def getfindings(scan_id):
     # remove the scan from the active scan list
     clean_scan(scan_id)
 
-    res.update({ "scan": scan_id, "summary": summary, "issues": issues, "status": "success"})
+    res.update({"scan": scan_id, "summary": summary, "issues": issues, "status": "success"})
     return jsonify(res)
 
 
@@ -914,7 +914,7 @@ def getreport(scan_id):
     filepath = BASE_DIR+"/results/owl_dns_"+scan_id+".json"
 
     if not os.path.exists(filepath):
-        return jsonify({ "status": "error", "reason": "report file for scan_id '{}' not found".format(scan_id)})
+        return jsonify({"status": "error", "reason": "report file for scan_id '{}' not found".format(scan_id)})
 
     return send_from_directory(BASE_DIR+"/results/", "owl_dns_"+scan_id+".json")
 
@@ -963,9 +963,19 @@ def main():
 
 if __name__ == '__main__':
     parser = optparse.OptionParser()
-    parser.add_option("-H", "--host", help="Hostname of the Flask app [default %s]" % APP_HOST, default=APP_HOST)
-    parser.add_option("-P", "--port", help="Port for the Flask app [default %s]" % APP_PORT, default=APP_PORT)
-    parser.add_option("-d", "--debug", action="store_true", dest="debug", help=optparse.SUPPRESS_HELP)
+    parser.add_option(
+        "-H", "--host",
+        help="Hostname of the Flask app [default %s]" % APP_HOST,
+        default=APP_HOST)
+    parser.add_option(
+        "-P", "--port",
+        help="Port for the Flask app [default %s]" % APP_PORT,
+        default=APP_PORT)
+    parser.add_option(
+        "-d", "--debug",
+        action="store_true",
+        dest="debug",
+        help=optparse.SUPPRESS_HELP)
 
     options, _ = parser.parse_args()
     app.run(debug=options.debug, host=options.host, port=int(options.port), threaded=True)

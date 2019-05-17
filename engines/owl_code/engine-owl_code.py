@@ -248,7 +248,7 @@ def _scanjs_thread(scan_id, asset_kw):
 
         # Wait a little to ensure the report file is completely writen
         p.wait()
-        time.sleep(2)
+        time.sleep(3)
         if not os.path.exists(report_filename):
             print("report file '{}' not found.".format(report_filename))
             engine.scans[scan_id]["status"] = "ERROR"
@@ -259,12 +259,14 @@ def _scanjs_thread(scan_id, asset_kw):
 
         scan_results = json.load(open(report_filename))
 
-        for item in scan_results:
+        for item in scan_results['data']:
             checked_files.append(item["file"])
-            if len(item["results"]) == 0: continue
+            if len(item["results"]) == 0:
+                continue
 
             for result in item["results"]:
-                if "vulnerabilities" not in result.keys(): continue
+                if "vulnerabilities" not in result.keys():
+                    continue
                 for vuln in result["vulnerabilities"]:
                     vuln_summary = "n/a"
                     if "summary" in vuln["identifiers"].keys():

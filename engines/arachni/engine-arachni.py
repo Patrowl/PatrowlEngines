@@ -321,6 +321,8 @@ def start():
     this.scans.update({scan["scan_id"]: scan})
     res.update({"scan": scan})
 
+    # print(res)
+
     return jsonify(res)
 
 
@@ -516,6 +518,10 @@ def _parse_report(results, asset_name, asset_host, asset_port, asset_protocol):
         else:
             confidence = "firm"
 
+        vuln_refs = {}
+        if 'cwe' in issue.keys():
+            vuln_refs = {"CWE": ', '.join([str(issue['cwe'])])}
+
         issues.append({
             "issue_id": len(issues)+1,
             "severity": issue['severity'],
@@ -526,9 +532,9 @@ def _parse_report(results, asset_name, asset_host, asset_port, asset_protocol):
                 "port_type": 'tcp',
                 "protocol": asset_protocol
                 },
-            "title": "{} ({} {} [{}])".format(
+            "title": "{} ({} [{}])".format(
                 issue['name'],
-                str(issue['vector']['method']).upper(),          # GET, POST, PUT, ..
+                # str(issue['vector']['method']).upper(),          # GET, POST, PUT, ..
                 urlparse.urlparse(issue['vector']['url']).path,  # /index.php
                 issue['vector']['affected_input_name']),         # query
             "description": "{}\\n\\nRequest: {}\\n\\nResponse: {}".format(
@@ -539,9 +545,7 @@ def _parse_report(results, asset_name, asset_host, asset_port, asset_protocol):
             "solution": issue['remedy_guidance'],
             "metadata": {
                 "tags": issue['tags'],
-                "vuln_refs": {
-                    "CWE": ', '.join([str(issue['cwe'])])
-                },
+                "vuln_refs": vuln_refs,
                 "links": list(issue['references'].values())
             },
             "type": issue['check']['shortname'],
