@@ -8,14 +8,21 @@ import json
 import time
 import threading
 import urlparse
+# import random
+# import string
+from datetime import date, datetime
+from uuid import UUID
 from flask import Flask, request, jsonify
-from PatrowlEnginesUtils.PatrowlEngine import _json_serial
+# from PatrowlEnginesUtils.PatrowlEngine import _json_serial
 from PatrowlEnginesUtils.PatrowlEngine import PatrowlEngine
 from PatrowlEnginesUtils.PatrowlEngine import PatrowlEngineFinding
 from PatrowlEnginesUtils.PatrowlEngineExceptions import PatrowlEngineExceptions
 import xml.etree.ElementTree as ET
 from dns.resolver import query
-from dns.reversename import from_address
+# from dns.reversename import from_address
+from openvas_lib import VulnscanManager, VulnscanException
+from threading import Semaphore
+from functools import partial
 
 app = Flask(__name__)
 APP_DEBUG = False
@@ -24,6 +31,8 @@ APP_PORT = 5016
 APP_MAXSCANS = 5
 APP_ENGINE_NAME = "openvas"
 APP_BASE_DIR = os.path.dirname(os.path.realpath(__file__))
+DEFAULT_OV_PROFILE = "Full and fast"
+DEFAULT_OV_PORTLIST = "patrowl-all_tcp"
 
 engine = PatrowlEngine(
     app=app,
@@ -33,7 +42,18 @@ engine = PatrowlEngine(
 )
 
 this = sys.modules[__name__]
-this.keys = []
+this.openvas_cli = None
+this.openvas_portlists = {}
+
+
+def _json_serial(obj):
+    """JSON serializer for objects not serializable by default json code."""
+    if isinstance(obj, (datetime, date)):
+        return obj.isoformat()
+    if isinstance(obj, UUID):
+        # if the obj is uuid, we simply return the value of uuid
+        return obj.hex
+    raise TypeError("Type %s not serializable" % type(obj))
 
 
 @app.errorhandler(404)
@@ -110,31 +130,22 @@ def status_scan(scan_id):
     res = {"page": "status", "status": "UNKNOWN"}
     if scan_id not in engine.scans.keys():
         res.update({"status": "error", "reason": "scan_id '{}' not found".format(scan_id)})
-        return jsonify(res)
 
     if engine.scans[scan_id]["status"] == "ERROR":
         res.update({"status": "error", "reason": "todo"})
-        return jsonify(res)
-
-    report_id = engine.scans[scan_id]["report_id"]
-    os.system("omp -h %s -p %s -u %s -w %s --get-tasks %s | grep %s | awk '{print $2}' >results/openvas_%s.status" % (engine.scanner["options"]["omp_host"]["value"], engine.scanner["options"]["omp_port"]["value"], engine.scanner["options"]["omp_username"]["value"], engine.scanner["options"]["omp_password"]["value"], engine.scanner["options"]["task_id"]["value"], report_id, scan_id))
-
-    time.sleep(1)
-
-    result_file = open("results/openvas_%s.status" % scan_id, "r")
-    engine.scans[scan_id]["scan_status"] = result_file.read().split("\n")[0]
-    result_file.close()
-    os.remove("results/openvas_%s.status" % scan_id)
-
-    if engine.scans[scan_id]["scan_status"] == "Done":
+    elif engine.scans[scan_id]["status"] == "STARTED":
+        res.update({"status": "STARTED"})
+    elif engine.scans[scan_id]["status"] == "SCANNING":
+        ov_scan_status = "unknown"
+        if engine.scans[scan_id]["ov_scan_id"] != "":
+            ov_scan_status = this.openvas_cli.get_scan_status(engine.scans[scan_id]["ov_scan_id"])
+        # print(ov_scan_status)
+        if ov_scan_status not in ["Requested", "Running", "Done"]:
+            res.update({"status": "ERROR"})
+        else:
+            res.update({"status": "SCANNING"})
+    elif engine.scans[scan_id]["status"] == "FINISHED":
         res.update({"status": "FINISHED"})
-        engine.scans[scan_id]["status"] = "FINISHED"
-        # Get the last version of the report
-        _scan_urls(scan_id)
-    else:
-        res.update({"status": "SCANNING"})
-        engine.scans[scan_id]["status"] = "SCANNING"
-    result_file.close()
 
     return jsonify(res)
 
@@ -147,8 +158,16 @@ def stop():
 
 @app.route('/engines/openvas/stop/<scan_id>')
 def stop_scan(scan_id):
+    res = {"page": "status", "status": "success"}
     """Stop scan identified by id."""
-    return engine.stop_scan(scan_id)
+    if scan_id not in engine.scans.keys():
+        res.update({"status": "error", "reason": "scan_id '{}' not found".format(scan_id)})
+
+    this.openvas_cli.stop_audit(scan_id)
+    if engine.scans[scan_id]['status'] not in ["FINISHED", "ERROR"]:
+        engine.scans[scan_id]['status'] = "STOPPED"
+
+    return res
 
 
 @app.route('/engines/openvas/getreport/<scan_id>')
@@ -162,11 +181,66 @@ def _loadconfig():
     if os.path.exists(conf_file):
         json_data = open(conf_file)
         engine.scanner = json.load(json_data)
+        engine.scanner['status'] = "INIT"
+
+        # Check omp connectivity
+        if set(["omp_host", "omp_port", "omp_username", "omp_password"]).issubset(engine.scanner['options'].keys()):
+            try:
+                this.openvas_cli = VulnscanManager(
+                    str(engine.scanner['options']['omp_host']['value']),
+                    str(engine.scanner['options']['omp_username']['value']),
+                    str(engine.scanner['options']['omp_password']['value']),
+                    int(engine.scanner['options']['omp_port']['value']))
+            except VulnscanException as e:
+                print("Error: {}".format(e))
+        else:
+            print("Error: missing required options in config file".format(conf_file))
+            engine.scanner['status'] = "ERROR"
+            return {"status": "error", "reason": "missing required options"}
+
+        for pl_name, pl_data in this.openvas_cli.get_port_lists().items():
+            this.openvas_portlists.update({pl_name: pl_data['id']})
+
+        # Create custom port lists
+        if "patrowl-all_tcp" not in this.openvas_portlists.keys():
+            new_pl_id = this.openvas_cli.create_port_list(
+                name="patrowl-all_tcp",
+                port_range="T:1-65535"
+            )
+            this.openvas_portlists.update({"patrowl-all_tcp": new_pl_id})
+
+        if "patrowl-quick_tcp" not in this.openvas_portlists.keys():
+            new_pl_id = this.openvas_cli.create_port_list(
+                name="patrowl-quick_tcp",
+                port_range="T:21-80,T:443,U:53"
+            )
+            this.openvas_portlists.update({"patrowl-quick_tcp": new_pl_id})
+
+        if "patrowl-tcp_80" not in this.openvas_portlists.keys():
+            new_pl_id = this.openvas_cli.create_port_list(
+                name="patrowl-tcp_80",
+                port_range="T:80"
+            )
+            this.openvas_portlists.update({"patrowl-tcp_80": new_pl_id})
+
+        if "patrowl-tcp_443" not in this.openvas_portlists.keys():
+            new_pl_id = this.openvas_cli.create_port_list(
+                name="patrowl-tcp_443",
+                port_range="T:443"
+            )
+            this.openvas_portlists.update({"patrowl-tcp_443": new_pl_id})
+
+        if "patrowl-tcp_22" not in this.openvas_portlists.keys():
+            new_pl_id = this.openvas_cli.create_port_list(
+                name="patrowl-tcp_22",
+                port_range="T:22"
+            )
+            this.openvas_portlists.update({"patrowl-tcp_22": new_pl_id})
 
         engine.scanner['status'] = "READY"
-
     else:
-        print "Error: config file '{}' not found".format(conf_file)
+        print("Error: config file '{}' not found".format(conf_file))
+        engine.scanner['status'] = "ERROR"
         return {"status": "error", "reason": "config file not found"}
 
 
@@ -244,34 +318,37 @@ def start_scan():
         })
         return jsonify(res)
 
-    os.system("omp -h %s -p %s -u %s -w %s --start-task %s >results/report_id-%s" % (engine.scanner["options"]["omp_host"]["value"], engine.scanner["options"]["omp_port"]["value"], engine.scanner["options"]["omp_username"]["value"], engine.scanner["options"]["omp_password"]["value"], engine.scanner["options"]["task_id"]["value"], scan_id))
+    # Checking default options
+    ov_profile = DEFAULT_OV_PROFILE  # "Full and fast"
+    ov_profiles = this.openvas_cli.get_profiles
+    if "profile" in data['options'].keys():
+        ov_p = str(data['options']['profile'])
+        if ov_p in ov_profiles.keys():
+            ov_profile = ov_p
+    ov_port_list = DEFAULT_OV_PORTLIST  # "patrowl-all_tcp"
+    ov_port_lists = this.openvas_cli.get_port_lists(abs)
+    if "port_list" in data['options'].keys():
+        ov_pl = str(data['options']['port_list'])
+        if ov_pl in ov_port_lists.keys():
+            ov_port_list = ov_pl
 
     scan = {
         'assets':       assets,
         'threads':      [],
         'options':      data['options'],
         'scan_id':      scan_id,
+        'ov_scan_id':   "",
+        'ov_target_id': "",
+        'ov_profile':   ov_profile,
+        'ov_port_list': ov_port_list,
         'status':       "STARTED",
         'started_at':   int(time.time() * 1000),
-        'findings':     {}
+        'issues':       [],
+        'summary':      {}
     }
 
-    report_id_file = open("results/report_id-%s" % scan_id, "r")
-    scan["report_id"] = report_id_file.read().split("\n")[0]
-    report_id_file.close()
-    os.remove("results/report_id-%s" % scan_id)
-
-    if scan["report_id"] == '':
-        res.update({
-            "status": "refused",
-            "details": {
-                "reason": "scan '{}' already launched".format(data['scan_id']),
-            }
-        })
-        return jsonify(res)
-
     engine.scans.update({scan_id: scan})
-    thread = threading.Thread(target=_scan_urls, args=(scan_id,))
+    thread = threading.Thread(target=_scan, args=(scan_id,))
     thread.start()
     engine.scans[scan_id]['threads'].append(thread)
 
@@ -285,105 +362,165 @@ def start_scan():
     return jsonify(res)
 
 
-def _scan_urls(scan_id):
+def _scan(scan_id):
     assets = []
     for asset in engine.scans[scan_id]['assets']:
         assets.append(asset)
 
-    for asset in assets:
-        if asset not in engine.scans[scan_id]["findings"]:
-            engine.scans[scan_id]["findings"][asset] = {}
-        try:
-            engine.scans[scan_id]["findings"][asset]['issues'] = get_report(asset, scan_id)
-        except Exception as e:
-            print "_scan_urls: API Connexion error (quota?)"
-            print e
-            return False
+    ov_profile = engine.scans[scan_id]["ov_profile"]
+    ov_port_list = engine.scans[scan_id]["ov_port_list"]
+
+    # Start scan
+    Sem = Semaphore(0)
+    ov_scan_id, ov_target_id = this.openvas_cli.launch_scan(
+        target=assets,
+        profile=ov_profile,
+        port_list=ov_port_list,
+        callback_end=partial(lambda x: x.release(), Sem)
+    )
+    engine.scans[scan_id].update({
+        'ov_scan_id':   ov_scan_id,
+        'ov_target_id': ov_target_id,
+        'scan_status':  "SCANNING",
+        'status':  "SCANNING"
+    })
+    Sem.acquire()
+    # Finished scan
+
+    ov_report_id = this.openvas_cli.get_report_id(ov_scan_id)
+    ov_results_xml = this.openvas_cli.get_report_xml(ov_report_id)
+    report_filename = "{}/results/{}.xml".format(APP_BASE_DIR, scan_id)
+    with open(report_filename, 'w') as report_file:
+        report_file.write(ET.tostring(ov_results_xml))
+
+    issues, summary = _parse_results(scan_id)
+
+    engine.scans[scan_id]["issues"] = issues
+    engine.scans[scan_id]["summary"] = summary
+    engine.scans[scan_id]["finished_at"] = int(time.time() * 1000)
+    engine.scans[scan_id]["status"] = "FINISHED"
 
     return True
 
 
-def get_report(asset, scan_id):
-    """Get report."""
-
-    report_id = engine.scans[scan_id]["report_id"]
-    issues = []
-
-    if "scan_status" in engine.scans[scan_id].keys():
-        scan_status = engine.scans[scan_id]["scan_status"]
-    else:
-        return issues
-
-    if scan_status != "Done":
-        return issues
-
-    if not os.path.isfile('results/openvas_report_%s.xml' % scan_id):
-        os.system("omp -h %s -p %s -u %s -w %s --get-report %s >results/openvas_report_%s.xml" % (engine.scanner["options"]["omp_host"]["value"], engine.scanner["options"]["omp_port"]["value"], engine.scanner["options"]["omp_username"]["value"], engine.scanner["options"]["omp_password"]["value"], report_id, scan_id))
-
-    try:
-        tree = ET.parse("results/openvas_report_%s.xml" % scan_id)
-    except Exception:
-        # No Element found in XML file
-        return {"status": "ERROR", "reason": "no issues found"}
-
-    resolved_asset_ip = query(asset).response.answer[0].to_text().split(" ")[-1]
-
-    report = tree.getroot().find("report")
-    for result in report.find("results").findall("result"):
-        host_ip = result.find("host").text
-        severity = result.find("severity").text
-        cve = result.find("nvt").find("cve").text
-        threat = result.find("threat").text
-        if resolved_asset_ip == host_ip:
-            issues.append([severity, cve, threat])
-
-    return issues
-
-
 def _parse_results(scan_id):
     issues = []
-    summary = {}
+    issue_id = 1
 
     nb_vulns = {
         "info": 0,
         "low": 0,
         "medium": 0,
-        "high": 0
+        "high": 0,
+        "critical": 0
     }
-    timestamp = int(time.time() * 1000)
-    report_id = engine.scans[scan_id]["report_id"]
 
-    for asset in engine.scans[scan_id]["findings"]:
-        if engine.scans[scan_id]["findings"][asset]["issues"]:
-            description = ''
-            cvss_max = float(0)
-            for eng in engine.scans[scan_id]["findings"][asset]["issues"]:
-                if float(eng[0]) > 0:
-                    cvss_max = max(float(eng[0]), cvss_max)
-                    description = description + "[%s] CVSS: %s - Associated CVE : %s" % (eng[2], eng[0], eng[1]) + "\n"
-            description = description + "For more detail go to 'https://%s/omp?cmd=get_report&report_id=%s'" % (engine.scanner["options"]["omp_host"]["value"], report_id)
+    report_filename = "{}/results/{}.xml".format(APP_BASE_DIR, scan_id)
 
-            criticity = "high"
-            if cvss_max == 0:
-                criticity = "info"
-            elif cvss_max < 4.0:
-                criticity = "low"
-            elif cvss_max < 7.0:
-                criticity = "medium"
+    if not os.path.isfile(report_filename):
+        return False
 
-            nb_vulns[criticity] += 1
+    try:
+        tree = ET.parse(report_filename)
+    except Exception:
+        # No Element found in XML file
+        return False
 
-            issues.append({
-                "issue_id": len(issues)+1,
-                "severity": criticity, "confidence": "certain",
-                "target": {"addr": [asset], "protocol": "http"},
-                "title": "'{}' identified in openvas".format(asset),
-                "solution": "n/a",
-                "metadata": {},
-                "type": "openvas_report",
-                "timestamp": timestamp,
-                "description": description,
-            })
+    report = tree.getroot().find("report").find("report")
+
+    # Map IP addresses to domains/fqdn/
+    all_assets = {}
+    for host in report.findall("host"):
+        host_ip = host.find("ip").text
+        all_assets.update({host_ip: [host_ip]})
+        for detail in host.findall("detail"):
+            if detail.find("name").text == "hostname":
+                host_name = detail.find("value").text
+                all_assets[host_ip].append(host_name)
+
+    for result in report.find("results").findall("result"):
+        issue_meta = {}
+        issue_name = result.find("name").text
+        issue_desc = result.find("description").text
+        host_ip = result.find("host").text
+        assets = all_assets[host_ip]
+        host_port = result.find("port").text
+
+        # Severity
+        threat = result.find("threat").text
+        severity = "info"
+        if threat == "High":
+            severity = "high"
+        elif threat == "Medium":
+            severity = "medium"
+        elif threat == "Low":
+            severity = "low"
+
+        issue_cvss = float(result.find("severity").text)
+
+        if result.find("nvt").find("cve") is not None and result.find("nvt").find("cve").text != "NOCVE":
+            cvelist = str(result.find("nvt").find("cve").text)
+            issue_meta.update({"CVE": cvelist.split(", ")})
+        if result.find("nvt").find("bid") is not None and result.find("nvt").find("bid").text != "NOBID":
+            bid_list = str(result.find("nvt").find("bid").text)
+            issue_meta.update({"BID": bid_list.split(", ")})
+        if result.find("nvt").find("xref") is not None and result.find("nvt").find("xref").text != "NOXREF":
+            xref_list = str(result.find("nvt").find("xref").text)
+            issue_meta.update({"XREF": xref_list.split(", ")})
+
+        issue = PatrowlEngineFinding(
+            issue_id=issue_id,
+            type="openvas_scan",
+            title="{} ({})".format(issue_name, host_port),
+            description=issue_desc,
+            solution="n/a",
+            severity=severity,
+            confidence="firm",
+            raw=ET.tostring(result, encoding='utf-8', method='xml'),
+            target_addrs=assets,
+            meta_tags=["openvas"],
+            meta_risk={"cvss_base_score": issue_cvss},
+            meta_vuln_refs=issue_meta
+        )
+        issues.append(issue._PatrowlEngineFinding__to_dict())
+
+        nb_vulns[severity] += 1
+        issue_id += 1
+
+
+    # report_id = engine.scans[scan_id]["report_id"]
+
+    # for asset in engine.scans[scan_id]["findings"]:
+    #     if engine.scans[scan_id]["findings"][asset]["issues"]:
+    #         description = ''
+    #         cvss_max = float(0)
+    #         for eng in engine.scans[scan_id]["findings"][asset]["issues"]:
+    #             if float(eng[0]) > 0:
+    #                 cvss_max = max(float(eng[0]), cvss_max)
+    #                 description = description + "[%s] CVSS: %s - Associated CVE: %s" % (eng[2], eng[0], eng[1]) + "\n"
+    #         description = description + "For more detail go to 'https://%s/omp?cmd=get_report&report_id=%s'" % (engine.scanner["options"]["omp_host"]["value"], report_id)
+    #
+    #         criticity = "high"
+    #         if cvss_max == 0:
+    #             criticity = "info"
+    #         elif cvss_max < 4.0:
+    #             criticity = "low"
+    #         elif cvss_max < 7.0:
+    #             criticity = "medium"
+    #
+    #         nb_vulns[criticity] += 1
+    #
+    #         issues.append({
+    #             "issue_id": len(issues)+1,
+    #             "severity": criticity, "confidence": "certain",
+    #             "target": {"addr": [asset], "protocol": "http"},
+    #             "title": "'{}' identified in openvas".format(asset),
+    #             "solution": "n/a",
+    #             "metadata": {},
+    #             "type": "openvas_report",
+    #             "timestamp": timestamp,
+    #             "description": description,
+    #         })
 
     summary = {
         "nb_issues": len(issues),
@@ -391,6 +528,7 @@ def _parse_results(scan_id):
         "nb_low": nb_vulns["low"],
         "nb_medium": nb_vulns["medium"],
         "nb_high": nb_vulns["high"],
+        "nb_critical": 0,
         "engine_name": "openvas",
         "engine_version": engine.scanner["version"]
     }
@@ -402,18 +540,16 @@ def _parse_results(scan_id):
 def getfindings(scan_id):
     res = {"page": "getfindings", "scan_id": scan_id}
 
-    # check if the scan_id exists
+    # Check if the scan_id exists
     if scan_id not in engine.scans.keys():
         res.update({"status": "error", "reason": "scan_id '{}' not found".format(scan_id)})
         return jsonify(res)
 
-    # check if the scan is finished
+    # Check if the scan is finished
     status()
     if engine.scans[scan_id]['status'] != "FINISHED":
         res.update({"status": "error", "reason": "scan_id '{}' not finished (status={})".format(scan_id, engine.scans[scan_id]['status'])})
         return jsonify(res)
-
-    issues, summary = _parse_results(scan_id)
 
     scan = {
         "scan_id": scan_id,
@@ -424,6 +560,9 @@ def getfindings(scan_id):
         "finished_at": engine.scans[scan_id]['finished_at']
     }
 
+    summary = engine.scans[scan_id]['summary']
+    issues = engine.scans[scan_id]['issues']
+
     # Store the findings in a file
     with open(APP_BASE_DIR+"/results/openvas_"+scan_id+".json", 'w') as report_file:
         json.dump({
@@ -432,7 +571,7 @@ def getfindings(scan_id):
             "issues": issues
         }, report_file, default=_json_serial)
 
-    # remove the scan from the active scan list
+    # Remove the scan from the active scan list
     clean_scan(scan_id)
 
     res.update({"scan": scan, "summary": summary, "issues": issues, "status": "success"})
