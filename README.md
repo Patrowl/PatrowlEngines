@@ -34,10 +34,10 @@ Please [open an issue on GitHub](https://github.com/Patrowl/PatrowlEngines/issue
 If you need to contact the project team, send an email to <getsupport@patrowl.io>.
 
 # Roadmap
-- [ ] SSLScan
+- [X] SSLScan
 - [ ] WhatWeb
-- [ ] CLAIR
-- [ ] OpenVas
+- [ ] CLAIR (Container Security)
+- [X] OpenVas
 - [ ] Tenable.io
 - [ ] Acunetix
 - [ ] WPScan
