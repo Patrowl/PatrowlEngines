@@ -10,6 +10,7 @@ from subprocess import check_output
 import threading
 import time
 import urlparse
+from uuid import UUID
 import xml.etree.ElementTree as ET
 
 # Third party library imports
@@ -32,8 +33,6 @@ APP_PORT = 5016
 APP_MAXSCANS = 5
 APP_ENGINE_NAME = "openvas"
 APP_BASE_DIR = os.path.dirname(os.path.realpath(__file__))
-DEFAULT_OV_PROFILE = "Full and fast"
-DEFAULT_OV_PORTLIST = "patrowl-all_tcp"
 
 engine = PatrowlEngine(
     app=app,
@@ -43,18 +42,17 @@ engine = PatrowlEngine(
 )
 
 this = sys.modules[__name__]
-this.openvas_cli = None
-this.openvas_portlists = {}
+this.keys = []
 
-
-def _json_serial(obj):
-    """JSON serializer for objects not serializable by default json code."""
-    if isinstance(obj, (datetime, date)):
-        return obj.isoformat()
-    if isinstance(obj, UUID):
-        # if the obj is uuid, we simply return the value of uuid
-        return obj.hex
-    raise TypeError("Type %s not serializable" % type(obj))
+def is_uuid(uuid_string, version=4):
+    """
+    This functionuuid_string returns True is the uuid_string is a valid UUID
+    """
+    try:
+        uid = UUID(uuid_string, version=version)
+        return uid.hex == uuid_string.replace('-', '')
+    except ValueError:
+        return False
 
 def omp_cmd(command):
     """ This function returns the output of an 'omp' command """
@@ -72,17 +70,59 @@ def get_target(target_name):
     result = omp_cmd(["--get-targets"]).split('\n')
     for target in result:
         if target_name in target:
-            return target.split(' ')[0]
+            target_id = target.split(' ')[0]
+            if not is_uuid(target_id):
+                return None
+            return target_id
+    return None
+
+def get_credentials():
+    """
+    This function returns the credentials_id from conf
+    """
+    result_xml = omp_cmd(['--xml', '<get_credentials/>'])
+    try:
+        result = ET.fromstring(result_xml)
+    except:
+        return None
+    if not result.attrib['status'] == '200':
+        return None
+    for credential in result.findall('credential'):
+        if credential.find('name').text == engine.scanner['options']['credential_name']['value']:
+            credentials_id = credential.attrib['id']
+            if not is_uuid(credentials_id):
+                return None
+            return credentials_id
+    return None
+
+def get_scan_config():
+    """
+    This function returns the scan_config_id from conf
+    """
+    result = omp_cmd(['--get-configs']).split('\n')
+    for config in result:
+        if engine.scanner['options']['scan_config_name']['value'] in config:
+            scan_config_id = config.split(' ')[0]
+            if not is_uuid(scan_config_id, version=1):
+                return None
+            return scan_config_id
     return None
 
 def create_target(target_name):
     """
     This function creates a target in OpenVAS and returns its target_id
     """
-    result = omp_cmd(['--xml', '<create_target><name>%s</name><hosts>%s</hosts><ssh_credential id="%s"><port>%s</port></ssh_credential></create_target>' % (target_name, target_name, '1b6f3984-0378-4088-9575-805730d77282', 22)])
-    if not 'status_text="OK, resource created" status="201"' in result:
+    result_xml = omp_cmd(['--xml', '<create_target><name>%s</name><hosts>%s</hosts><ssh_credential id="%s"><port>%s</port></ssh_credential></create_target>' % (target_name, target_name, engine.scanner['credentials'], 22)])
+    try:
+        result = ET.fromstring(result_xml)
+    except:
         return None
-    return result.split('"')[1]
+    if not result.attrib['status'] == '201':
+        return None
+    target_id = result.attrib['id']
+    if not is_uuid(target_id):
+        return None
+    return target_id
 
 def get_task(target_name):
     """
@@ -91,33 +131,41 @@ def get_task(target_name):
     result = omp_cmd(["--get-tasks"]).split('\n')
     for target in result:
         if target_name in target:
-            return target.split(' ')[0]
+            task_id = target.split(' ')[0]
+            if not is_uuid(task_id):
+                return None
+            return task_id
     return None
 
 def create_task(target_name, target_id):
     """
     This function creates a task_id in OpenVAS and returns its task_id
     """
-    result = omp_cmd(["-C", "-c", "698f691e-7489-11df-9d8c-002264764cea", "--name", target_name, "--target", target_id]).split('\n')[0]
-    if re_search('^[a-z0-9-]+$', result) is None:
+    result = omp_cmd(["-C", "-c", engine.scanner['scan_config'], "--name", target_name, "--target", target_id]).split('\n')
+    task_id = result[0]
+    if not is_uuid(task_id):
         return None
-    return result
+    return task_id
 
 def start_task(task_id):
     """
     This function starts a task and returns a report_id
     """
-    result = omp_cmd(["-S", task_id]).split('\n')[0]
-    if re_search('^[a-z0-9-]+$', result) is None:
+    result = omp_cmd(["-S", task_id]).split('\n')
+    report_id = result[0]
+    if not is_uuid(report_id):
         return None
-    return result
+    return report_id
 
 def get_last_report(task_id):
     """
     This function returns the last report_id of a task_id
     """
     result = omp_cmd(["--get-tasks", task_id]).split('\n')
-    return result[-2].split('  ')[1]
+    report_id = result[-2].split('  ')[1]
+    if not is_uuid(report_id):
+        return None
+    return report_id
 
 def get_report_status(task_id, report_id):
     """
@@ -128,6 +176,35 @@ def get_report_status(task_id, report_id):
         if report_id in report:
             return report.split('  ')[2]
     return None
+
+def get_multiple_report_status(assets):
+    """
+    This function get the status of a set of assets {'task_id': xx, 'report_id': xx}
+    """
+    assets_status = dict()
+    result_xml = omp_cmd(["--xml", '<get_tasks/>'])
+    try:
+        result = ET.fromstring(result_xml)
+    except Exception as e:
+        print(e)
+        return None
+    if not result.attrib['status'] == '200':
+        print(result.attrib)
+        return None
+    for asset in assets:
+        task_id = assets[asset]['task_id']
+        report_id = assets[asset]['report_id']
+        report = result.find("task/[@id='%s']/*/report[@id='%s']" % (task_id, report_id))
+        if report is None:
+            print("Can't find task_id=%s, report_id=%s" % (task_id, report_id))
+            assets_status.update({asset: {'status': 'Failure'}})
+        else:
+            scan_end = report.find('scan_end').text
+            if scan_end is None:
+                assets_status.update({asset: {'status': 'Running'}})
+            else:
+                assets_status.update({asset: {'status': 'Done'}})
+    return assets_status
 
 def is_ip(string):
     """ This dummy function returns True is the string is probably an IP """
@@ -207,6 +284,7 @@ def status_scan(scan_id):
     res = {"page": "status", "status": "UNKNOWN"}
     if scan_id not in engine.scans.keys():
         res.update({"status": "error", "reason": "scan_id '{}' not found".format(scan_id)})
+        return jsonify(res)
 
     if engine.scans[scan_id]["status"] == "ERROR":
         res.update({"status": "error", "reason": "todo"})
@@ -214,11 +292,14 @@ def status_scan(scan_id):
 
     report_status = 'Done'
     assets = engine.scans[scan_id]['assets']
+    assets_status = get_multiple_report_status(assets)
+    if assets_status is None:
+        res.update({"status": "error", "reason": "Cannot find any report_status"})
+        return jsonify(res)
+
     for asset in assets:
-        asset_status = get_report_status(assets[asset]['task_id'], assets[asset]['report_id'])
-        assets[asset]['status'] = asset_status
-        if asset_status != 'Done':
-            report_status = asset_status
+        if assets_status[asset]['status'] != 'Done':
+            report_status = assets_status[asset]['status']
 
     engine.scans[scan_id]["scan_status"] = report_status
 
@@ -234,7 +315,7 @@ def status_scan(scan_id):
     else:
         res.update({"status": "SCANNING"})
         for asset in assets:
-            res.update({asset: assets[asset]['status']})
+            res.update({asset: assets_status[asset]['status']})
         engine.scans[scan_id]["status"] = "SCANNING"
 
     return jsonify(res)
@@ -248,16 +329,8 @@ def stop():
 
 @app.route('/engines/openvas/stop/<scan_id>')
 def stop_scan(scan_id):
-    res = {"page": "status", "status": "success"}
     """Stop scan identified by id."""
-    if scan_id not in engine.scans.keys():
-        res.update({"status": "error", "reason": "scan_id '{}' not found".format(scan_id)})
-
-    this.openvas_cli.stop_audit(scan_id)
-    if engine.scans[scan_id]['status'] not in ["FINISHED", "ERROR"]:
-        engine.scans[scan_id]['status'] = "STOPPED"
-
-    return res
+    return engine.stop_scan(scan_id)
 
 
 @app.route('/engines/openvas/getreport/<scan_id>')
@@ -271,66 +344,13 @@ def _loadconfig():
     if os.path.exists(conf_file):
         json_data = open(conf_file)
         engine.scanner = json.load(json_data)
-        engine.scanner['status'] = "INIT"
-
-        # Check omp connectivity
-        if set(["omp_host", "omp_port", "omp_username", "omp_password"]).issubset(engine.scanner['options'].keys()):
-            try:
-                this.openvas_cli = VulnscanManager(
-                    str(engine.scanner['options']['omp_host']['value']),
-                    str(engine.scanner['options']['omp_username']['value']),
-                    str(engine.scanner['options']['omp_password']['value']),
-                    int(engine.scanner['options']['omp_port']['value']))
-            except VulnscanException as e:
-                print("Error: {}".format(e))
-        else:
-            print("Error: missing required options in config file".format(conf_file))
-            engine.scanner['status'] = "ERROR"
-            return {"status": "error", "reason": "missing required options"}
-
-        for pl_name, pl_data in this.openvas_cli.get_port_lists().items():
-            this.openvas_portlists.update({pl_name: pl_data['id']})
-
-        # Create custom port lists
-        if "patrowl-all_tcp" not in this.openvas_portlists.keys():
-            new_pl_id = this.openvas_cli.create_port_list(
-                name="patrowl-all_tcp",
-                port_range="T:1-65535"
-            )
-            this.openvas_portlists.update({"patrowl-all_tcp": new_pl_id})
-
-        if "patrowl-quick_tcp" not in this.openvas_portlists.keys():
-            new_pl_id = this.openvas_cli.create_port_list(
-                name="patrowl-quick_tcp",
-                port_range="T:21-80,T:443,U:53"
-            )
-            this.openvas_portlists.update({"patrowl-quick_tcp": new_pl_id})
-
-        if "patrowl-tcp_80" not in this.openvas_portlists.keys():
-            new_pl_id = this.openvas_cli.create_port_list(
-                name="patrowl-tcp_80",
-                port_range="T:80"
-            )
-            this.openvas_portlists.update({"patrowl-tcp_80": new_pl_id})
-
-        if "patrowl-tcp_443" not in this.openvas_portlists.keys():
-            new_pl_id = this.openvas_cli.create_port_list(
-                name="patrowl-tcp_443",
-                port_range="T:443"
-            )
-            this.openvas_portlists.update({"patrowl-tcp_443": new_pl_id})
-
-        if "patrowl-tcp_22" not in this.openvas_portlists.keys():
-            new_pl_id = this.openvas_cli.create_port_list(
-                name="patrowl-tcp_22",
-                port_range="T:22"
-            )
-            this.openvas_portlists.update({"patrowl-tcp_22": new_pl_id})
 
         engine.scanner['status'] = "READY"
+        engine.scanner['credentials'] = get_credentials()
+        engine.scanner['scan_config'] = get_scan_config()
+
     else:
-        print("Error: config file '{}' not found".format(conf_file))
-        engine.scanner['status'] = "ERROR"
+        print "Error: config file '{}' not found".format(conf_file)
         return {"status": "error", "reason": "config file not found"}
 
 
@@ -403,7 +423,7 @@ def start_scan():
         res.update({
             "status": "refused",
             "details": {
-                "reason": "scan '{}' already launched".format(data['scan_id']),
+                "reason": "scan '{}' is probably already launched".format(data['scan_id']),
             }
         })
         return jsonify(res)
@@ -413,15 +433,10 @@ def start_scan():
         'threads':      [],
         'options':      data['options'],
         'scan_id':      scan_id,
-        'ov_scan_id':   "",
-        'ov_target_id': "",
-        'ov_profile':   ov_profile,
-        'ov_port_list': ov_port_list,
         'status':       "STARTED",
         'lock':         False,
         'started_at':   int(time.time() * 1000),
-        'issues':       [],
-        'summary':      {}
+        'findings':     {}
     }
 
     assets_failure = list()
@@ -461,13 +476,13 @@ def start_scan():
         res.update({
             "status": "refused",
             "details": {
-                "reason": "scan '{}' already launched".format(data['scan_id']),
+                "reason": "scan '{}' is probably already launched".format(data['scan_id']),
             }
         })
         return jsonify(res)
 
     engine.scans.update({scan_id: scan})
-    thread = threading.Thread(target=_scan, args=(scan_id,))
+    thread = threading.Thread(target=_scan_urls, args=(scan_id,))
     thread.start()
     engine.scans[scan_id]['threads'].append(thread)
 
@@ -502,37 +517,25 @@ def _scan_urls(scan_id):
     for asset in engine.scans[scan_id]['assets']:
         assets.append(asset)
 
-    ov_profile = engine.scans[scan_id]["ov_profile"]
-    ov_port_list = engine.scans[scan_id]["ov_port_list"]
-
-    # Start scan
-    Sem = Semaphore(0)
-    ov_scan_id, ov_target_id = this.openvas_cli.launch_scan(
-        target=assets,
-        profile=ov_profile,
-        port_list=ov_port_list,
-        callback_end=partial(lambda x: x.release(), Sem)
-    )
-    engine.scans[scan_id].update({
-        'ov_scan_id':   ov_scan_id,
-        'ov_target_id': ov_target_id,
-        'scan_status':  "SCANNING",
-        'status':  "SCANNING"
-    })
-    Sem.acquire()
-    # Finished scan
+    for asset in assets:
+        if asset not in engine.scans[scan_id]["findings"]:
+            engine.scans[scan_id]["findings"][asset] = {}
+        try:
+            engine.scans[scan_id]["findings"][asset]['issues'] = get_report(asset, scan_id)
+        except Exception as e:
+            print "_scan_urls: API Connexion error (quota?)"
+            print e
+            return False
 
     print("lock off")
     engine.scans[scan_id]["lock"] = False
     return True
 
-    issues, summary = _parse_results(scan_id)
 
 def get_report(asset, scan_id):
     """Get report."""
     report_id = engine.scans[scan_id]["assets"][asset]['report_id']
     issues = []
-    issue_id = 1
 
     if not os.path.isfile('results/openvas_report_%s_%s.xml' % (scan_id, asset)):
         result = omp_cmd(["--get-report", report_id])
@@ -544,9 +547,7 @@ def get_report(asset, scan_id):
         tree = ET.parse("results/openvas_report_%s_%s.xml" % (scan_id, asset))
     except Exception:
         # No Element found in XML file
-        return False
-
-    report = tree.getroot().find("report").find("report")
+        return {"status": "ERROR", "reason": "no issues found"}
 
     if is_ip(asset):
         resolved_asset_ip = asset
@@ -558,13 +559,17 @@ def get_report(asset, scan_id):
             # What is that thing ?
             return issues
 
+    report = tree.getroot().find("report")
     for result in report.find("results").findall("result"):
-        issue_meta = {}
-        issue_name = result.find("name").text
-        issue_desc = result.find("description").text
         host_ip = result.find("host").text
-        assets = all_assets[host_ip]
-        host_port = result.find("port").text
+        severity = result.find("severity").text
+        cve = result.find("nvt").find("cve").text
+        threat = result.find("threat").text
+        if resolved_asset_ip == host_ip:
+            issues.append([severity, cve, threat])
+
+    return issues
+
 
 def _parse_results(scan_id):
     while engine.scans[scan_id]["lock"]:
@@ -621,7 +626,6 @@ def _parse_results(scan_id):
         "nb_low": nb_vulns["low"],
         "nb_medium": nb_vulns["medium"],
         "nb_high": nb_vulns["high"],
-        "nb_critical": 0,
         "engine_name": "openvas",
         "engine_version": engine.scanner["version"]
     }
@@ -633,16 +637,18 @@ def _parse_results(scan_id):
 def getfindings(scan_id):
     res = {"page": "getfindings", "scan_id": scan_id}
 
-    # Check if the scan_id exists
+    # check if the scan_id exists
     if scan_id not in engine.scans.keys():
         res.update({"status": "error", "reason": "scan_id '{}' not found".format(scan_id)})
         return jsonify(res)
 
-    # Check if the scan is finished
+    # check if the scan is finished
     status()
     if engine.scans[scan_id]['status'] != "FINISHED":
         res.update({"status": "error", "reason": "scan_id '{}' not finished (status={})".format(scan_id, engine.scans[scan_id]['status'])})
         return jsonify(res)
+
+    issues, summary = _parse_results(scan_id)
 
     scan = {
         "scan_id": scan_id,
@@ -653,9 +659,6 @@ def getfindings(scan_id):
         "finished_at": engine.scans[scan_id]['finished_at']
     }
 
-    summary = engine.scans[scan_id]['summary']
-    issues = engine.scans[scan_id]['issues']
-
     # Store the findings in a file
     with open(APP_BASE_DIR+"/results/openvas_"+scan_id+".json", 'w') as report_file:
         json.dump({
@@ -664,7 +667,7 @@ def getfindings(scan_id):
             "issues": issues
         }, report_file, default=_json_serial)
 
-    # Remove the scan from the active scan list
+    # remove the scan from the active scan list
     clean_scan(scan_id)
 
     res.update({"scan": scan, "summary": summary, "issues": issues, "status": "success"})

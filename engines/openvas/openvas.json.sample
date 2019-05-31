@@ -7,6 +7,8 @@
      "omp_host":         { "type": "required", "value": "www.openvas.com"},
      "omp_port":         { "type": "optional", "value": "9390"},
      "omp_username":     { "type": "optional", "value": "admin"},
-     "omp_password":     { "type": "optional", "value": "P@ssw0rd"}
+     "omp_password":     { "type": "optional", "value": "P@ssw0rd"},
+     "credential_name":  { "type": "optional", "value": "SSH Scanner"},
+     "scan_config_name": { "type": "optional", "value": "Full and fast"}
   }
 }
