@@ -54,6 +54,20 @@ def is_uuid(uuid_string, version=4):
     except ValueError:
         return False
 
+def get_options(payload):
+    """
+    Extracts formatted options from the payload
+    """
+    options = {'enable_create_target': True, 'enable_create_task': True, 'enable_start_task': True}
+    user_opts = payload['options']
+    if 'enable_create_target' in user_opts:
+        options['enable_create_target'] = user_opts['enable_create_target'] == 'True' or user_opts['enable_create_target'] == 'true'
+    if 'enable_create_task' in user_opts:
+        options['enable_create_task'] = user_opts['enable_create_task'] == 'True' or user_opts['enable_create_task'] == 'true'
+    if 'enable_start_task' in user_opts:
+        options['enable_start_task'] = user_opts['enable_start_task'] == 'True' or user_opts['enable_start_task'] == 'true'
+    return options
+
 def omp_cmd(command):
     """ This function returns the output of an 'omp' command """
     omp_cmd_base = ["omp", "-h", engine.scanner["options"]["omp_host"]["value"], "-p", engine.scanner["options"]["omp_port"]["value"], "-u", engine.scanner["options"]["omp_username"]["value"], "-w", engine.scanner["options"]["omp_password"]["value"]]
@@ -162,7 +176,10 @@ def get_last_report(task_id):
     This function returns the last report_id of a task_id
     """
     result = omp_cmd(["--get-tasks", task_id]).split('\n')
-    report_id = result[-2].split('  ')[1]
+    try:
+        report_id = result[-2].split('  ')[1]
+    except IndexError:
+        return None
     if not is_uuid(report_id):
         return None
     return report_id
@@ -291,6 +308,7 @@ def status_scan(scan_id):
         return jsonify(res)
 
     report_status = 'Done'
+
     assets = engine.scans[scan_id]['assets']
     assets_status = get_multiple_report_status(assets)
     if assets_status is None:
@@ -439,33 +457,50 @@ def start_scan():
         'findings':     {}
     }
 
+    options = get_options(data)
+
+    new_task = False
     assets_failure = list()
     scan["assets"] = dict()
 
     for asset in assets:
-        print('Start %s' % asset)
+        print('== %s ==' % asset)
         target_id = get_target(asset)
-        if target_id is None:
+        if target_id is None and options['enable_create_target']:
             print('Create target %s' % asset)
             target_id = create_target(asset)
         if target_id is None:
-            print('Fail to create target %s' % asset)
+            if options['enable_create_target']:
+                print('Fail to create target %s' % asset)
+            else:
+                print('Target creation disabled')
             assets_failure.append(asset)
         else:
             task_id = get_task(asset)
-            if task_id is None:
+            if task_id is None and options['enable_create_task']:
                 print('Create task %s' % asset)
                 task_id = create_task(asset, target_id)
+                new_task = True
             if task_id is None:
-                print('Fail to create task %s' % asset)
+                if options['enable_create_task']:
+                    print('Fail to create task %s' % asset)
+                else:
+                    print('Task creation disabled')
                 assets_failure.append(asset)
             else:
-                report_id = start_task(task_id) # None to get last report
-                if report_id is None:
-                    print('Get last report of %s' % task_id)
+                if options['enable_start_task'] and (new_task or get_last_report(task_id) is None):
+                    report_id = start_task(task_id)
+                    if report_id is None:
+                        print('Get last report of %s' % task_id)
+                        report_id = get_last_report(task_id)
+                else:
+                    print('Start task disabled, get last report of %s' % task_id)
                     report_id = get_last_report(task_id)
                 if report_id is None:
-                    print('Fail to start task %s' % task_id)
+                    if options['enable_start_task']:
+                        print('Fail to start task %s' % task_id)
+                    else:
+                        print('Task start disabled')
                     assets_failure.append(asset)
                 else:
                     print('OK for report_id %s' % report_id)
@@ -680,7 +715,7 @@ def main():
     if not os.path.exists(APP_BASE_DIR+"/results"):
         os.makedirs(APP_BASE_DIR+"/results")
     _loadconfig()
-
+    print('Run engine')
 
 if __name__ == '__main__':
     engine.run_app(app_debug=APP_DEBUG, app_host=APP_HOST, app_port=APP_PORT)
