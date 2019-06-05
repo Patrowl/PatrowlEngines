@@ -1,23 +1,31 @@
-import json, requests, time, random
+#!/usr/bin/python
+# -*- coding: utf-8 -*-
+"""
+OWL LEAKS Tests
+"""
+
+# Own library imports
 from PatrowlEnginesUtils.PatrowlEngineTest import PatrowlEngineTest
 
+BASE_URL = "http://127.0.0.1:5012/engines/owl_leaks"
+
 # Define the engine instance
-pet = PatrowlEngineTest(engine_name="owl_leaks", base_url="http://127.0.0.1:5012/engines/owl_leaks")
+PET = PatrowlEngineTest(engine_name="owl_leaks", base_url=BASE_URL)
 MAX_TIMEOUT = 300   # in seconds
 
-# generic tests
 def test_generic_features():
-    pet.do_generic_tests()
+    """ generic tests """
+    PET.do_generic_tests()
 
-## custom tests
 def test_owlleaks_patrowl():
-    pet.custom_test(
+    """ custom tests """
+    PET.custom_test(
         test_name="owlleaks_patrowl",
         assets=[{
-            "id" :'1',
-            "value" :'patrowl.io',
-            "criticity": 'low',
-            "datatype": 'keyword'
+            "id" :"1",
+            "value" :"patrowl.io",
+            "criticity": "low",
+            "datatype": "keyword"
         }],
         scan_policy={
             "max_timeout": 3600,
@@ -38,6 +46,6 @@ def test_owlleaks_patrowl():
         is_valid=True
     )
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     test_generic_features()
     test_owlleaks_patrowl()

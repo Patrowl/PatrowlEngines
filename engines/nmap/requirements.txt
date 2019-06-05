@@ -6,3 +6,4 @@ Jinja2>=2.10.1
 MarkupSafe==1.0
 psutil==5.2.2
 Werkzeug==0.14.1
+PatrowlEnginesUtils==0.0.6

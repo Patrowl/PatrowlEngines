@@ -1,27 +1,36 @@
+#!/usr/bin/python
+# -*- coding: utf-8 -*-
+"""
+VIRUSTOTAL Tests
+"""
+
+# Own library imports
 from PatrowlEnginesUtils.PatrowlEngineTest import PatrowlEngineTest
 
+BASE_URL = "http://127.0.0.1:5007/engines/virustotal"
+
 # Define the engine instance
-pet = PatrowlEngineTest(engine_name="virustotal", base_url="http://127.0.0.1:5007/engines/virustotal")
+PET = PatrowlEngineTest(engine_name="virustotal", base_url=BASE_URL)
 MAX_TIMEOUT = 600
 
-# generic tests
 def test_generic_features():
-    pet.do_generic_tests()
+    """ generic tests """
+    PET.do_generic_tests()
 
-## custom tests
 def test_virustotal_scan_domain():
-    pet.custom_test(
+    """ custom tests """
+    PET.custom_test(
         test_name="virustotal_scan_domain",
         assets=[{
-            "id" :'1',
-            "value" :'patrowl.io',
-            "criticity": 'low',
-            "datatype": 'domain'
+            "id" :"1",
+            "value" :"patrowl.io",
+            "criticity": "low",
+            "datatype": "domain"
         }, {
-            "id" :'2',
-            "value" :'greenlock.fr',
-            "criticity": 'medium',
-            "datatype": 'domain'
+            "id" :"2",
+            "value" :"greenlock.fr",
+            "criticity": "medium",
+            "datatype": "domain"
         }],
         scan_policy={
             "max_timeout": MAX_TIMEOUT,
@@ -33,18 +42,19 @@ def test_virustotal_scan_domain():
     )
 
 def test_virustotal_scan_ip():
-    pet.custom_test(
+    """ custom tests """
+    PET.custom_test(
         test_name="virustotal_scan_ip",
         assets=[{
-            "id" :'1',
-            "value" :'8.8.8.8',
-            "criticity": 'low',
-            "datatype": 'ip'
+            "id" :"1",
+            "value" :"8.8.8.8",
+            "criticity": "low",
+            "datatype": "ip"
         }, {
-            "id" :'2',
-            "value" :'213.32.66.58',
-            "criticity": 'medium',
-            "datatype": 'ip'
+            "id" :"2",
+            "value" :"213.32.66.58",
+            "criticity": "medium",
+            "datatype": "ip"
         }],
         scan_policy={
             "max_timeout": MAX_TIMEOUT,
@@ -56,18 +66,19 @@ def test_virustotal_scan_ip():
     )
 
 def test_virustotal_scan_url():
-    pet.custom_test(
+    """ custom tests """
+    PET.custom_test(
         test_name="virustotal_scan_url",
         assets=[{
-            "id" :'1',
-            "value" :'https://patrowl.io/',
-            "criticity": 'low',
-            "datatype": 'url'
+            "id" :"1",
+            "value" :"https://patrowl.io/",
+            "criticity": "low",
+            "datatype": "url"
         }, {
-            "id" :'2',
-            "value" :'https://google.com',
-            "criticity": 'medium',
-            "datatype": 'url'
+            "id" :"2",
+            "value" :"https://google.com",
+            "criticity": "medium",
+            "datatype": "url"
         }],
         scan_policy={
             "max_timeout": MAX_TIMEOUT,
@@ -79,7 +90,7 @@ def test_virustotal_scan_url():
     )
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     test_generic_features()
     test_virustotal_scan_domain()
     test_virustotal_scan_ip()

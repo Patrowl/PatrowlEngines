@@ -1,31 +1,41 @@
-import sys, os
-import json, requests, time, random
+#!/usr/bin/python
+# -*- coding: utf-8 -*-
+"""
+OWL DNS Tests
+"""
 
-sys.path.append( os.path.dirname( os.path.dirname( os.path.abspath(__file__) ) ) )
+# Standard library imports
+from sys import path
+from os.path import abspath, dirname
+
+# Own library imports
+path.append(dirname(dirname(abspath(__file__))))
 from utils.PatrowlEngineTest import PatrowlEngineTest
 
+BASE_URL = "http://127.0.0.1:5006/engines/owl_dns"
+
 # Define the engine instance
-pet = PatrowlEngineTest(engine_name="nmap", base_url="http://127.0.0.1:5006/engines/owl_dns")
+PET = PatrowlEngineTest(engine_name="nmap", base_url=BASE_URL)
 MAX_TIMEOUT = 300   # in seconds
 
-# generic tests
 def test_generic_features():
-    pet.do_generic_tests()
+    """ generic tests """
+    PET.do_generic_tests()
 
-## custom tests
 def test_owldns_subdomain_enum():
-    pet.custom_test(
+    """ custom tests """
+    PET.custom_test(
         test_name="owldns_subdomain_enum",
         assets=[{
-            "id" :'1',
-            "value" :'patrowl.io',
-            "criticity": 'low',
-            "datatype": 'domain'
+            "id" :"1",
+            "value" :"patrowl.io",
+            "criticity": "low",
+            "datatype": "domain"
         }, {
-            "id" :'2',
-            "value" :'uber.com',
-            "criticity": 'medium',
-            "datatype": 'ip'
+            "id" :"2",
+            "value" :"uber.com",
+            "criticity": "medium",
+            "datatype": "ip"
         }],
         scan_policy={
             "max_timeout": MAX_TIMEOUT,
@@ -40,6 +50,6 @@ def test_owldns_subdomain_enum():
         is_valid=True
     )
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     test_generic_features()
     test_owldns_subdomain_enum()

@@ -6,25 +6,22 @@ python:
 - '2.7'
 # - '3.6'
 env:
-- PATROWL_ENGINE="arachni" ENGINE_PORT=5005
-- PATROWL_ENGINE="cortex" ENGINE_PORT=5009
-#- PATROWL_ENGINE="nessus" ENGINE_PORT=5002
-- PATROWL_ENGINE="nmap" ENGINE_PORT=5001
-- PATROWL_ENGINE="owl_code" ENGINE_PORT=5013
-- PATROWL_ENGINE="owl_leaks" ENGINE_PORT=5012
-- PATROWL_ENGINE="owl_dns" ENGINE_PORT=5006
-- PATROWL_ENGINE="ssllabs" ENGINE_PORT=5004
-- PATROWL_ENGINE="urlvoid" ENGINE_PORT=5008
-- PATROWL_ENGINE="virustotal" ENGINE_PORT=5007
-- PATROWL_ENGINE="sslscan" ENGINE_PORT=5014
+- PATROWL_ENGINE=nmap ENGINE_PORT=5001
+# - PATROWL_ENGINE=nessus ENGINE_PORT=5002
+# - PATROWL_ENGINE=burp ENGINE_PORT=5003
+- PATROWL_ENGINE=ssllabs ENGINE_PORT=5004
+- PATROWL_ENGINE=arachni ENGINE_PORT=5005
+- PATROWL_ENGINE=owl_dns ENGINE_PORT=5006
+- PATROWL_ENGINE=virustotal ENGINE_PORT=5007
+- PATROWL_ENGINE=urlvoid ENGINE_PORT=5008
+# - PATROWL_ENGINE=cortex ENGINE_PORT=5009
+# - PATROWL_ENGINE=censys ENGINE_PORT=5010
+- PATROWL_ENGINE=owl_leaks ENGINE_PORT=5012
+- PATROWL_ENGINE=owl_code ENGINE_PORT=5013
+# - PATROWL_ENGINE=sslscan ENGINE_PORT=5014
+# - PATROWL_ENGINE=openvas ENGINE_PORT=5016
 before_install:
 - cd engines
-- openssl aes-256-cbc -K $encrypted_18b0e45d2454_key -iv $encrypted_18b0e45d2454_iv -in travis-config.tar.enc -out travis-config.tar -d
-- tar xf travis-config.tar
-- cp virustotal/virustotal.json virustotal/virustotal.json.sample
-- cp urlvoid/urlvoid.json urlvoid/urlvoid.json.sample
-- if [ -L $PATROWL_ENGINE/utils ]; then unlink $PATROWL_ENGINE/utils; fi
-- cp -Rf utils/ $PATROWL_ENGINE/utils/
 install:
 - pip install -r $PATROWL_ENGINE/requirements.txt
 - pip install requests
@@ -32,7 +29,7 @@ script:
 - gunicorn engine-$PATROWL_ENGINE:app -b 0.0.0.0:1$ENGINE_PORT --chdir $PATROWL_ENGINE > /dev/null &
 - docker --version
 - docker build --tag patrowl-$PATROWL_ENGINE $PATROWL_ENGINE
-- if [ $PATROWL_ENGINE = "cortex" ]; then docker-compose -f cortex/tests/patrowl-tests-cortex_docker_compose.yml up -d; sleep 60; fi
+# - if [ $PATROWL_ENGINE = "cortex" ]; then docker-compose -f cortex/tests/patrowl-tests-cortex_docker_compose.yml up -d; sleep 60; fi
 - docker run -d --rm -p $ENGINE_PORT:$ENGINE_PORT patrowl-$PATROWL_ENGINE
 - docker ps -a
 - pytest -s $PATROWL_ENGINE/tests/test_*.py
