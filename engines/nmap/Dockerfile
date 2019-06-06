@@ -21,9 +21,9 @@ COPY libs/ libs/
 RUN apk add --update \
     linux-headers \
     sudo \
-    python \
-    python-dev \
-    py-pip \
+    python3 \
+    python3-dev \
+    py3-pip \
     build-base \
     nmap \
     nmap-scripts \
@@ -32,8 +32,8 @@ RUN apk add --update \
 
 # nmap must be started with root
 RUN echo "%wheel ALL=(ALL) NOPASSWD: ALL" >> /etc/sudoers
-RUN pip install --upgrade pip
-RUN pip install --trusted-host pypi.python.org -r requirements.txt
+RUN pip3 install --upgrade pip
+RUN pip3 install --trusted-host pypi.python.org -r requirements.txt
 
 # TCP port exposed by the container (NAT)
 EXPOSE 5001

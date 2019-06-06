@@ -1,15 +1,12 @@
-#!/usr/bin/python
+#!/usr/bin/python3
 # -*- coding: utf-8 -*-
 """Owl_Code PatrOwl engine application."""
 
 import os
+import sys
 import signal
 import threading
 from flask import Flask, request, jsonify
-from PatrowlEnginesUtils.PatrowlEngine import PatrowlEngine
-from PatrowlEnginesUtils.PatrowlEngine import PatrowlEngineFinding
-from PatrowlEnginesUtils.PatrowlEngineExceptions import PatrowlEngineExceptions
-
 import hashlib
 import time
 import subprocess
@@ -17,6 +14,13 @@ import json
 import shutil
 import git
 import svn.remote
+
+# Temporary
+sys.path.append("../utils")
+from PatrowlEnginesUtils.PatrowlEngine import PatrowlEngine
+from PatrowlEnginesUtils.PatrowlEngine import PatrowlEngineFinding
+from PatrowlEnginesUtils.PatrowlEngineExceptions import PatrowlEngineExceptions
+
 
 APP_DEBUG = False
 APP_HOST = "0.0.0.0"

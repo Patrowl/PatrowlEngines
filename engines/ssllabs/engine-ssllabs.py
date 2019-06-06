@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/python3
 # -*- coding: utf-8 -*-
 import os
 import sys
@@ -10,8 +10,11 @@ import time
 import hashlib
 import copy
 import logging
-from urlparse import urlparse
+from urllib.parse import urlparse
 from flask import Flask, request, jsonify
+
+# Temporary
+sys.path.append("../utils")
 from PatrowlEnginesUtils.PatrowlEngine import _json_serial
 from PatrowlEnginesUtils.PatrowlEngine import PatrowlEngine
 from PatrowlEnginesUtils.PatrowlEngineExceptions import PatrowlEngineExceptions

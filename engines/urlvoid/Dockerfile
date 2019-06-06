@@ -16,14 +16,17 @@ COPY urlvoid.json.sample urlvoid.json
 COPY requirements.txt .
 COPY README.md .
 
+# Temporary
+COPY utils ../utils
+
 # Install any needed packages specified in requirements.txt
 RUN apk add --update \
-    python \
-    python-dev \
-    py-pip \
+    python3 \
+    python3-dev \
+    py3-pip \
   && rm -rf /var/cache/apk/*
-RUN pip install --upgrade pip
-RUN pip install --trusted-host pypi.python.org -r requirements.txt
+RUN pip3 install --upgrade pip
+RUN pip3 install --trusted-host pypi.python.org -r requirements.txt
 
 # TCP port exposed by the container (NAT)
 EXPOSE 5008

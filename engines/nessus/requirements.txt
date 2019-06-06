@@ -8,6 +8,6 @@ itsdangerous==0.24
 Jinja2>=2.10.1
 MarkupSafe==1.0
 nessrest==0.40
-requests==2.20.0
-urllib3>=1.23
+requests==2.22.0
+urllib3>=1.25
 Werkzeug==0.14.1

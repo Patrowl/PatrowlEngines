@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/python3
 # -*- coding: utf-8 -*-
 import os, sys, json, time, urllib, hashlib, threading, datetime, copy, dns.resolver, socket, optparse
 from flask import Flask, request, jsonify, redirect, url_for, send_from_directory
@@ -38,7 +38,7 @@ def _loadconfig():
         globals()['pythonwhois'] = __import__('pythonwhois')
 
     else:
-        print "Error: config file '{}' not found".format(conf_file)
+        print("Error: config file '{}' not found".format(conf_file))
         return { "status": "error", "reason": "config file not found" }
 
 
@@ -498,7 +498,7 @@ def _parse_results(scan_id):
                     record['record_type'], ", ".join(record['values']))
                 dns_resolve_str = "".join((dns_resolve_str, entry+"\n"))
 
-            dns_resolve_hash = hashlib.sha1(dns_resolve_str).hexdigest()[:6]
+            dns_resolve_hash = hashlib.sha1(dns_resolve_str.encode("utf-8")).hexdigest()[:6]
 
             nb_vulns['info'] += 1
             issues.append({
@@ -530,7 +530,7 @@ def _parse_results(scan_id):
                         record['record_type'], ", ".join(record['values']))
                     subdom_resolve_str = "".join((subdom_resolve_str, entry+"\n"))
 
-                subdom_resolve_hash = hashlib.sha1(subdom_resolve_str).hexdigest()[:6]
+                subdom_resolve_hash = hashlib.sha1(subdom_resolve_str.encode("utf-8")).hexdigest()[:6]
 
                 nb_vulns['info'] += 1
                 issues.append({
@@ -594,7 +594,7 @@ def _parse_results(scan_id):
                 subdomains_str = "".join((subdomains_str, s+"\n"))
                 # subdomains_str = "".join((subdomains_str, s+"\n"))
 
-            subdomains_hash = hashlib.sha1(subdomains_str).hexdigest()[:6]
+            subdomains_hash = hashlib.sha1(subdomains_str.encode("utf-8")).hexdigest()[:6]
             if len(scan['findings']['subdomains_list'][asset]) == 0:
                 scan['findings']['subdomains_list'][asset] = []
 
@@ -643,7 +643,7 @@ def _parse_results(scan_id):
                     "timestamp": ts
                 })
             else:
-                whois_hash = hashlib.sha1(str(scan['findings']['whois'])).hexdigest()[:6]
+                whois_hash = hashlib.sha1(scan['findings']['whois'].encode("utf-8")).hexdigest()[:6]
                 issues.append({
                     "issue_id": len(issues)+1,
                     "severity": "info", "confidence": "certain",
@@ -766,7 +766,7 @@ def _parse_results(scan_id):
                     "type": "whois_contacts",
                     "title": "[Whois] '{}' domain contacts (HASH: {})".format(
                         asset,
-                        hashlib.sha1(str(scan['findings']['whois'][asset]['contacts'])).hexdigest()[:6]),
+                        hashlib.sha1(scan['findings']['whois'][asset]['contacts'].encode("utf-8")).hexdigest()[:6]),
                     "description": "[Whois] '{}' domain contacts: \n\n{}".format(
                         asset, scan['findings']['whois'][asset]['contacts']),
                     "raw": scan['findings']['whois'][asset]['contacts']

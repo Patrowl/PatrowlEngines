@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/python3
 # -*- coding: utf-8 -*-
 import os, urllib, time, datetime, optparse, json
 from flask import jsonify, url_for, redirect, send_from_directory
@@ -102,7 +102,7 @@ class PatrowlEngine:
 
     def had_options(self, options):
         opts = []
-        if isinstance(options, basestring): # is a string
+        if isinstance(options, str): # is a string
             opts.append(options)
         elif isinstance(options, list):
             opts = options
@@ -413,7 +413,7 @@ class PatrowlEngineScan:
 
     def had_options(self, options):
         opts = []
-        if isinstance(options, basestring): # is a string
+        if isinstance(options, str): # is a string
             opts.append(options)
         elif isinstance(options, list):
             opts = options

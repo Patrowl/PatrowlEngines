@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/python3
 # -*- coding: utf-8 -*-
 """VirusTotal PatrOwl engine application."""
 
@@ -12,6 +12,9 @@ import socket
 import operator
 import random
 from flask import Flask, request, jsonify
+
+# Temporary
+sys.path.append("../utils")
 from PatrowlEnginesUtils.PatrowlEngine import _json_serial
 from PatrowlEnginesUtils.PatrowlEngine import PatrowlEngine
 from PatrowlEnginesUtils.PatrowlEngineExceptions import PatrowlEngineExceptions
@@ -194,40 +197,40 @@ def start_scan():
         }})
         return jsonify(res)
 
-	# Sanitize args :
+    # Sanitize args :
     scan_id = str(data['scan_id'])
     scan = {
         'assets':       data['assets'],
         'threads':      [],
-		'options':      data['options'],
-		'scan_id':      scan_id,
+        'options':      data['options'],
+        'scan_id':      scan_id,
         'status':       "STARTED",
         'started_at':   int(time.time() * 1000),
         'findings':     {}
-	}
+    }
 
     engine.scans.update({scan_id: scan})
 
     if 'do_scan_ip' in scan['options'].keys() and data['options']['do_scan_ip']:
-		th = threading.Thread(target=_scan_ip, args=(scan_id,))
-		th.start()
-		engine.scans[scan_id]['threads'].append(th)
+        th = threading.Thread(target=_scan_ip, args=(scan_id,))
+        th.start()
+        engine.scans[scan_id]['threads'].append(th)
 
     if 'do_scan_domain' in scan['options'].keys() and data['options']['do_scan_domain']:
-		th = threading.Thread(target=_scan_domain, args=(scan_id,))
-		th.start()
-		engine.scans[scan_id]['threads'].append(th)
+        th = threading.Thread(target=_scan_domain, args=(scan_id,))
+        th.start()
+        engine.scans[scan_id]['threads'].append(th)
 
     if 'do_scan_url' in scan['options'].keys() and data['options']['do_scan_url']:
-		th = threading.Thread(target=_scan_url, args=(scan_id,))
-		th.start()
-		engine.scans[scan_id]['threads'].append(th)
+        th = threading.Thread(target=_scan_url, args=(scan_id,))
+        th.start()
+        engine.scans[scan_id]['threads'].append(th)
 
     res.update({
-		"status": "accepted",
-		"details": {
-			"scan_id": scan_id
-	}})
+        "status": "accepted",
+        "details": {
+            "scan_id": scan_id
+    }})
 
     return jsonify(res)
 
@@ -981,7 +984,7 @@ def _parse_results(scan_id):
 
 @app.route('/engines/virustotal/getfindings/<scan_id>')
 def getfindings(scan_id):
-    res = {	"page": "getfindings", "scan_id": scan_id}
+    res = {    "page": "getfindings", "scan_id": scan_id}
 
     # check if the scan_id exists
     if scan_id not in engine.scans.keys():

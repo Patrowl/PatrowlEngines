@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/python3
 # -*- coding: utf-8 -*-
 """URLVoid PatrOwl engine application."""
 
@@ -9,9 +9,12 @@ import time
 import threading
 import random
 import requests
-import urlparse
+from urllib.parse import urlparse
 import xml.etree.ElementTree as ElementTree
 from flask import Flask, request, jsonify
+
+# Temporary
+sys.path.append("../utils")
 from PatrowlEnginesUtils.PatrowlEngine import _json_serial
 from PatrowlEnginesUtils.PatrowlEngine import PatrowlEngine
 from PatrowlEnginesUtils.PatrowlEngine import PatrowlEngineFinding
@@ -189,22 +192,22 @@ def start_scan():
     for asset in data["assets"]:
         # Value
         if "value" not in asset.keys() or not asset["value"]:
-			res.update({
-    			"status": "error",
-    			"reason": "arg error, something is missing ('asset.value')"
-    		})
-			return jsonify(res)
+            res.update({
+                "status": "error",
+                "reason": "arg error, something is missing ('asset.value')"
+            })
+            return jsonify(res)
 
         # Supported datatypes
         if asset["datatype"] not in engine.scanner["allowed_asset_types"]:
             res.update({
-    			"status": "error",
-    			"reason": "arg error, bad value for '{}' datatype (not supported)".format(asset["value"])
-    		})
+                "status": "error",
+                "reason": "arg error, bad value for '{}' datatype (not supported)".format(asset["value"])
+            })
             return jsonify(res)
 
         if asset["datatype"] == "url":
-            parsed_uri = urlparse.urlparse(asset["value"])
+            parsed_uri = urlparse(asset["value"])
             asset["value"] = parsed_uri.netloc
 
         assets.append(asset["value"])
@@ -257,7 +260,7 @@ def _scan_urls(scan_id):
         try:
             engine.scans[scan_id]["findings"][asset]['issues'] = get_report(asset, this.keys[random.randint(0, len(this.keys)-1)])
         except Exception:
-            print "_scan_urls: API Connexion error (quota?)"
+            print("_scan_urls: API Connexion error (quota?)")
             return False
 
     return True

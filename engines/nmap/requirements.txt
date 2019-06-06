@@ -4,6 +4,7 @@ gunicorn==19.9.0
 itsdangerous==0.24
 Jinja2>=2.10.1
 MarkupSafe==1.0
+PatrowlEnginesUtils==0.0.4
 psutil==5.2.2
+urllib3>=1.25
 Werkzeug==0.14.1
-PatrowlEnginesUtils==0.0.6

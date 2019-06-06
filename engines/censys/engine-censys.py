@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/python3
 # -*- coding: utf-8 -*-
 import censys.certificates
 import time, OpenSSL, json, os, sys, requests, Queue, threading, ssl, socket, hashlib, urlparse, signal, optparse

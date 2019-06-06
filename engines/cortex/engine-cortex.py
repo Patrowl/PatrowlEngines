@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/python3
 # -*- coding: utf-8 -*-
 import os, sys, json, time, datetime, threading, random, requests, urlparse, hashlib, optparse
 import xml.etree.ElementTree as ElementTree

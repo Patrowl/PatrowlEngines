@@ -5,7 +5,7 @@ DNS REST API engine
 - Python 2.7 + pip
 - [python-whois](https://github.com/joepie91/python-whois) (do not forget to update `owl_dns.json` with installation path)
 - [Sublist3r](https://github.com/aboul3la/Sublist3r)
-- See requirements.txt for others python packages (use "pip install -r requirements.txt")
+- See requirements.txt for others python packages (use "pip3 install -r requirements.txt")
 
 
 ## Todolist

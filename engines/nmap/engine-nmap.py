@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/python3
 # -*- coding: utf-8 -*-
 import os
 import subprocess
@@ -11,7 +11,7 @@ import urllib
 import time
 import hashlib
 import datetime
-from urlparse import urlparse
+from urllib.parse import urlparse
 from copy import deepcopy
 from flask import Flask, request, jsonify, redirect, url_for, send_file
 import xml.etree.ElementTree as ET

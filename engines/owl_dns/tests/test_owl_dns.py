@@ -1,16 +1,11 @@
-#!/usr/bin/python
+#!/usr/bin/python3
 # -*- coding: utf-8 -*-
 """
 OWL DNS Tests
 """
 
-# Standard library imports
-from sys import path
-from os.path import abspath, dirname
-
 # Own library imports
-path.append(dirname(dirname(abspath(__file__))))
-from utils.PatrowlEngineTest import PatrowlEngineTest
+from PatrowlEnginesUtils.PatrowlEngineTest import PatrowlEngineTest
 
 BASE_URL = "http://127.0.0.1:5006/engines/owl_dns"
 

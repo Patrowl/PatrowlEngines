@@ -6,7 +6,7 @@ LABEL Name="Patrowl\ Code\ Security\ review\ \(Patrowl engine\)" Version="1.0.0"
 RUN apk add --update --no-cache \
     wget unzip openjdk8-jre \
     git subversion \
-    python python-dev py-pip \
+    python3 python3-dev py3-pip \
     nodejs nodejs-npm \
   && rm -rf /var/cache/apk/* \
   && rm -rf /tmp/*
@@ -47,12 +47,15 @@ COPY engine-owl_code.py .
 COPY requirements.txt .
 COPY owl_code.json.sample owl_code.json
 
+# Temporary
+COPY utils ../utils
+
 # Install python modules
-RUN pip install --upgrade pip
-RUN pip install --trusted-host pypi.python.org -r requirements.txt
+RUN pip3 install --upgrade pip
+RUN pip3 install --trusted-host pypi.python.org -r requirements.txt
 
 # TCP port exposed by the container (NAT)
 EXPOSE 5013
 
 # Run app.py when the container launches
-CMD ["python", "engine-owl_code.py", "--port=5013", "--host=0.0.0.0"]
+CMD ["python3", "engine-owl_code.py", "--port=5013", "--host=0.0.0.0"]

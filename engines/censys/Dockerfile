@@ -25,11 +25,11 @@ RUN apk add --update \
     openssl-dev \
     python \
     python-dev \
-    py-pip \
+    py3-pip \
   && rm -rf /var/cache/apk/*
-RUN pip install --upgrade pip
+RUN pip3 install --upgrade pip
 
-RUN pip install --trusted-host pypi.python.org -r requirements.txt
+RUN pip3 install --trusted-host pypi.python.org -r requirements.txt
 
 # TCP port exposed by the container (NAT)
 EXPOSE 5110

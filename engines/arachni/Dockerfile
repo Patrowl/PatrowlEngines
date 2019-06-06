@@ -25,7 +25,7 @@ COPY README.md .
 
 WORKDIR /opt/patrowl-engines/arachni/libs
 
-RUN apt-get -qq update && apt-get install -yq wget ruby bash python python-pip bsdtar make gcc && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
+RUN apt-get -qq update && apt-get install -yq wget ruby bash python3 python3-pip bsdtar make gcc && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 RUN ln -sf $(which bsdtar) $(which tar)
 RUN wget $DL_ARACHNI_LINK -nv
 RUN tar xzf $TGZ_ARACHNI && \
@@ -35,8 +35,8 @@ useradd -m -s /bin/sh user && \
 echo "Success"
 
 ENV PATH /opt/patrowl-engines/arachni/libs/arachni/bin:$PATH
-RUN pip install --upgrade pip setuptools
-RUN pip install -r /opt/patrowl-engines/arachni/requirements.txt
+RUN pip3 install --upgrade pip setuptools
+RUN pip3 install -r /opt/patrowl-engines/arachni/requirements.txt
 
 WORKDIR /opt/patrowl-engines/arachni/
 

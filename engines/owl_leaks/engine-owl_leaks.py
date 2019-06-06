@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/python3
 # -*- coding: utf-8 -*-
 """Owl_Leaks PatrOwl engine application.
 
@@ -8,14 +8,18 @@ Known ratio:
 """
 
 import os
+import sys
 import threading
 from flask import Flask, request, jsonify
-from PatrowlEnginesUtils.PatrowlEngine import PatrowlEngine
-from PatrowlEnginesUtils.PatrowlEngine import PatrowlEngineFinding
-from PatrowlEnginesUtils.PatrowlEngineExceptions import PatrowlEngineExceptions
 from github import Github
 from twitter import Twitter, OAuth
 import hashlib
+
+# Temporary
+sys.path.append("../utils")
+from PatrowlEngine import PatrowlEngine
+from PatrowlEngine import PatrowlEngineFinding
+from PatrowlEngineExceptions import PatrowlEngineExceptions
 
 APP_DEBUG = False
 APP_HOST = "0.0.0.0"
@@ -327,7 +331,7 @@ def _search_twitter_thread(scan_id, asset_kw):
             max_count = engine.scans[scan_id]["options"]["search_twitter_options"]["max_count"]
         if "extra_kw" in engine.scans[scan_id]["options"]["search_twitter_options"].keys() and engine.scans[scan_id]["options"]["search_twitter_options"]["extra_kw"] is not None and isinstance(engine.scans[scan_id]["options"]["search_twitter_options"]["extra_kw"], list):
             extra_kw = " OR ".join(engine.scans[scan_id]["options"]["search_twitter_options"]["extra_kw"])
-        if "since" in engine.scans[scan_id]["options"]["search_twitter_options"].keys() and engine.scans[scan_id]["options"]["search_twitter_options"]["since"] is not None and isinstance(engine.scans[scan_id]["options"]["search_twitter_options"]["since"], basestring):
+        if "since" in engine.scans[scan_id]["options"]["search_twitter_options"].keys() and engine.scans[scan_id]["options"]["search_twitter_options"]["since"] is not None and isinstance(engine.scans[scan_id]["options"]["search_twitter_options"]["since"], str):
             since = "since:{}".format(engine.scans[scan_id]["options"]["search_twitter_options"]["since"])
 
     # WARNING a query should not exceed 500 chars, including filters and operators

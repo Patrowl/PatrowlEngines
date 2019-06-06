@@ -4,14 +4,14 @@ Nessus engine (online service)
 ## Dependancies
 - Python 2.7 + pip
 - Nessus instance
-- See requirements.txt for others python packages (use "pip install -r requirements.txt")
+- See requirements.txt for others python packages (use "pip3 install -r requirements.txt")
 
 # Install notes
 - Install python packages on system (use virtualenv)
 	* cd patrowl/engines/nessus
 	* virtualenv env
 	* source env/bin/activate
-	* pip install -r requirements.txt
+	* pip3 install -r requirements.txt
 - Create a configuration file (see nessus.json.sample) named 'nessus.json', and customize the following options:
   * "server_host": "NESSUS_IP",
 	* "server_port": "8834",

@@ -1,17 +1,14 @@
-#!/usr/bin/python
+#!/usr/bin/python3
 # -*- coding: utf-8 -*-
 """
 ARACHNI Tests
 """
 
 # Standard library imports
-from sys import path
-from os.path import abspath, dirname
 from time import sleep
 
 # Own library imports
-path.append(dirname(dirname(abspath(__file__))))
-from utils.PatrowlEngineTest import PatrowlEngineTest
+from PatrowlEnginesUtils.PatrowlEngineTest import PatrowlEngineTest
 
 BASE_URL = "http://127.0.0.1:5005/engines/arachni"
 
