@@ -1,15 +1,18 @@
-#!/usr/bin/python
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """OpenVAS PatrOwl engine application."""
 
-import os
-import sys
-import json
+from __future__ import absolute_import
+
+from os import makedirs
+from os.path import dirname, exists, isfile, realpath
+from sys import modules
+from json import dump, load, loads
 from re import search as re_search
 from subprocess import check_output
-import threading
-import time
-import urlparse
+from threading import Thread
+from time import time, sleep
+from urllib.parse import urlparse
 from uuid import UUID
 import xml.etree.ElementTree as ET
 
@@ -18,6 +21,9 @@ from flask import Flask, request, jsonify
 from dns.resolver import query
 
 # Own library
+## Temporary
+import sys
+sys.path.append("../utils")
 from PatrowlEnginesUtils.PatrowlEngine import _json_serial
 from PatrowlEnginesUtils.PatrowlEngine import PatrowlEngine
 from PatrowlEnginesUtils.PatrowlEngine import PatrowlEngineFinding
@@ -32,7 +38,7 @@ APP_HOST = "0.0.0.0"
 APP_PORT = 5016
 APP_MAXSCANS = 5
 APP_ENGINE_NAME = "openvas"
-APP_BASE_DIR = os.path.dirname(os.path.realpath(__file__))
+APP_BASE_DIR = dirname(realpath(__file__))
 
 engine = PatrowlEngine(
     app=app,
@@ -41,7 +47,7 @@ engine = PatrowlEngine(
     max_scans=APP_MAXSCANS
 )
 
-this = sys.modules[__name__]
+this = modules[__name__]
 this.keys = []
 
 def is_uuid(uuid_string, version=4):
@@ -76,7 +82,7 @@ def omp_cmd(command):
                     "-u", engine.scanner["options"]["omp_username"]["value"],
                     "-w", engine.scanner["options"]["omp_password"]["value"]]
     try:
-        result = check_output(omp_cmd_base + command)
+        result = check_output(omp_cmd_base + command).decode("utf-8")
     except Exception as e:
         result = ""
     return result
@@ -211,10 +217,10 @@ def get_multiple_report_status(assets):
     try:
         result = ET.fromstring(result_xml)
     except Exception as e:
-        print(e)
+        # print(e)
         return None
     if not result.attrib["status"] == "200":
-        print(result.attrib)
+        # print(result.attrib)
         return None
     for asset in assets:
         task_id = assets[asset]["task_id"]
@@ -222,8 +228,8 @@ def get_multiple_report_status(assets):
         report = result.find("task/[@id='{task_id}']/*/report[@id='{report_id}']".format(
             task_id=task_id, report_id=report_id))
         if report is None:
-            print("Can't find task_id={task_id}, report_id={report_id}".format(
-                task_id=task_id, report_id=report_id))
+            # print("Can't find task_id={task_id}, report_id={report_id}".format(
+            #     task_id=task_id, report_id=report_id))
             assets_status.update({asset: {"status": "Failure"}})
         else:
             scan_end = report.find("scan_end").text
@@ -369,16 +375,16 @@ def getreport(scan_id):
 
 def _loadconfig():
     conf_file = APP_BASE_DIR+"/openvas.json"
-    if os.path.exists(conf_file):
+    if exists(conf_file):
         json_data = open(conf_file)
-        engine.scanner = json.load(json_data)
+        engine.scanner = load(json_data)
 
         engine.scanner["status"] = "READY"
         engine.scanner["credentials"] = get_credentials()
         engine.scanner["scan_config"] = get_scan_config()
 
     else:
-        print "Error: config file '{}' not found".format(conf_file)
+        # print("Error: config file '{}' not found".format(conf_file))
         return {"status": "error", "reason": "config file not found"}
 
 
@@ -412,7 +418,7 @@ def start_scan():
             }})
         return jsonify(res)
 
-    data = json.loads(request.data)
+    data = loads(request.data.decode("utf-8"))
     if "assets" not in data.keys() or "scan_id" not in data.keys():
         res.update({
             "status": "refused",
@@ -440,7 +446,7 @@ def start_scan():
             return jsonify(res)
 
         if asset["datatype"] == "url":
-            parsed_uri = urlparse.urlparse(asset["value"])
+            parsed_uri = urlparse(asset["value"])
             asset["value"] = parsed_uri.netloc
 
         assets.append(asset["value"])
@@ -463,7 +469,7 @@ def start_scan():
         "scan_id":      scan_id,
         "status":       "STARTED",
         "lock":         False,
-        "started_at":   int(time.time() * 1000),
+        "started_at":   int(time() * 1000),
         "findings":     {}
     }
 
@@ -474,46 +480,46 @@ def start_scan():
     scan["assets"] = dict()
 
     for asset in assets:
-        print("== {} ==".format(asset))
+        # print("== {} ==".format(asset))
         target_id = get_target(asset)
         if target_id is None and options["enable_create_target"]:
-            print("Create target {}".format(asset))
+            # print("Create target {}".format(asset))
             target_id = create_target(asset)
         if target_id is None:
-            if options["enable_create_target"]:
-                print("Fail to create target {}".format(asset))
-            else:
-                print("Target creation disabled")
+            # if options["enable_create_target"]:
+            #     print("Fail to create target {}".format(asset))
+            # else:
+            #     print("Target creation disabled")
             assets_failure.append(asset)
         else:
             task_id = get_task(asset)
             if task_id is None and options["enable_create_task"]:
-                print("Create task {}".format(asset))
+                # print("Create task {}".format(asset))
                 task_id = create_task(asset, target_id)
                 new_task = True
             if task_id is None:
-                if options["enable_create_task"]:
-                    print("Fail to create task {}".format(asset))
-                else:
-                    print("Task creation disabled")
+                # if options["enable_create_task"]:
+                #     print("Fail to create task {}".format(asset))
+                # else:
+                #     print("Task creation disabled")
                 assets_failure.append(asset)
             else:
                 if options["enable_start_task"] and (new_task or get_last_report(task_id) is None):
                     report_id = start_task(task_id)
                     if report_id is None:
-                        print("Get last report of {}".format(task_id))
+                        # print("Get last report of {}".format(task_id))
                         report_id = get_last_report(task_id)
                 else:
-                    print("Start task disabled, get last report of {}".format(task_id))
+                    # print("Start task disabled, get last report of {}".format(task_id))
                     report_id = get_last_report(task_id)
                 if report_id is None:
-                    if options["enable_start_task"]:
-                        print("Fail to start task {}".format(task_id))
-                    else:
-                        print("Task start disabled")
+                    # if options["enable_start_task"]:
+                    #     print("Fail to start task {}".format(task_id))
+                    # else:
+                    #     print("Task start disabled")
                     assets_failure.append(asset)
                 else:
-                    print("OK for report_id {}".format(report_id))
+                    # print("OK for report_id {}".format(report_id))
                     scan["assets"].update({asset: {"task_id": task_id, "report_id": report_id, "status": "accepted"}})
 
 
@@ -527,7 +533,7 @@ def start_scan():
         return jsonify(res)
 
     engine.scans.update({scan_id: scan})
-    thread = threading.Thread(target=_scan_urls, args=(scan_id,))
+    thread = Thread(target=_scan_urls, args=(scan_id,))
     thread.start()
     engine.scans[scan_id]["threads"].append(thread)
 
@@ -544,7 +550,7 @@ def start_scan():
 def _scan_urls(scan_id):
     # Is it locked ?
     if engine.scans[scan_id]["lock"]:
-        print("locked")
+        # print("locked")
         return True
 
     # Does the scan is terminated ?
@@ -556,7 +562,7 @@ def _scan_urls(scan_id):
         return True
 
     engine.scans[scan_id]["lock"] = True
-    print("lock on")
+    # print("lock on")
 
     assets = []
     for asset in engine.scans[scan_id]["assets"]:
@@ -568,11 +574,11 @@ def _scan_urls(scan_id):
         try:
             engine.scans[scan_id]["findings"][asset]["issues"] = get_report(asset, scan_id)
         except Exception as e:
-            print "_scan_urls: API Connexion error (quota?)"
-            print e
+            # print("_scan_urls: API Connexion error (quota?)")
+            # print(e)
             return False
 
-    print("lock off")
+    # print("lock off")
     engine.scans[scan_id]["lock"] = False
     return True
 
@@ -582,7 +588,7 @@ def get_report(asset, scan_id):
     report_id = engine.scans[scan_id]["assets"][asset]["report_id"]
     issues = []
 
-    if not os.path.isfile("results/openvas_report_{scan_id}_{asset}.xml".format(scan_id=scan_id, asset=asset)):
+    if not isfile("results/openvas_report_{scan_id}_{asset}.xml".format(scan_id=scan_id, asset=asset)):
         result = omp_cmd(["--get-report", report_id])
         result_file = open("results/openvas_report_{scan_id}_{asset}.xml".format(scan_id=scan_id, asset=asset), "w")
         result_file.write(result)
@@ -618,8 +624,8 @@ def get_report(asset, scan_id):
 
 def _parse_results(scan_id):
     while engine.scans[scan_id]["lock"]:
-        print("report is not terminated yet, going to sleep")
-        time.sleep(10)
+        # print("report is not terminated yet, going to sleep")
+        sleep(10)
 
     issues = []
     summary = {}
@@ -630,7 +636,7 @@ def _parse_results(scan_id):
         "medium": 0,
         "high": 0
     }
-    timestamp = int(time.time() * 1000)
+    timestamp = int(time() * 1000)
 
     for asset in engine.scans[scan_id]["findings"]:
         if engine.scans[scan_id]["findings"][asset]["issues"]:
@@ -711,7 +717,7 @@ def getfindings(scan_id):
 
     # Store the findings in a file
     with open(APP_BASE_DIR+"/results/openvas_"+scan_id+".json", "w") as report_file:
-        json.dump({
+        dump({
             "scan": scan,
             "summary": summary,
             "issues": issues
@@ -727,10 +733,10 @@ def getfindings(scan_id):
 @app.before_first_request
 def main():
     """First function called."""
-    if not os.path.exists(APP_BASE_DIR+"/results"):
-        os.makedirs(APP_BASE_DIR+"/results")
+    if not exists(APP_BASE_DIR+"/results"):
+        makedirs(APP_BASE_DIR+"/results")
     _loadconfig()
-    print("Run engine")
+    # print("Run engine")
 
 if __name__ == "__main__":
     engine.run_app(app_debug=APP_DEBUG, app_host=APP_HOST, app_port=APP_PORT)
