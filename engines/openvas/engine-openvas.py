@@ -670,7 +670,7 @@ def _parse_results(scan_id):
                 "target": {"addr": [asset], "protocol": "http"},
                 "title": "'{}' identified in openvas".format(asset),
                 "solution": "n/a",
-                "metadata": {},
+                "metadata": {"risk": {"cvss_base_score": cvss_max}},
                 "type": "openvas_report",
                 "timestamp": timestamp,
                 "description": description,
