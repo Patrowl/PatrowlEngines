@@ -314,7 +314,7 @@ def _get_heartbleed_vuln(items, issue_id, asset, asset_port):
             target_addrs=[asset],
             meta_tags=["heartbleed", "ssl", "tls"],
             meta_links=hb_links,
-            meta_vuln_refs=[{"CVE": ["CVE-2014-0160"]}])
+            meta_vuln_refs={{"CVE": ["CVE-2014-0160"]}})
     else:
         return PatrowlEngineFinding(
             issue_id=issue_id,

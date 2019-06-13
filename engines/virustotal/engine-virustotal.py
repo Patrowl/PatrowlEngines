@@ -394,10 +394,10 @@ def _parse_results(scan_id):
                         undetected_samples_str = "".join((undetected_samples_str, entry+"\n"))
                     undetected_samples_hash = hashlib.sha1(undetected_samples_str).hexdigest()[:6]
 
-                    nb_vulns['medium'] += 1
+                    nb_vulns['low'] += 1
                     issues.append({
                         "issue_id": len(issues)+1,
-                        "severity": "medium", "confidence": "certain",
+                        "severity": "low", "confidence": "certain",
                         "target": {"addr": [asset], "protocol": "ip"},
                         "title": "Downloaded files from '{}', with no antivirus detections (#: {}, HASH: {})".format(asset, len(results['undetected_downloaded_samples']), undetected_samples_hash),
                         "description": "Latest 100 files that have been downloaded from this IP address, with no antivirus detections:\n{}".format(
@@ -472,7 +472,7 @@ def _parse_results(scan_id):
                 })
 
         # DOMAIN SCAN
-        if 'scan_domain' in engine.scans[scan_id]['findings'][asset].keys():
+        if 'scan_domain' in engine.scans[scan_id]['findings'][asset].keys() and 'results' in engine.scans[scan_id]['findings'][asset]['scan_domain']:
             results = engine.scans[scan_id]['findings'][asset]['scan_domain']['results']
             if results['response_code'] != 1:
                 nb_vulns['info'] += 1
@@ -657,10 +657,10 @@ def _parse_results(scan_id):
                         undetected_samples_str = "".join((undetected_samples_str, entry+"\n"))
                     undetected_samples_hash = hashlib.sha1(undetected_samples_str).hexdigest()[:6]
 
-                    nb_vulns['medium'] += 1
+                    nb_vulns['low'] += 1
                     issues.append({
                         "issue_id": len(issues)+1,
-                        "severity": "medium", "confidence": "certain",
+                        "severity": "low", "confidence": "certain",
                         "target": {"addr": [asset], "protocol": "domain"},
                         "title": "Downloaded files from '{}', with no antivirus detections (HASH: {})".format(asset, undetected_samples_hash),
                         "description": "Latest 100 files that have been downloaded from this domain address, with no antivirus detections:\n{}".format(

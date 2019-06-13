@@ -9,7 +9,7 @@ Jinja2>=2.10.1
 jsonschema==2.6.0
 MarkupSafe==1.0
 mistune==0.8.4
-PatrowlEnginesUtils==0.0.4
+PatrowlEnginesUtils==0.0.7
 pyyaml>=4.2b1
 six==1.11.0
 Werkzeug==0.14.1
