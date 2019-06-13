@@ -10,4 +10,4 @@ MarkupSafe==1.0
 requests==2.20.0
 urllib3>=1.23
 Werkzeug==0.14.1
-PatrowlEnginesUtils==0.0.4
+PatrowlEnginesUtils==0.0.7
