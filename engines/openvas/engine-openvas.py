@@ -475,7 +475,6 @@ def start_scan():
 
     options = get_options(data)
 
-    new_task = False
     assets_failure = list()
     scan["assets"] = dict()
 
@@ -496,7 +495,6 @@ def start_scan():
             if task_id is None and options["enable_create_task"]:
                 # print("Create task {}".format(asset))
                 task_id = create_task(asset, target_id)
-                new_task = True
             if task_id is None:
                 # if options["enable_create_task"]:
                 #     print("Fail to create task {}".format(asset))
@@ -504,7 +502,7 @@ def start_scan():
                 #     print("Task creation disabled")
                 assets_failure.append(asset)
             else:
-                if options["enable_start_task"] and (new_task or get_last_report(task_id) is None):
+                if options["enable_start_task"]:
                     report_id = start_task(task_id)
                     if report_id is None:
                         # print("Get last report of {}".format(task_id))
