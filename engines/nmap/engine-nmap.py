@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/python3
 # -*- coding: utf-8 -*-
 import os
 import subprocess
@@ -11,7 +11,7 @@ import urllib
 import time
 import hashlib
 import datetime
-from urlparse import urlparse
+from urllib.parse import urlparse
 from copy import deepcopy
 from flask import Flask, request, jsonify, redirect, url_for, send_file
 import xml.etree.ElementTree as ET
@@ -335,10 +335,19 @@ def status():
 
 @app.route('/engines/nmap/info')
 def info():
+    scans = {}
+    for scan in this.scans.keys():
+        scan_status(scan)
+        scans.update({scan: {
+            "status": this.scans[scan]["status"],
+            "options": this.scans[scan]["options"],
+            "nb_findings": this.scans[scan]["nb_findings"],
+        }})
+
     res = {
         "page": "info",
         "engine_config": this.scanner,
-        "scans": this.scans
+        "scans": scans
     }
     return jsonify(res)
 
@@ -389,7 +398,8 @@ def _parse_report(filename, scan_id):
         has_hostnames = False
         # Find hostnames
         for hostnames in host.findall('hostnames'):
-            for hostname in hostnames._children:
+            for hostname in hostnames.getchildren():
+            # for hostname in hostnames._children:
                 if hostname.get("type") in ["user", "PTR"]:
                     has_hostnames = True
                     addr = hostname.get("name")
@@ -486,9 +496,9 @@ def _parse_report(filename, scan_id):
                     script_output = port_script.get('output')
                     # Disable hash for some script_id
                     if script_id in ["fingerprint-strings"]:
-                       script_hash = "None"
+                        script_hash = "None"
                     else:
-                        script_hash = hashlib.sha1(script_output).hexdigest()[:6]
+                        script_hash = hashlib.sha1(str(script_output).encode('utf-8')).hexdigest()[:6]
 
                     if script_id == "vulners":
                         port_max_cvss, port_cve_list, port_cve_links, port_cpe = _get_vulners_findings(script_output)
@@ -565,7 +575,7 @@ def _get_vulners_findings(findings):
         if vulners_cve.startswith('cpe'):
             cpe_info = line.strip()
         if vulners_cve.startswith('CVE-'):
-            vulners_cvss = cols[1]
+            vulners_cvss = float(cols[1])
             if vulners_cvss > max_cvss:
                 max_cvss = vulners_cvss
             cve_list.append(vulners_cve)

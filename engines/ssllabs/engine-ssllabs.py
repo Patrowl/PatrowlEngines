@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/python3
 # -*- coding: utf-8 -*-
 import os
 import sys
@@ -10,8 +10,10 @@ import time
 import hashlib
 import copy
 import logging
-from urlparse import urlparse
+from urllib.parse import urlparse
 from flask import Flask, request, jsonify
+
+# Temporary
 from PatrowlEnginesUtils.PatrowlEngine import _json_serial
 from PatrowlEnginesUtils.PatrowlEngine import PatrowlEngine
 from PatrowlEnginesUtils.PatrowlEngineExceptions import PatrowlEngineExceptions
@@ -394,7 +396,7 @@ def getfindings(scan_id):
         "nb_high": nb_vulns["high"],
         "engine_name": "ssllabs",
         "engine_version": engine.scanner["version"]
-   }
+    }
 
     # Store the findings in a file
     with open(APP_BASE_DIR+"/results/ssllabs_"+scan_id+".json", 'w') as report_file:
@@ -402,7 +404,7 @@ def getfindings(scan_id):
             # "scan": engine.scans[scan_id],
             "summary": summary,
             "issues": issues
-       }, report_file, default=_json_serial)
+        }, report_file, default=_json_serial)
 
     res.update({
         "issues": issues,
@@ -562,9 +564,9 @@ def _parse_report(results, asset_name, asset_port):
             "metadata": {
                 "tags": ["ssl", "certificate", "tls", "validity", "expiration"],
                 "links": [direct_link]
-           },
+            },
             "raw": endpoint["details"]["cert"]["notAfter"]
-       })
+        })
     elif valid_to < three_month_later:
         nb_vulns['medium'] += 1
         issues.append({
@@ -581,9 +583,9 @@ def _parse_report(results, asset_name, asset_port):
             "metadata": {
                 "tags": ["ssl", "certificate", "tls", "validity", "expiration"],
                 "links": [direct_link]
-           },
+            },
             "raw": endpoint["details"]["cert"]["notAfter"]
-       })
+        })
     elif valid_to < two_weeks_later:
         nb_vulns['high'] += 1
         issues.append({
@@ -600,9 +602,9 @@ def _parse_report(results, asset_name, asset_port):
             "metadata": {
                 "tags": ["ssl", "certificate", "tls", "validity", "expiration"],
                 "links": [direct_link]
-           },
+            },
             "raw": endpoint["details"]["cert"]["notAfter"]
-       })
+        })
 
     # grade
     if endpoint["grade"] == "T":
@@ -621,9 +623,9 @@ def _parse_report(results, asset_name, asset_port):
             "metadata": {
                 "tags": ["ssl", "certificate", "tls", "grade", "trust"],
                 "links": [direct_link, "https://github.com/ssllabs/research/wiki/SSL-Server-Rating-Guide"]
-           },
+            },
             "raw": endpoint["grade"]
-       })
+        })
     elif endpoint["grade"] == "M":
         nb_vulns['high'] += 1
         issues.append({
@@ -640,9 +642,9 @@ def _parse_report(results, asset_name, asset_port):
             "metadata": {
                 "tags": ["ssl", "certificate", "tls", "grade", "mismatch"],
                 "links": [direct_link, "https://github.com/ssllabs/research/wiki/SSL-Server-Rating-Guide"]
-           },
+            },
             "raw": endpoint["grade"]
-       })
+        })
     else:
         if endpoint["grade"] in ["A", "A+"]:
             sev = "info"
@@ -666,9 +668,9 @@ def _parse_report(results, asset_name, asset_port):
             "metadata": {
                 "tags": ["ssl", "certificate", "tls", "grade"],
                 "links": [direct_link, "https://github.com/ssllabs/research/wiki/SSL-Server-Rating-Guide"]
-           },
+            },
             "raw": endpoint["grade"]
-       })
+        })
 
     # certificate_keysize
     details = endpoint["details"]
@@ -686,9 +688,9 @@ def _parse_report(results, asset_name, asset_port):
         "metadata": {
             "tags": ["ssl", "certificate", "tls", "key", "keysize"],
             "links": [direct_link]
-       },
+        },
         "raw": details["key"]
-   })
+    })
 
     # certificate_debianflaw
     if "debianFlaw" in details["key"].keys() and details["key"]["debianFlaw"] is True:
@@ -705,9 +707,9 @@ def _parse_report(results, asset_name, asset_port):
             "metadata": {
                 "tags": ["ssl", "certificate", "tls", "key", "debian"],
                 "links": [direct_link]
-           },
+            },
             "raw": details["key"]
-       })
+        })
 
     # supported_protocols
     protocols = [p["name"]+"/"+p["version"]for p in list(details["protocols"])]
@@ -725,9 +727,9 @@ def _parse_report(results, asset_name, asset_port):
         "metadata": {
             "tags": ["ssl", "certificate", "tls", "protocol", "version"],
             "links": [direct_link]
-       },
+        },
         "raw": details["protocols"]
-   })
+    })
 
     for protocol in list(details["protocols"]):
         if protocol["name"] == "SSL":
@@ -744,9 +746,9 @@ def _parse_report(results, asset_name, asset_port):
                 "metadata": {
                     "tags": ["ssl", "certificate", "tls", "protocol"],
                     "links": [direct_link]
-               },
+                },
                 "raw": details["protocols"]
-           })
+            })
 
     # accepted_ciphersuites
     # for suite in list(details["suites"]["list"]):
@@ -769,7 +771,7 @@ def _parse_report(results, asset_name, asset_port):
     ciphersuites_str = ""
     for suite in list(details["suites"]["list"]):
         ciphersuites_str = "".join((ciphersuites_str, "{} (Strength: {})\n".format(suite["name"], suite["cipherStrength"])))
-    ciphersuites_hash = hashlib.sha1(ciphersuites_str).hexdigest()[:6]
+    ciphersuites_hash = hashlib.sha1(str(ciphersuites_str).encode('utf-8')).hexdigest()[:6]
     nb_vulns['info'] += 1
     issues.append({
         "issue_id": len(issues)+1,
@@ -783,9 +785,9 @@ def _parse_report(results, asset_name, asset_port):
         "metadata": {
             "tags": ["ssl", "certificate", "tls", "ciphersuites"],
             "links": [direct_link]
-       },
+        },
         "raw": details["suites"]["list"]
-   })
+    })
 
     summary = {
         "nb_issues": len(issues),
@@ -793,7 +795,7 @@ def _parse_report(results, asset_name, asset_port):
         "nb_low": nb_vulns["low"],
         "nb_medium": nb_vulns["medium"],
         "nb_high": nb_vulns["high"]
-   }
+    }
 
     return issues, summary
 

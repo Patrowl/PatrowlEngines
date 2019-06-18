@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/python3
 # -*- coding: utf-8 -*-
 import json, requests, time, random
 import pytest
@@ -80,7 +80,7 @@ class PatrowlEngineTest:
 
         r = requests.post(url="{}/startscan".format(self.base_url),
                    data=json.dumps(post_data),
-                   headers = {'Content-type': 'application/json', 'Accept': 'application/json'})
+                   headers={'Content-type': 'application/json', 'Accept': 'application/json'})
         try:
             assert r.status_code == 200
             assert r.json()['status'] == "accepted"
@@ -106,6 +106,7 @@ class PatrowlEngineTest:
         if not has_error:
             r = requests.get(url="{}/getfindings/{}".format(self.base_url, TEST_SCAN_ID))
             try:
+                print(r.json())
                 assert r.json()['status'] == "success"
             except AssertionError:
                 print(r.json()) ; assert False

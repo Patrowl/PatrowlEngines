@@ -19,13 +19,13 @@ COPY tests/ tests/
 # Install any needed packages specified in requirements.txt
 RUN mkdir -p results
 RUN apk add --update \
-    python \
-    python-dev \
-    py-pip \
+    python3 \
+    python3-dev \
+    py3-pip \
     libmagic \
   && rm -rf /var/cache/apk/*
-RUN pip install --upgrade pip
-RUN pip install --trusted-host pypi.python.org -r requirements.txt
+RUN pip3 install --upgrade pip
+RUN pip3 install --trusted-host pypi.python.org -r requirements.txt
 
 # TCP port exposed by the container (NAT)
 EXPOSE 5009

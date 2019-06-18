@@ -23,6 +23,7 @@ engines/sslscan/libs/*
 engines/sslscan/sslscan.json
 engines/openvas/openvas.json
 env
+env3
 results
 reports
 .scannerwork

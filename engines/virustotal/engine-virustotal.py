@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/python3
 # -*- coding: utf-8 -*-
 """VirusTotal PatrOwl engine application."""
 
@@ -12,6 +12,8 @@ import socket
 import operator
 import random
 from flask import Flask, request, jsonify
+
+# Temporary
 from PatrowlEnginesUtils.PatrowlEngine import _json_serial
 from PatrowlEnginesUtils.PatrowlEngine import PatrowlEngine
 from PatrowlEnginesUtils.PatrowlEngineExceptions import PatrowlEngineExceptions
@@ -194,40 +196,40 @@ def start_scan():
         }})
         return jsonify(res)
 
-	# Sanitize args :
+    # Sanitize args :
     scan_id = str(data['scan_id'])
     scan = {
         'assets':       data['assets'],
         'threads':      [],
-		'options':      data['options'],
-		'scan_id':      scan_id,
+        'options':      data['options'],
+        'scan_id':      scan_id,
         'status':       "STARTED",
         'started_at':   int(time.time() * 1000),
         'findings':     {}
-	}
+    }
 
     engine.scans.update({scan_id: scan})
 
     if 'do_scan_ip' in scan['options'].keys() and data['options']['do_scan_ip']:
-		th = threading.Thread(target=_scan_ip, args=(scan_id,))
-		th.start()
-		engine.scans[scan_id]['threads'].append(th)
+        th = threading.Thread(target=_scan_ip, args=(scan_id,))
+        th.start()
+        engine.scans[scan_id]['threads'].append(th)
 
     if 'do_scan_domain' in scan['options'].keys() and data['options']['do_scan_domain']:
-		th = threading.Thread(target=_scan_domain, args=(scan_id,))
-		th.start()
-		engine.scans[scan_id]['threads'].append(th)
+        th = threading.Thread(target=_scan_domain, args=(scan_id,))
+        th.start()
+        engine.scans[scan_id]['threads'].append(th)
 
     if 'do_scan_url' in scan['options'].keys() and data['options']['do_scan_url']:
-		th = threading.Thread(target=_scan_url, args=(scan_id,))
-		th.start()
-		engine.scans[scan_id]['threads'].append(th)
+        th = threading.Thread(target=_scan_url, args=(scan_id,))
+        th.start()
+        engine.scans[scan_id]['threads'].append(th)
 
     res.update({
-		"status": "accepted",
-		"details": {
-			"scan_id": scan_id
-	}})
+        "status": "accepted",
+        "details": {
+            "scan_id": scan_id
+    }})
 
     return jsonify(res)
 
@@ -345,7 +347,7 @@ def _parse_results(scan_id):
                     for record in sorted(results['resolutions'], key=operator.itemgetter('hostname')):
                         entry = "{} (last resolved: {})".format(record['hostname'], record['last_resolved'])
                         resolutions_str = "".join((resolutions_str, entry+"\n"))
-                    resolutions_hash = hashlib.sha1(resolutions_str).hexdigest()[:6]
+                    resolutions_hash = hashlib.sha1(str(resolutions_str).encode('utf-8')).hexdigest()[:6]
 
                     nb_vulns['info'] += 1
                     issues.append({
@@ -368,7 +370,7 @@ def _parse_results(scan_id):
                     for record in sorted(results['detected_urls'], key=operator.itemgetter('url')):
                         entry = "{} (total: {}, scan date: {})".format(record['url'], record['total'], record['scan_date'])
                         detected_url_str = "".join((detected_url_str, entry+"\n"))
-                    detected_url_hash = hashlib.sha1(detected_url_str).hexdigest()[:6]
+                    detected_url_hash = hashlib.sha1(str(detected_url_str).encode('utf-8')).hexdigest()[:6]
 
                     nb_vulns['info'] += 1
                     issues.append({
@@ -392,7 +394,7 @@ def _parse_results(scan_id):
                         entry = "{} (total: {}, positives: {})".format(
                             record['sha256'], record['total'], record['positives'])
                         undetected_samples_str = "".join((undetected_samples_str, entry+"\n"))
-                    undetected_samples_hash = hashlib.sha1(undetected_samples_str).hexdigest()[:6]
+                    undetected_samples_hash = hashlib.sha1(str(undetected_samples_str).encode('utf-8')).hexdigest()[:6]
 
                     nb_vulns['low'] += 1
                     issues.append({
@@ -416,7 +418,7 @@ def _parse_results(scan_id):
                         entry = "{} (total: {}, positives: {})".format(
                             record['sha256'], record['total'], record['positives'])
                         detected_samples_str = "".join((detected_samples_str, entry+"\n"))
-                    detected_samples_hash = hashlib.sha1(detected_samples_str).hexdigest()[:6]
+                    detected_samples_hash = hashlib.sha1(str(detected_samples_str).encode('utf-8')).hexdigest()[:6]
 
                     nb_vulns['high'] += 1
                     issues.append({
@@ -452,7 +454,7 @@ def _parse_results(scan_id):
 
                 # all findings
                 ip_data = "".join((asset,as_info,resolutions_str,detected_url_str,undetected_samples_str,detected_samples_str))
-                ip_hash = detected_samples_hash = hashlib.sha1(ip_data).hexdigest()[:6]
+                ip_hash = detected_samples_hash = hashlib.sha1(str(ip_data).encode('utf-8')).hexdigest()[:6]
                 nb_vulns['info'] += 1
                 issues.append({
                     "issue_id": len(issues)+1,
@@ -516,7 +518,7 @@ def _parse_results(scan_id):
                         "severity": "info", "confidence": "certain",
                         "target": {"addr": [asset], "protocol": "domain"},
                         "title": "Domain whois for '{}' (HASH: {})".format(
-                            asset, hashlib.sha1(results['whois']).hexdigest()[:6]),
+                            asset, hashlib.sha1(str(results['whois']).encode('utf-8')).hexdigest()[:6]),
                         "description": "Domain whois for '{}':\n\n{}".format(
                             asset, results['whois']),
                         "solution": "n/a",
@@ -531,7 +533,7 @@ def _parse_results(scan_id):
                 if 'domain_siblings' in results.keys() and len(results['domain_siblings']) > 0:
                     for record in sorted(results['domain_siblings']):
                         domain_siblings_str = "".join((domain_siblings_str, record+"\n"))
-                    domain_siblings_hash = hashlib.sha1(domain_siblings_str).hexdigest()[:6]
+                    domain_siblings_hash = hashlib.sha1(str(domain_siblings_str).encode('utf-8')).hexdigest()[:6]
                     nb_vulns['info'] += 1
                     issues.append({
                         "issue_id": len(issues)+1,
@@ -555,7 +557,7 @@ def _parse_results(scan_id):
                     for record in sorted(results['resolutions'], key=operator.itemgetter('ip_address')):
                         entry = "{} (last resolved: {})".format(record['ip_address'], record['last_resolved'])
                         resolutions_str = "".join((resolutions_str, entry+"\n"))
-                    resolutions_hash = hashlib.sha1(resolutions_str).hexdigest()[:6]
+                    resolutions_hash = hashlib.sha1(str(resolutions_str).encode('utf-8')).hexdigest()[:6]
 
                     nb_vulns['info'] += 1
                     issues.append({
@@ -578,7 +580,7 @@ def _parse_results(scan_id):
                     # sort by hostname
                     for record in sorted(results['subdomains']):
                         subdomains_str = "".join((subdomains_str, record+"\n"))
-                    subdomains_hash = hashlib.sha1(subdomains_str).hexdigest()[:6]
+                    subdomains_hash = hashlib.sha1(str(subdomains_str).encode('utf-8')).hexdigest()[:6]
 
                     nb_vulns['info'] += 1
                     issues.append({
@@ -602,7 +604,7 @@ def _parse_results(scan_id):
                     for record in sorted(results['detected_urls'], key=operator.itemgetter('url')):
                         entry = "{} (total: {}, scan date: {})".format(record['url'], record['total'], record['scan_date'])
                         detected_url_str = "".join((detected_url_str, entry+"\n"))
-                    detected_url_hash = hashlib.sha1(detected_url_str).hexdigest()[:6]
+                    detected_url_hash = hashlib.sha1(str(detected_url_str).encode('utf-8')).hexdigest()[:6]
 
                     nb_vulns['info'] += 1
                     issues.append({
@@ -627,7 +629,7 @@ def _parse_results(scan_id):
                         entry = "{} (total: {}, positives: {})".format(
                             record['sha256'], record['total'], record['positives'])
                         detected_samples_str = "".join((detected_samples_str, entry+"\n"))
-                    detected_samples_hash = hashlib.sha1(detected_samples_str).hexdigest()[:6]
+                    detected_samples_hash = hashlib.sha1(str(detected_samples_str).encode('utf-8')).hexdigest()[:6]
 
                     nb_vulns['high'] += 1
                     issues.append({
@@ -655,7 +657,7 @@ def _parse_results(scan_id):
                             link, record['total'], record['positives'])
                         undetected_referrer_samples_links.append(link)
                         undetected_samples_str = "".join((undetected_samples_str, entry+"\n"))
-                    undetected_samples_hash = hashlib.sha1(undetected_samples_str).hexdigest()[:6]
+                    undetected_samples_hash = hashlib.sha1(str(undetected_samples_str).encode('utf-8')).hexdigest()[:6]
 
                     nb_vulns['low'] += 1
                     issues.append({
@@ -687,7 +689,7 @@ def _parse_results(scan_id):
                             link, record['total'], record['positives'])
                         detected_referrer_samples_links.append(link)
                         detected_referrer_samples_str = "".join((detected_referrer_samples_str, entry+"\n"))
-                    detected_referrer_samples_hash = hashlib.sha1(detected_referrer_samples_str).hexdigest()[:6]
+                    detected_referrer_samples_hash = hashlib.sha1(str(detected_referrer_samples_str).encode('utf-8')).hexdigest()[:6]
 
                     nb_vulns['high'] += 1
                     issues.append({
@@ -716,9 +718,9 @@ def _parse_results(scan_id):
                             link, record['positives'], record['total'])
                         undetected_referrer_samples_links.append(link)
                         undetected_referrer_samples_str = "".join((undetected_referrer_samples_str, entry+"\n"))
-                    undetected_referrer_samples_hash = hashlib.sha1(undetected_referrer_samples_str).hexdigest()[:6]
+                    undetected_referrer_samples_hash = hashlib.sha1(str(undetected_referrer_samples_str).encode('utf-8')).hexdigest()[:6]
 
-                    nb_vulns['medium'] += 1
+                    nb_vulns['low'] += 1
                     issues.append({
                         "issue_id": len(issues)+1,
                         "severity": "medium", "confidence": "certain",
@@ -741,7 +743,7 @@ def _parse_results(scan_id):
                     # sort by hostname
                     for record in sorted(results['pcaps']):
                         pcaps_str = "".join((pcaps_str, record+"\n"))
-                    pcaps_hash = hashlib.sha1(pcaps_str).hexdigest()[:6]
+                    pcaps_hash = hashlib.sha1(str(pcaps_str).encode('utf-8')).hexdigest()[:6]
 
                     nb_vulns['medium'] += 1
                     issues.append({
@@ -765,7 +767,7 @@ def _parse_results(scan_id):
                     for record_key in sorted(results['WOT domain info'].keys()):
                         line = str(record_key)+": "+str(results['WOT domain info'][record_key])+"\n"
                         wot_str = "".join((wot_str, line))
-                    wot_hash = hashlib.sha1(wot_str).hexdigest()[:6]
+                    wot_hash = hashlib.sha1(str(wot_str).encode('utf-8')).hexdigest()[:6]
 
                     nb_vulns['info'] += 1
                     issues.append({
@@ -823,7 +825,7 @@ def _parse_results(scan_id):
                     for record_key in sorted(results['Webutation domain info'].keys()):
                         line = str(record_key)+": "+str(results['Webutation domain info'][record_key])+"\n"
                         webutation_str = "".join((webutation_str, line))
-                    webutation_hash = hashlib.sha1(webutation_str).hexdigest()[:6]
+                    webutation_hash = hashlib.sha1(str(webutation_str).encode('utf-8')).hexdigest()[:6]
 
                     nb_vulns['info'] += 1
                     issues.append({
@@ -881,7 +883,7 @@ def _parse_results(scan_id):
                                        detected_samples_str, undetected_samples_str,
                                        detected_referrer_samples_str, undetected_referrer_samples_str,
                                        pcaps_str, wot_str, webutation_str))
-                domain_hash = detected_samples_hash = hashlib.sha1(domain_data).hexdigest()[:6]
+                domain_hash = detected_samples_hash = hashlib.sha1(str(domain_data).encode('utf-8')).hexdigest()[:6]
                 nb_vulns['info'] += 1
                 issues.append({
                     "issue_id": len(issues)+1,
@@ -932,7 +934,7 @@ def _parse_results(scan_id):
                         line = line + " ({})\n".format(results['scans']['detail'])
                     url_str = "".join((url_str, line+"\n"))
 
-                url_hash = hashlib.sha1(url_str).hexdigest()[:6]
+                url_hash = hashlib.sha1(str(url_str).encode('utf-8')).hexdigest()[:6]
                 nb_vulns['info'] += 1
                 issues.append({
                     "issue_id": len(issues)+1,
@@ -981,7 +983,7 @@ def _parse_results(scan_id):
 
 @app.route('/engines/virustotal/getfindings/<scan_id>')
 def getfindings(scan_id):
-    res = {	"page": "getfindings", "scan_id": scan_id}
+    res = {    "page": "getfindings", "scan_id": scan_id}
 
     # check if the scan_id exists
     if scan_id not in engine.scans.keys():

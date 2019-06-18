@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/python3
 # -*- coding: utf-8 -*-
 """Owl_Code PatrOwl engine application."""
 
@@ -6,10 +6,6 @@ import os
 import signal
 import threading
 from flask import Flask, request, jsonify
-from PatrowlEnginesUtils.PatrowlEngine import PatrowlEngine
-from PatrowlEnginesUtils.PatrowlEngine import PatrowlEngineFinding
-from PatrowlEnginesUtils.PatrowlEngineExceptions import PatrowlEngineExceptions
-
 import hashlib
 import time
 import subprocess
@@ -17,6 +13,11 @@ import json
 import shutil
 import git
 import svn.remote
+
+from PatrowlEnginesUtils.PatrowlEngine import PatrowlEngine
+from PatrowlEnginesUtils.PatrowlEngine import PatrowlEngineFinding
+from PatrowlEnginesUtils.PatrowlEngineExceptions import PatrowlEngineExceptions
+
 
 APP_DEBUG = False
 APP_HOST = "0.0.0.0"
@@ -167,8 +168,6 @@ def _get_code_from_svn_http(scan_id, asset, wd):
         if "svn_username" in engine.options.keys(): svn_username = engine.options["svn_username"]
         if "svn_password" in engine.options.keys(): svn_username = engine.options["svn_password"]
 
-    #print "svn_username:", svn_username, " svn_password:", svn_password
-
     r = svn.remote.RemoteClient(asset, username=svn_username, password=svn_password)
     r.checkout(wd)
 
@@ -218,7 +217,7 @@ def _scanjs_thread(scan_id, asset_kw):
     for asset_value in asset_values:
         checked_files = []
         # create the asset scan workdir
-        scan_wd_asset = "{}/{}".format(scan_wd, hashlib.sha1(asset_value).hexdigest()[:6])
+        scan_wd_asset = "{}/{}".format(scan_wd, hashlib.sha1(str(asset_value).encode('utf-8')).hexdigest()[:6])
         os.makedirs(scan_wd_asset)
 
         # Check location and copy files to the workdir
@@ -233,7 +232,7 @@ def _scanjs_thread(scan_id, asset_kw):
                 raw={},
                 target_addrs=[asset_value],
                 meta_tags=["js", "library", "retire.js"])
-            issue_id+=1
+            issue_id += 1
             findings.append(summary_asset_finding)
             continue
 
@@ -258,8 +257,10 @@ def _scanjs_thread(scan_id, asset_kw):
             return
 
         scan_results = json.load(open(report_filename))
+        if isinstance(scan_results, dict) and 'data' in scan_results.keys():
+            scan_results = scan_results['data']
 
-        for item in scan_results['data']:
+        for item in scan_results:
             checked_files.append(item["file"])
             if len(item["results"]) == 0:
                 continue
@@ -274,7 +275,7 @@ def _scanjs_thread(scan_id, asset_kw):
                     # Title
                     item_title = "'{}-{}' is vulnerable: '{}'".format(
                         result["component"], result["version"],
-                        vuln_summary)
+                        vuln_summary[:100])
 
                     # Description
                     item_description = "An external JavaScript library has been found to be vulnerable:\n\nFilename: {}\nComponent: {}\nVersion: {}\nTitle: {}".format(
@@ -298,13 +299,13 @@ def _scanjs_thread(scan_id, asset_kw):
                         meta_links=vuln["info"],
                         meta_tags=["js", "library", "update", "retire.js"],
                         meta_vuln_refs=item_vuln_refs)
-                    issue_id+=1
+                    issue_id += 1
                     findings.append(new_finding)
 
         # findings summary per asset (remove the workdir)
         checked_files_str = "\n".join([remove_prefix(ff, scan_wd_asset) for ff in sorted(checked_files)])
 
-        summary_asset_finding_hash = hashlib.sha1(checked_files_str).hexdigest()[:6]
+        summary_asset_finding_hash = hashlib.sha1(str(checked_files_str).encode('utf-8')).hexdigest()[:6]
         summary_asset_finding = PatrowlEngineFinding(
             issue_id=issue_id, type="code_js_summary",
             title="Retire.js scan summary for '{}' (#: {}, HASH: {})".format(
@@ -340,7 +341,7 @@ def _scanowaspdc_thread(scan_id, asset_kw):
     for asset_value in asset_values:
         checked_files = []
         # create the asset scan workdir
-        scan_wd_asset = "{}/{}/src".format(scan_wd, hashlib.sha1(asset_value).hexdigest()[:6])
+        scan_wd_asset = "{}/{}/src".format(scan_wd, hashlib.sha1(str(asset_value).encode('utf-8')).hexdigest()[:6])
         os.makedirs(scan_wd_asset)
 
         # print "scan_wd_asset:", scan_wd_asset
@@ -357,7 +358,7 @@ def _scanowaspdc_thread(scan_id, asset_kw):
                 raw={},
                 target_addrs=[asset_value],
                 meta_tags=["jar", "library", "owasp", "dependencies"])
-            issue_id+=1
+            issue_id += 1
             findings.append(summary_asset_finding)
             continue
 
@@ -366,8 +367,6 @@ def _scanowaspdc_thread(scan_id, asset_kw):
         # Start the scan
         cmd = 'libs/dependency-check/bin/dependency-check.sh --scan "{}" --format JSON --out "{}/oc_{}.json" --project "{}" --enableExperimental'.format(
             scan_wd_asset, scan_wd_asset, scan_id, scan_id)
-
-        #print "cmd:", cmd
 
         p = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE)
 
@@ -427,14 +426,14 @@ def _scanowaspdc_thread(scan_id, asset_kw):
                     meta_tags=["jar", "library", "update", "owasp", "dependencies"],
                     meta_risk=vuln_risks,
                     meta_vuln_refs=vuln_refs)
-                issue_id+=1
+                issue_id += 1
                 findings.append(new_finding)
 
 
         # findings summary per asset (remove the workdir)
         checked_files_str = "\n".join([remove_prefix(ff, scan_wd_asset) for ff in sorted(checked_files)])
 
-        summary_asset_finding_hash = hashlib.sha1(checked_files_str).hexdigest()[:6]
+        summary_asset_finding_hash = hashlib.sha1(str(checked_files_str).encode('utf-8')).hexdigest()[:6]
         summary_asset_finding = PatrowlEngineFinding(
             issue_id=issue_id, type="code_ext_jar_summary",
             title="OWASP-DC scan summary for '{}' (#: {}, HASH: {})".format(
@@ -445,7 +444,7 @@ def _scanowaspdc_thread(scan_id, asset_kw):
             raw=[remove_prefix(ff, scan_wd_asset) for ff in checked_files],
             target_addrs=[asset_value],
             meta_tags=["jar", "library", "owasp", "dependencies"])
-        issue_id+=1
+        issue_id += 1
         findings.append(summary_asset_finding)
 
     # Write results under mutex

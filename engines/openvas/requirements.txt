@@ -10,7 +10,7 @@ Jinja2==2.10.1
 lxml==4.3.3
 MarkupSafe==1.0
 openvas-lib==1.1.4
-PatrowlEnginesUtils==0.0.7
+PatrowlEnginesUtils>=0.0.12
 requests==2.20.0
 six==1.12.0
 urllib3==1.25.2

@@ -1,42 +1,55 @@
-import sys, os
-import json, requests, time, random
+#!/usr/bin/python
+# -*- coding: utf-8 -*-
+"""
+NMAP Tests
+"""
 
-sys.path.append( os.path.dirname( os.path.dirname( os.path.abspath(__file__) ) ) )
+import sys
+# sys.path.append( os.path.dirname( os.path.dirname( os.path.abspath(__file__) ) ) )
+sys.path.append("..")
 from utils.PatrowlEngineTest import PatrowlEngineTest
 
+# Own library imports
+# from PatrowlEnginesUtils.PatrowlEngineTest import PatrowlEngineTest
+
+BASE_URL = "http://127.0.0.1:5001/engines/nmap"
+
 # Define the engine instance
-pet = PatrowlEngineTest(engine_name="nmap", base_url="http://127.0.0.1:5001/engines/nmap")
+PET = PatrowlEngineTest(engine_name="nmap", base_url=BASE_URL)
 
-# generic tests
+
 def test_generic_features():
-    pet.do_generic_tests()
+    """Generic tests."""
+    PET.do_generic_tests()
 
-## custom tests
+
 def test_nmap_vulners():
-    pet.custom_test(
+    """Custom tests."""
+    PET.custom_test(
         test_name="nmap_vulners",
         assets=[{
-            "id" :'1',
-            "value" :'patrowl.io',
-            "criticity": 'low',
-            "datatype": 'domain'
+            "id": "1",
+            "value": "patrowl.io",
+            "criticity": "low",
+            "datatype": "domain"
         }],
         scan_policy={
-          "no_ping":0,
-          "ports":[
-            "80",
-            "22",
-            "443",
-            "56",
-            "25"
-          ],
-          "detect_service_version":1,
-          "script":"libs/vulners.nse",
-          "show_open_ports":1
+            "no_ping": 0,
+            "ports": [
+                "80",
+                "22",
+                "443",
+                "56",
+                "25"
+            ],
+            "detect_service_version": 1,
+            "script": "libs/vulners.nse",
+            "show_open_ports": 1
         },
         is_valid=True
     )
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     test_generic_features()
     test_nmap_vulners()

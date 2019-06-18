@@ -2,7 +2,7 @@
 PatrOwl Nmap REST API engine
 
 ## Pre-requisites (must be installed before)
-- Python 2.7 + pip + virtualenv
+- Python 3 + pip + virtualenv
 - Nmap
 
 # Install notes
@@ -11,7 +11,7 @@ PatrOwl Nmap REST API engine
 cd PatrowlEngines/engines/nmap
 virtualenv env
 source env/bin/activate
-pip install -r requirements.txt
+pip3 install -r requirements.txt
 ```
 - Create a configuration file (see nmap.json.sample) named 'nmap.json', and customize the following options `"path": "/path/to/bin/nmap"`
 - Start the engine (require sudo/root access):

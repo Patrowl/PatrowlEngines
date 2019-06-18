@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/python3
 # -*- coding: utf-8 -*-
 """SSLScan PatrOwl engine application."""
 
@@ -8,7 +8,7 @@ import sys
 import subprocess
 import threading
 import time
-from urlparse import urlparse
+from urllib.parse import urlparse
 import xml.etree.ElementTree as ET
 from flask import Flask, request, jsonify
 from flask_cors import CORS
@@ -201,9 +201,9 @@ def _scan_thread(scan_id, asset, asset_port):
     while p.poll() is None:
         # print("still running")
         time.sleep(1)
-    engine.scans[scan_id]['status'] = "FINISHED"
-    # print("done!!")
+
     _parse_xml_results(scan_id, asset, asset_port)
+    engine.scans[scan_id]['status'] = "FINISHED"
 
 
 def _parse_xml_results(scan_id, asset, asset_port):
@@ -226,11 +226,11 @@ def _parse_xml_results(scan_id, asset, asset_port):
         issue_id=issue_id,
         type="ssltest_scan_summary",
         title="SSLScan scan on '{}:{}'".format(asset, asset_port),
-        description=ET.tostring(xml_root, encoding='utf-8', method='xml'),
+        description=ET.tostring(xml_root, encoding='utf-8', method='xml').decode('utf-8'),
         solution="n/a",
         severity="info",
         confidence="firm",
-        raw=ET.tostring(xml_root, encoding='utf-8', method='xml'),
+        raw=ET.tostring(xml_root, encoding='utf-8', method='xml').decode('utf-8'),
         target_addrs=[asset])
     findings.append(new_finding)
 
@@ -279,6 +279,7 @@ def _parse_xml_results(scan_id, asset, asset_port):
     scan_lock = threading.RLock()
     with scan_lock:
         engine.scans[scan_id]["findings"] += findings
+
     return True
 
 
@@ -366,7 +367,7 @@ def _get_ciphersuites(items, issue_id, asset, asset_port):
 def _get_certificate_blob(cert_blob, issue_id, asset, asset_port):
     if cert_blob is None:
         return False
-    cert_hash = hashlib.sha1(cert_blob.text).hexdigest().upper()
+    cert_hash = hashlib.sha1(str(cert_blob.text).encode('utf-8')).hexdigest().upper()
     return PatrowlEngineFinding(
         issue_id=issue_id,
         type="ssltest_certificate_pem",

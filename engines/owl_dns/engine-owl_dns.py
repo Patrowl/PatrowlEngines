@@ -1,7 +1,9 @@
-#!/usr/bin/python
+#!/usr/bin/python3
 # -*- coding: utf-8 -*-
 import os, sys, json, time, urllib, hashlib, threading, datetime, copy, dns.resolver, socket, optparse
 from flask import Flask, request, jsonify, redirect, url_for, send_from_directory
+import validators
+import whois
 
 app = Flask(__name__)
 APP_DEBUG = False
@@ -14,6 +16,9 @@ this = sys.modules[__name__]
 this.scanner = {}
 this.scans = {}
 this.scan_lock = threading.RLock()
+
+this.resolver = dns.resolver.Resolver()
+this.resolver.lifetime = this.resolver.timeout = 40.0
 
 
 @app.route('/')
@@ -32,13 +37,10 @@ def _loadconfig():
         json_data = open(conf_file)
         this.scanner = json.load(json_data)
         this.scanner['status'] = "READY"
-        sys.path.append(this.scanner['sublister_bin_path'])
-        sys.path.append(this.scanner['pythonwhois_bin_path'])
-        globals()['sublist3r'] = __import__('sublist3r')
-        globals()['pythonwhois'] = __import__('pythonwhois')
-
+        sys.path.append(this.scanner['turbolist3r_bin_path'])
+        globals()['turbolist3r'] = __import__('turbolist3r')
     else:
-        print "Error: config file '{}' not found".format(conf_file)
+        print("Error: config file '{}' not found".format(conf_file))
         return {"status": "error", "reason": "config file not found"}
 
 
@@ -174,9 +176,7 @@ def __is_ip_addr(host):
 def __is_domain(host):
     res = False
     try:
-        if not __is_ip_addr(host):
-            # print str(pythonwhois.net.get_whois_raw(host))
-            res = "No entries found" not in str(pythonwhois.net.get_whois_raw(host))
+        res = validators.domain(host)
     except Exception:
         pass
     return res
@@ -212,7 +212,7 @@ def __dns_resolve_asset(asset):
     try:
         for record_type in ["CNAME", "A", "AAAA", "MX", "NS", "TXT", "SOA", "SRV"]:
             try:
-                answers = dns.resolver.query(asset, record_type)
+                answers = this.resolver.query(asset, record_type)
                 sub_res.append({
                     "record_type": record_type,
                     "values": [str(rdata) for rdata in answers]
@@ -234,7 +234,7 @@ def _reverse_dns(scan_id, asset):
     if not __is_ip_addr(asset): return res
 
     try:
-        answers = dns.resolver.query(dns.reversename.from_address(asset), "PTR")
+        answers = this.resolver.query(dns.reversename.from_address(asset), "PTR")
         res.update({
             asset: [str(rdata) for rdata in answers]
         })
@@ -258,14 +258,14 @@ def _get_whois(scan_id, asset):
     if not __is_domain(asset):
         return res
 
-    raw = pythonwhois.net.get_whois_raw(str(asset))
-    if "No match for " in raw[0]:
+    w = whois.whois(str(asset))
+    if w.domain_name is None:
         res.update({
-            asset: {"errors": raw[0]}
+            asset: {"errors": w}
         })
     else:
         res.update({
-            asset: pythonwhois.parse.parse_raw_whois(raw)
+            asset: {"raw": w, "text": w.text}
         })
 
     scan_lock = threading.RLock()
@@ -278,7 +278,7 @@ def _get_whois(scan_id, asset):
 def _subdomain_bruteforce(scan_id, asset):
     res = {}
     SUB_LIST = [
-        "www", "www1", "www2", "www3", "m",
+        "www", "www1", "www2", "www3", "m", "mob", "mobile",
         "ftp", "ftp1", "ftp2", "ftp3", "sftp",
         "mail", "mail1", "mail2", "mail3", "webmail", "smtp", "mx", "email", "owa", "imap",
         "prod", "dev", "pro", "test", "demo", "demo1", "demo2", "beta", "pre-prod", "preprod",
@@ -330,7 +330,7 @@ def _subdomain_enum(scan_id, asset):
     if not __is_domain(asset):
         return res
 
-    sub_res = sublist3r.main(
+    sub_res = turbolist3r.main(
         asset, 1, None,
         ports=None, silent=True, verbose=False, enable_bruteforce=False, engines=None)
 
@@ -485,8 +485,6 @@ def _parse_results(scan_id):
     }
     ts = int(time.time() * 1000)
 
-    #print scan['findings']
-
     # dns resolve
     if 'dns_resolve' in scan['findings'].keys():
         for asset in scan['findings']['dns_resolve'].keys():
@@ -497,7 +495,7 @@ def _parse_results(scan_id):
                     record['record_type'], ", ".join(record['values']))
                 dns_resolve_str = "".join((dns_resolve_str, entry+"\n"))
 
-            dns_resolve_hash = hashlib.sha1(dns_resolve_str).hexdigest()[:6]
+            dns_resolve_hash = hashlib.sha1(dns_resolve_str.encode("utf-8")).hexdigest()[:6]
 
             nb_vulns['info'] += 1
             issues.append({
@@ -529,7 +527,7 @@ def _parse_results(scan_id):
                         record['record_type'], ", ".join(record['values']))
                     subdom_resolve_str = "".join((subdom_resolve_str, entry+"\n"))
 
-                subdom_resolve_hash = hashlib.sha1(subdom_resolve_str).hexdigest()[:6]
+                subdom_resolve_hash = hashlib.sha1(subdom_resolve_str.encode("utf-8")).hexdigest()[:6]
 
                 nb_vulns['info'] += 1
                 issues.append({
@@ -586,16 +584,17 @@ def _parse_results(scan_id):
     if 'subdomains_list' in scan['findings'].keys():
         for asset in scan['findings']['subdomains_list'].keys():
             subdomains_str = ""
-            for subdomain in sorted(scan['findings']['subdomains_list'][asset]):
+            subdomains_list = sorted(set(scan['findings']['subdomains_list'][asset]))
+            for subdomain in subdomains_list:
                 if any(x in subdomain for x in bad_str):
                     continue
                 s = subdomain.replace("From http://PTRarchive.com: ", "")
                 subdomains_str = "".join((subdomains_str, s+"\n"))
                 # subdomains_str = "".join((subdomains_str, s+"\n"))
 
-            subdomains_hash = hashlib.sha1(subdomains_str).hexdigest()[:6]
-            if len(scan['findings']['subdomains_list'][asset]) == 0:
-                scan['findings']['subdomains_list'][asset] = []
+            subdomains_hash = hashlib.sha1(subdomains_str.encode("utf-8")).hexdigest()[:6]
+            if len(subdomains_list) == 0:
+                subdomains_list = []
 
             nb_vulns['info'] += 1
             issues.append({
@@ -606,7 +605,7 @@ def _parse_results(scan_id):
                     "protocol": "domain"
                     },
                 "title": "List of subdomains for '{}' ({} found, HASH: {})".format(
-                    asset, len(scan['findings']['subdomains_list'][asset]), subdomains_hash),
+                    asset, len(subdomains_list), subdomains_hash),
                 "description": "Subdomain list for '{}': \n\n{}".format(
                     asset, subdomains_str),
                 "solution": "n/a",
@@ -614,7 +613,7 @@ def _parse_results(scan_id):
                     "tags": ["domains", "subdomains"]
                 },
                 "type": "subdomains_enum",
-                "raw": scan['findings']['subdomains_list'][asset],
+                "raw": subdomains_list,
                 "timestamp": ts
             })
 
@@ -642,7 +641,7 @@ def _parse_results(scan_id):
                     "timestamp": ts
                 })
             else:
-                whois_hash = hashlib.sha1(str(scan['findings']['whois'])).hexdigest()[:6]
+                whois_hash = hashlib.sha1(str(scan['findings']['whois'][asset]['text']).encode("utf-8")).hexdigest()[:6]
                 issues.append({
                     "issue_id": len(issues)+1,
                     "severity": "info", "confidence": "certain",
@@ -651,13 +650,13 @@ def _parse_results(scan_id):
                         "protocol": "domain"
                         },
                     "title": "Whois info for '{}' (HASH: {})".format(asset, whois_hash),
-                    "description": "Whois Info (raw): \n\n{}".format(str(scan['findings']['whois'][asset]['raw'][0])),
+                    "description": "Whois Info (raw): \n\n{}".format(str(scan['findings']['whois'][asset]['text'])),
                     "solution": "n/a",
                     "metadata": {
                         "tags": ["domains", "whois"]
                     },
                     "type": "whois_fullinfo",
-                    "raw": scan['findings']['whois'][asset]['raw'][0],
+                    "raw": scan['findings']['whois'][asset]['raw'],
                     "timestamp": ts
                 })
 
@@ -682,39 +681,43 @@ def _parse_results(scan_id):
 
                 # status
                 nb_vulns['info'] += 1
+                whois_statuses = ",\n".join(scan['findings']['whois'][asset]['raw']['status'])
                 dom_status = copy.deepcopy(issue) ; dom_status.update({
                     "issue_id": len(issues)+1,
                     "type": "whois_domain_status",
-                    "title": "[Whois] '{}' domain has status '{}'".format(asset, scan['findings']['whois'][asset]['status'][0]),
-                    "description": "[Whois] '{}' domain has status '{}'".format(asset, scan['findings']['whois'][asset]['status'][0]),
-                    "raw": scan['findings']['whois'][asset]['status'][0]
+                    "title": "[Whois] '{}' domain has status '{}'".format(asset, scan['findings']['whois'][asset]['raw']['status'][0]),
+                    "description": "[Whois] '{}' domain has status '{}'".format(asset, whois_statuses),
+                    "raw": scan['findings']['whois'][asset]['raw']['status']
                 })
                 issues.append(dom_status)
 
                 # registrar
                 nb_vulns['info'] += 1
+                whois_reginfo = "Name: {}\n".format(scan['findings']['whois'][asset]['raw']['registrar'])
+                whois_reginfo += "ID: {}\n".format(scan['findings']['whois'][asset]['raw']['registrar_id'])
+                whois_reginfo += "URL(s): {}\n".format(", ".join(scan['findings']['whois'][asset]['raw']['registrar_url']))
                 dom_registrar = copy.deepcopy(issue) ; dom_registrar.update({
                     "issue_id": len(issues)+1,
                     "type": "whois_registrar",
                     "title": "[Whois] '{}' domain registrar is '{}'".format(
-                        asset, scan['findings']['whois'][asset]['registrar'][0]),
-                    "description": "[Whois] '{}' domain registrar is '{}'".format(
-                        asset, scan['findings']['whois'][asset]['registrar'][0]),
-                    "raw": scan['findings']['whois'][asset]['registrar']
+                        asset, scan['findings']['whois'][asset]['raw']['registrar']),
+                    "description": "[Whois] '{}' domain registrar is '{}': \n{}".format(
+                        asset, scan['findings']['whois'][asset]['raw']['registrar'],
+                        whois_reginfo),
+                    "raw": scan['findings']['whois'][asset]['raw']['registrar']
                 })
                 issues.append(dom_registrar)
 
                 # emails
-                if 'emails' in scan['findings']['whois'][asset].keys() and scan['findings']['whois'][asset]['emails']:
+                if 'emails' in scan['findings']['whois'][asset]['raw'].keys() and scan['findings']['whois'][asset]['raw']['emails']:
                     nb_vulns['info'] += 1
                     dom_emails = copy.deepcopy(issue) ; dom_emails.update({
                         "issue_id": len(issues)+1,
                         "type": "whois_emails",
-                        "title": "[Whois] '{}' domain contact emails are: '{}'".format(
-                            asset, ", ".join(scan['findings']['whois'][asset]['emails'])),
-                        "description": "[Whois] '{}' domain contact emails are: '{}'".format(
-                            asset, ", ".join(scan['findings']['whois'][asset]['emails'])),
-                        "raw": scan['findings']['whois'][asset]['emails']
+                        "title": "[Whois] '{}' domain contact emails are set.".format(asset),
+                        "description": "[Whois] '{}' domain contact emails are:\n'{}'".format(
+                            asset, ", ".join(scan['findings']['whois'][asset]['raw']['emails'])),
+                        "raw": scan['findings']['whois'][asset]['raw']['emails']
                     })
                     issues.append(dom_emails)
 
@@ -723,74 +726,55 @@ def _parse_results(scan_id):
                 dom_nameservers = copy.deepcopy(issue) ; dom_nameservers.update({
                     "issue_id": len(issues)+1,
                     "type": "whois_nameservers",
-                    "title": "[Whois] '{}' domain nameservers are '{}'".format(
-                        asset, ", ".join(scan['findings']['whois'][asset]['nameservers'])),
-                    "description": "[Whois] '{}' domain nameservers are '{}'".format(
-                        asset, ", ".join(scan['findings']['whois'][asset]['nameservers'])),
-                    "raw": scan['findings']['whois'][asset]['nameservers']
+                    "title": "[Whois] '{}' domain nameservers are set.".format(asset),
+                    "description": "[Whois] '{}' domain nameservers are:\n{}".format(
+                        asset, ",\n".join(scan['findings']['whois'][asset]['raw']['name_servers'])),
+                    "raw": scan['findings']['whois'][asset]['raw']['name_servers']
                 })
                 issues.append(dom_nameservers)
 
                 # updated_date
                 nb_vulns['info'] += 1
-                update_dates = [d.date().isoformat() for d in scan['findings']['whois'][asset]['updated_date']]
+                update_dates = [d.date().isoformat() for d in scan['findings']['whois'][asset]['raw']['updated_date']]
                 dom_updated_dates = copy.deepcopy(issue) ; dom_updated_dates.update({
                     "issue_id": len(issues)+1,
                     "type": "whois_update_dates",
                     "title": "[Whois] '{}' domain was lastly updated the '{}'".format(
-                        asset, max(scan['findings']['whois'][asset]['updated_date']).date().isoformat()),
+                        asset, max(scan['findings']['whois'][asset]['raw']['updated_date']).date().isoformat()),
                     "description": "[Whois] '{}' domain was updated at the following dates: \n\n{}".format(
                         asset, ", ".join(update_dates)),
-                    "raw": scan['findings']['whois'][asset]['updated_date']
+                    "raw": scan['findings']['whois'][asset]['raw']['updated_date']
                 })
                 issues.append(dom_updated_dates)
 
                 # creation_date
                 nb_vulns['info'] += 1
-                create_dates = [d.date().isoformat() for d in scan['findings']['whois'][asset]['creation_date']]
                 dom_created_dates = copy.deepcopy(issue) ; dom_created_dates.update({
                     "issue_id": len(issues)+1,
                     "type": "whois_creation_dates",
                     "title": "[Whois] '{}' domain was lastly created the '{}'".format(
-                        asset, max(scan['findings']['whois'][asset]['creation_date']).date().isoformat()),
+                        asset, scan['findings']['whois'][asset]['raw']['creation_date'].date().isoformat()),
                     "description": "[Whois] '{}' domain was created at the following dates: \n\n{}".format(
-                        asset, ", ".join(create_dates)),
-                    "raw": scan['findings']['whois'][asset]['creation_date']
+                        asset, scan['findings']['whois'][asset]['raw']['creation_date']),
+                    "raw": scan['findings']['whois'][asset]['raw']['creation_date']
                 })
                 issues.append(dom_created_dates)
 
-                # contacts (admin, tech, registrant, billing)
-                nb_vulns['info'] += 1
-                dom_contacts = copy.deepcopy(issue) ; dom_contacts.update({
-                    "issue_id": len(issues)+1,
-                    "type": "whois_contacts",
-                    "title": "[Whois] '{}' domain contacts (HASH: {})".format(
-                        asset,
-                        hashlib.sha1(str(scan['findings']['whois'][asset]['contacts'])).hexdigest()[:6]),
-                    "description": "[Whois] '{}' domain contacts: \n\n{}".format(
-                        asset, scan['findings']['whois'][asset]['contacts']),
-                    "raw": scan['findings']['whois'][asset]['contacts']
-                })
-                issues.append(dom_contacts)
-
                 # expiry date
                 nb_vulns['info'] += 1
-                expiry_dates = [d.date().isoformat() for d in scan['findings']['whois'][asset]['expiration_date']]
                 dom_expiration_date = copy.deepcopy(issue) ; dom_expiration_date.update({
                     "issue_id": len(issues)+1,
                     "type": "whois_expiration_dates",
                     "title": "[Whois] '{}' domain is registred until '{}'".format(
-                        asset, max(scan['findings']['whois'][asset]['expiration_date']).date().isoformat()),
-                    "description": "[Whois] '{}' domain is registred until '{}'\n\nAll dates: {}".format(
-                        asset,
-                        max(scan['findings']['whois'][asset]['expiration_date']).date().isoformat(),
-                        ", ".join(expiry_dates)),
-                    "raw": scan['findings']['whois'][asset]['expiration_date']
+                        asset, scan['findings']['whois'][asset]['raw']['expiration_date'].date().isoformat()),
+                    "description": "[Whois] '{}' domain is registred until '{}'".format(
+                        asset, scan['findings']['whois'][asset]['raw']['expiration_date'].date().isoformat()),
+                    "raw": scan['findings']['whois'][asset]['raw']['expiration_date']
                 })
                 issues.append(dom_expiration_date)
 
                 # Raise alarms at 6 months (low), 3 months (medium), 2 weeks (high) or when expired (high)
-                exp_date = max(scan['findings']['whois'][asset]['expiration_date'])
+                exp_date = scan['findings']['whois'][asset]['raw']['expiration_date']
                 six_month_later = datetime.datetime.now() + datetime.timedelta(days=365/2)
                 three_month_later = datetime.datetime.now() + datetime.timedelta(days=90)
                 two_weeks_later = datetime.datetime.now() + datetime.timedelta(days=15)
@@ -807,7 +791,7 @@ def _parse_results(scan_id):
                             asset,
                             exp_date.date().isoformat(),
                             ", ".join(expiry_dates)),
-                        "raw": scan['findings']['whois'][asset]['expiration_date'],
+                        "raw": scan['findings']['whois'][asset]['raw']['expiration_date'],
                         "solution": "Renew the domain"
                     })
                     issues.append(dom_expiration_date_passed)
@@ -823,7 +807,7 @@ def _parse_results(scan_id):
                             asset,
                             exp_date.date().isoformat(),
                             ", ".join(expiry_dates)),
-                        "raw": scan['findings']['whois'][asset]['expiration_date'],
+                        "raw": scan['findings']['whois'][asset]['raw']['expiration_date'],
                         "solution": "Renew the domain"
                     })
                     issues.append(dom_expiration_date_2w)
@@ -839,7 +823,7 @@ def _parse_results(scan_id):
                             asset,
                             exp_date.date().isoformat(),
                             ", ".join(expiry_dates)),
-                        "raw": scan['findings']['whois'][asset]['expiration_date'],
+                        "raw": scan['findings']['whois'][asset]['raw']['expiration_date'],
                         "solution": "Renew the domain"
                     })
                     issues.append(dom_expiration_date_3m)
@@ -855,7 +839,7 @@ def _parse_results(scan_id):
                             asset,
                             exp_date.date().isoformat(),
                             ", ".join(expiry_dates)),
-                        "raw": scan['findings']['whois'][asset]['expiration_date'],
+                        "raw": scan['findings']['whois'][asset]['raw']['expiration_date'],
                         "solution": "Renew the domain"
                     })
                     issues.append(dom_expiration_date_6m)
@@ -876,7 +860,7 @@ def _parse_results(scan_id):
 
 @app.route('/engines/owl_dns/getfindings/<scan_id>')
 def getfindings(scan_id):
-    res = {"page": "getfindings", "scan_id": scan_id }
+    res = {"page": "getfindings", "scan_id": scan_id}
 
     # check if the scan_id exists
     if scan_id not in this.scans.keys():

@@ -1,28 +1,36 @@
-import sys, os
-import json, requests, time, random
+#!/usr/bin/python3
+# -*- coding: utf-8 -*-
+"""
+ARACHNI Tests
+"""
 
-sys.path.append( os.path.dirname( os.path.dirname( os.path.abspath(__file__) ) ) )
-from utils.PatrowlEngineTest import PatrowlEngineTest
+# Standard library imports
+from time import sleep
 
-time.sleep(10)
+# Own library imports
+from PatrowlEnginesUtils.PatrowlEngineTest import PatrowlEngineTest
+
+BASE_URL = "http://127.0.0.1:5005/engines/arachni"
+
+sleep(10)
 # Define the engine instance
-pet = PatrowlEngineTest(engine_name="arachni", base_url="http://127.0.0.1:5005/engines/arachni")
+PET = PatrowlEngineTest(engine_name="arachni", base_url=BASE_URL)
 
-# generic tests
 def test_generic_features():
-    time.sleep(5)
-    pet.do_generic_tests()
+    """ generic tests """
+    sleep(5)
+    PET.do_generic_tests()
 
-## custom tests
 def test_arachni_xss():
-    time.sleep(5)
-    pet.custom_test(
+    """ custom tests """
+    sleep(5)
+    PET.custom_test(
         test_name="arachni_xss",
         assets=[{
-            "id" :'1',
-            "value" :'https://xss-game.appspot.com/level1',
-            "criticity": 'high',
-            "datatype": 'url'
+            "id" :"1",
+            "value" :"https://xss-game.appspot.com/level1",
+            "criticity": "high",
+            "datatype": "url"
         }],
         scan_policy={
             "max_timeout": 300,
@@ -47,10 +55,9 @@ def test_arachni_xss():
                 "worker_time_to_live" : 100,
             },
             "scope": {
-                "exclude_file_extensions": ['pdf', 'css', 'ico', 'jpg', 'svg', 'png', 'gif', 'jpeg'],
+                "exclude_file_extensions": ["pdf", "css", "ico", "jpg", "svg", "png", "gif", "jpeg"],
                 "auto_redundant_paths": 10,
                 "include_subdomains": False,
-                "exclude_binaries": True,
                 "exclude_binaries": False,
                 "https_only" : False
             },
@@ -75,7 +82,7 @@ def test_arachni_xss():
                 # "backdoors",
                 # "backup_directories",
                 # "backup_files",
-                # #"captcha",
+                # "captcha",
                 # "code_injection",
                 # "code_injection_php_input_wrapper",
                 # "code_injection_timing",
@@ -83,16 +90,16 @@ def test_arachni_xss():
                 # "common_directories",
                 # "common_files",
                 # "cookie_set_for_parent_domain",
-                # #"credit_card",
+                # "credit_card",
                 # "csrf",
                 # "cvs_svn_users",
                 # "directory_listing",
-                # #"emails",
+                # "emails",
                 # "file_inclusion",
-                # #"form_upload",
+                # "form_upload",
                 # "hsts",
                 # "htaccess_limit",
-                # #"html_objects",
+                # "html_objects",
                 # "http_only_cookies",
                 # "http_put",
                 # "insecure_client_access_policy",
@@ -100,7 +107,7 @@ def test_arachni_xss():
                 # "insecure_cors_policy",
                 # "insecure_cross_domain_policy_access",
                 # "insecure_cross_domain_policy_headers",
-                # #"interesting_responses",
+                # "interesting_responses",
                 # "ldap_injection",
                 # "localstart_asp",
                 # "mixed_resource",
@@ -119,7 +126,7 @@ def test_arachni_xss():
                 # "sql_injection",
                 # "sql_injection_differential",
                 # "sql_injection_timing",
-                # #"ssn",
+                # "ssn",
                 # "trainer",
                 # "unencrypted_password_forms",
                 # "unvalidated_redirect",
@@ -136,12 +143,12 @@ def test_arachni_xss():
                 "xss_tag",
                 #"xst",
                 "xxe"
-              ]
+            ]
         },
         is_valid=True
     )
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     test_generic_features()
     test_arachni_xss()

@@ -1,5 +1,5 @@
 FROM alpine:latest
-MAINTAINER Patrowl.io "sgetupport@patrowl.io"
+MAINTAINER Patrowl.io "getsupport@patrowl.io"
 LABEL Name="SSLScan\ \(Patrowl engine\)" Version="1.0.0"
 
 ENV CFLAGS "-D__USE_GNU"
@@ -24,9 +24,9 @@ RUN apk add --update --no-cache \
       zlib-dev \
       libc6-compat \
       openssl \
-      python \
-      python-dev \
-      py-pip && \
+      python3 \
+      python3-dev \
+      py3-pip && \
     git clone https://github.com/rbsec/sslscan.git && \
     cd sslscan && \
     make static && \
@@ -39,12 +39,11 @@ RUN apk add --update --no-cache \
 
 
 WORKDIR /opt/patrowl-engines/sslscan
-RUN pip install --upgrade pip
-RUN pip install --trusted-host pypi.python.org -r requirements.txt
+RUN pip3 install --upgrade pip
+RUN pip3 install --trusted-host pypi.python.org -r requirements.txt
 
 # TCP port exposed by the container (NAT)
 EXPOSE 5014
 
 # Run app.py when the container launches
-USER nobody
 CMD ["gunicorn", "engine-sslscan:app", "-b", "0.0.0.0:5014"]

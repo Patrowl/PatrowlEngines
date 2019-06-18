@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/python3
 # -*- coding: utf-8 -*-
 import json, os, subprocess, sys, requests, urlparse, datetime
 from flask import Flask, request, jsonify, redirect, url_for

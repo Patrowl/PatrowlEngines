@@ -54,7 +54,7 @@ python manage.py loaddata var/data/engines.EnginePolicy.json
 
 
 ## Dependancies
-- Python 2.7 + pip
+- Python 3 + pip
 - See requirements.txt for others python packages (use "pip install -r requirements.txt")
 
 ## Testing URLs

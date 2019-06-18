@@ -1,10 +1,10 @@
-#!/usr/bin/python
+#!/usr/bin/python3
 # -*- coding: utf-8 -*-
 import os
 import sys
 import requests
 import json
-import urlparse
+from urllib.parse import urlparse
 import datetime
 import time
 import subprocess
@@ -149,7 +149,7 @@ def info():
 def status():
     res = {"page": "status"}
     # display the status of the scanner
-    this.scanner['status'] = json.loads(info().get_data())['status']
+    this.scanner['status'] = json.loads(info().get_data().decode("utf-8"))['status']
     res.update({"status": this.scanner['status']})
 
     # display info on the scanner
@@ -172,8 +172,7 @@ def _is_scan_finished(scan_id):
     try:
         url = this.scanner['api_url'] + "/scans/" + str(this.scans[scan_id]['arachni_scan_id']) + "/summary"
         r = requests.get(url=url, verify=False, auth=this.scanner['auth'])
-        #print json.loads(r.text)["status"]
-        if r.status_code == 200 and json.loads(r.text)["status"] == "done" and json.loads(r.text)["busy"] is False:
+        if r.status_code == 200 and r.json()["status"] == "done" and r.json()["busy"] is False:
             this.scans[scan_id]["status"] = "FINISHED"
             this.scans[scan_id]["finished_at"] = datetime.datetime.now()
             return True
@@ -193,17 +192,16 @@ def _is_scan_finished(scan_id):
 def scan_status(scan_id):
     res = {"page": "scan_status"}
 
-    if not scan_id in this.scans.keys():
+    if scan_id not in this.scans.keys():
         res.update({"status": "error", "reason": "scan_id '{}' not found".format(scan_id)})
         return jsonify(res)
 
     # check id the scan is finished or not
-    #_is_scan_finished(scan_id)
     resp = None
     try:
         url = this.scanner['api_url'] + "/scans/" + this.scans[scan_id]['arachni_scan_id'] + "/summary"
         r = requests.get(url=url, verify=False, auth=this.scanner['auth'])
-        resp = json.loads(r.text)
+        resp = r.json()
         if r.status_code == 200:
             if resp["status"] == "done" and resp["busy"] is False:
                 this.scans[scan_id]["status"] = "FINISHED"
@@ -231,19 +229,19 @@ def start():
     # check the scanner is ready to start a new scan
     if len(this.scans) == APP_MAXSCANS:
         res.update({
-			"status": "ERROR",
-			"reason": "Scan refused: max concurrent active scans reached ({})".format(APP_MAXSCANS)
-		})
+            "status": "ERROR",
+            "reason": "Scan refused: max concurrent active scans reached ({})".format(APP_MAXSCANS)
+        })
         return jsonify(res)
 
     scan = {}
-    data = json.loads(request.data)
+    data = json.loads(request.data.decode("utf-8"))
 
-    if 'assets' not in data.keys() or 'scan_id' not in data.keys():# or not 'base_url' in data['options'].keys():
+    if 'assets' not in data.keys() or 'scan_id' not in data.keys():  # or not 'base_url' in data['options'].keys():
         res.update({
-			"status": "ERROR",
-			"reason": "arg error, something is missing (ex: 'assets', 'scan_id')"#, 'options/base_url')"
-		})
+            "status": "ERROR",
+            "reason": "arg error, something is missing (ex: 'assets', 'scan_id')"  #, 'options/base_url')"
+        })
         return jsonify(res)
 
     # scan["scan_id"] = data["scan_id"]
@@ -258,19 +256,20 @@ def start():
     asset = data['assets'][0]
     if asset["datatype"] not in this.scanner["allowed_asset_types"]:
         return jsonify({
-                "status": "refused",
-                "details": {
-                    "reason": "datatype '{}' not supported for the asset {}.".format(asset["datatype"], asset["value"])
+            "status": "refused",
+            "details": {
+                "reason": "datatype '{}' not supported for the asset {}.".format(asset["datatype"], asset["value"])
             }})
 
     scan["asset_url"] = list(data['assets'])[0]['value']  # only take the 1st
-    scan["target_host"] = urlparse.urlparse(scan["asset_url"]).netloc
-    scan["target_protocol"] = urlparse.urlparse(scan["asset_url"]).scheme
+    scan["target_host"] = urlparse(scan["asset_url"]).netloc
+    scan["target_protocol"] = urlparse(scan["asset_url"]).scheme
 
     if 'ports' in data['options'].keys():
-        scan["target_port"] = str(list(data['options']['ports'])[0])  # get the 1st in list
-    elif urlparse.urlparse(scan["asset_url"]).port:
-        scan["target_port"] = urlparse.urlparse(scan["asset_url"]).port
+        # get the 1st in list
+        scan["target_port"] = str(list(data['options']['ports'])[0])
+    elif urlparse(scan["asset_url"]).port:
+        scan["target_port"] = urlparse(scan["asset_url"]).port
     elif scan["target_protocol"] == 'http':
         scan["target_port"] = 80
     elif scan["target_protocol"] == 'https':
@@ -306,7 +305,7 @@ def start():
         if r.status_code == 200:
             res.update({"status": "accepted"})
             scan["status"] = "SCANNING"
-            scan["arachni_scan_id"] = json.loads(r.text)['id']
+            scan["arachni_scan_id"] = r.json()['id']
             res.update({"details": r.text})
         else:
             res.update({"status": "ERROR", "reason": "something wrong with the API invokation"})
@@ -415,7 +414,7 @@ def getfindings(scan_id):
         res.update({"status": "ERROR", "reason": "something wrong with the API invokation"})
         return jsonify(res)
 
-    scan_results = json.loads(r.text)
+    scan_results = r.json()
     issues, summary = _parse_report(
         results=scan_results, asset_name=app_url,
         asset_host=host, asset_port=port, asset_protocol=protocol
@@ -480,7 +479,7 @@ def _parse_report(results, asset_name, asset_host, asset_port, asset_protocol):
         if sitemap[url] == 200:
             sitemap_str = "".join((sitemap_str, str(url)+"\n"))
 
-    sitemap_hash = hashlib.sha1(str(sitemap_str)).hexdigest()[:6]
+    sitemap_hash = hashlib.sha1(str(sitemap_str).encode('utf-8')).hexdigest()[:6]
 
     nb_vulns['info'] += 1
     issues.append({
@@ -535,7 +534,7 @@ def _parse_report(results, asset_name, asset_host, asset_port, asset_protocol):
             "title": "{} ({} [{}])".format(
                 issue['name'],
                 # str(issue['vector']['method']).upper(),          # GET, POST, PUT, ..
-                urlparse.urlparse(issue['vector']['url']).path,  # /index.php
+                urlparse(issue['vector']['url']).path,  # /index.php
                 issue['vector']['affected_input_name']),         # query
             "description": "{}\\n\\nRequest: {}\\n\\nResponse: {}".format(
                 issue['description'],

@@ -2,7 +2,7 @@
 Openvas REST API engine
 
 ## Dependencies
-- Python 2.7 + pip
+- Python 3 + pip
 - See requirements.txt for others python packages (use "pip install -r requirements.txt")
 
 ## Engine Policies (examples)

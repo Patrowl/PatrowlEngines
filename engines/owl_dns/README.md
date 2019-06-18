@@ -2,11 +2,9 @@
 DNS REST API engine
 
 ## Dependencies
-- Python 2.7 + pip
-- [python-whois](https://github.com/joepie91/python-whois) (do not forget to update `owl_dns.json` with installation path)
-- [Sublist3r](https://github.com/aboul3la/Sublist3r)
-- See requirements.txt for others python packages (use "pip install -r requirements.txt")
-
+- Python 3 + pip
+- [Turbolist3r](https://github.com/fleetcaptain/Turbolist3r/)
+- See requirements.txt for others python packages (use "pip3 install -r requirements.txt")
 
 ## Todolist
 - Expand contacts info in separate issues (advanced Whois)
@@ -15,6 +13,12 @@ DNS REST API engine
 - Exception Management
   * try/except calls to external modules (python-whois and Sublist3r)
   * Check whois with invalid domain names
+
+## MacOs workaround
+If the engine fails to resolve domains, consider setting the following env parameter:
+```
+export OBJC_DISABLE_INITIALIZE_FORK_SAFETY=YES
+```
 
 ## Testing URLs
 http://0.0.0.0:5006/engines/owl_dns/test

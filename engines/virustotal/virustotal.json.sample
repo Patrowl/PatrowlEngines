@@ -3,7 +3,6 @@
 	"version": "0.1a",
 	"description": "VirusTotal's Public API lets you upload and scan files, submit and scan URLs, access finished scan reports and make automatic comments on URLs and samples without the need of using the HTML website interface.",
 	"allowed_asset_types": ["ip", "domain", "file", "hash", "url"],
-	"virustotalapi_bin_path": "/Users/GreenLock/Documents/Projets/patrowl/FullScan-external/virustotal-api",
 	"apikeys": [
 		"xx",
 		"yy"
