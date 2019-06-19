@@ -2,11 +2,13 @@
   "name": "Openvas API",
   "version": "1.0.0",
   "description": "Openvas API",
-  "allowed_asset_types": ["fqdn","ip","domain"],
+  "allowed_asset_types": ["fqdn" ,"ip", "domain"],
   "options": {
-     "omp_host":         { "type": "required", "value": "www.openvas.com"},
-     "omp_port":         { "type": "optional", "value": "9390"},
-     "omp_username":     { "type": "optional", "value": "admin"},
-     "omp_password":     { "type": "optional", "value": "P@ssw0rd"}
+     "gmp_host":         { "type": "required", "value": "www.openvas.com"},
+     "gmp_port":         { "type": "optional", "value": "9390"},
+     "gmp_username":     { "type": "optional", "value": "admin"},
+     "gmp_password":     { "type": "optional", "value": "P@ssw0rd"},
+     "default_credential_name":  { "type": "optional", "value": "SSH Scanner"},
+     "default_scan_config_name": { "type": "optional", "value": "Full and fast"}
   }
 }
