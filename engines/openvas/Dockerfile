@@ -21,6 +21,7 @@ COPY README.md .
 RUN mkdir -p results
 RUN apk add --update --no-cache \
     build-base \
+    libffi-dev \
     python3 \
     python3-dev \
     py3-pip \
