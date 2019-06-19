@@ -13,7 +13,7 @@ import operator
 import random
 from flask import Flask, request, jsonify
 
-# Temporary
+# Own library imports
 from PatrowlEnginesUtils.PatrowlEngine import _json_serial
 from PatrowlEnginesUtils.PatrowlEngine import PatrowlEngine
 from PatrowlEnginesUtils.PatrowlEngineExceptions import PatrowlEngineExceptions
@@ -321,12 +321,13 @@ def _parse_results(scan_id):
 
     # print "_parse_report/scan['findings'].keys():", scan['findings'].keys()
 
-    for asset in scan['findings'].keys():
+    for asset in scan["findings"].keys():
         # IP SCAN
-        if 'scan_ip' in engine.scans[scan_id]['findings'][asset].keys():
-            results = engine.scans[scan_id]['findings'][asset]['scan_ip']['results']
-            if results['response_code'] != 1:
-                nb_vulns['info'] += 1
+        asset_findings = engine.scans[scan_id]["findings"][asset]
+        if "scan_ip" in asset_findings and "results" in asset_findings["scan_ip"]:
+            results = asset_findings["scan_ip"]["results"]
+            if results["response_code"] != 1:
+                nb_vulns["info"] += 1
                 issues.append({
                     "issue_id": len(issues)+1,
                     "severity": "info", "confidence": "certain",
@@ -905,10 +906,11 @@ def _parse_results(scan_id):
 
 
         # URL SCAN
-        if 'scan_url' in engine.scans[scan_id]['findings'][asset].keys():
-            results = engine.scans[scan_id]['findings'][asset]['scan_url']['results']
-            if results['response_code'] != 1:
-                nb_vulns['info'] += 1
+        asset_findings = engine.scans[scan_id]["findings"][asset]
+        if "scan_ip" in asset_findings and "results" in asset_findings["scan_ip"]:
+            results = asset_findings["scan_url"]["results"]
+            if results["response_code"] != 1:
+                nb_vulns["info"] += 1
                 issues.append({
                     "issue_id": len(issues)+1,
                     "severity": "info", "confidence": "certain",

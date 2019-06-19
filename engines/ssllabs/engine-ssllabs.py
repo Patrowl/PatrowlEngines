@@ -13,7 +13,7 @@ import logging
 from urllib.parse import urlparse
 from flask import Flask, request, jsonify
 
-# Temporary
+# Own library imports
 from PatrowlEnginesUtils.PatrowlEngine import _json_serial
 from PatrowlEnginesUtils.PatrowlEngine import PatrowlEngine
 from PatrowlEnginesUtils.PatrowlEngineExceptions import PatrowlEngineExceptions
@@ -472,7 +472,7 @@ def _parse_report(results, asset_name, asset_port):
     endpoint = results["endpoints"][0]
 
     # Check results
-    if len(endpoint['details']['protocols']) == 0:
+    if "details" in endpoint and len(endpoint['details']['protocols']) == 0:
         nb_vulns['info'] += 1
         issues.append({
             "issue_id": 1,
