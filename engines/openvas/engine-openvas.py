@@ -74,52 +74,47 @@ def get_options(payload):
     return options
 
 
-def omp_cmd(command):
-    """ This function returns the output of an 'omp' command """
-    omp_cmd_base = ["omp",
-                "-h", engine.scanner["options"]["omp_host"]["value"],
-                "-p", engine.scanner["options"]["omp_port"]["value"],
-                "-u", engine.scanner["options"]["omp_username"]["value"],
-                "-w", engine.scanner["options"]["omp_password"]["value"]]
-    # omp_cmd_base = ["gvm-cli", "tls",
-    #                 "--hostname", engine.scanner["options"]["omp_host"]["value"],
-    #                 "--port", engine.scanner["options"]["omp_port"]["value"],
-    #                 "--gmp-username", engine.scanner["options"]["omp_username"]["value"],
-    #                 "--gmp-password", engine.scanner["options"]["omp_password"]["value"]]
-    try:
-        result = check_output(omp_cmd_base + command).decode("utf-8")
-    except Exception:
-        result = ""
-    return result
-
-
 def get_target(target_name):
     """
-    This function returns the target_id of a target. If not, it returns None
+    This function returns the target_id of a target. If not, it returns None.
     """
-    result = omp_cmd(["--get-targets"]).split("\n")
-    for target in result:
-        if target_name in target:
-            target_id = target.split(" ")[0]
+    targets_xml = this.gmp.get_targets()
+    try:
+        targets = ET.fromstring(targets_xml)
+    except Exception:
+        return None
+    if not targets.attrib["status"] == "200":
+        return None
+
+    for target in targets.findall("target"):
+        if target_name == target.find("hosts").text:
+            target_id = target.get("id")
             if not is_uuid(target_id):
                 return None
             return target_id
+
     return None
 
 
-def get_credentials():
+def get_credentials(name=None):
     """
-    This function returns the credentials_id from conf
+    This function returns the credentials_id from conf.
     """
-    result_xml = omp_cmd(["--xml", "<get_credentials/>"])
+    result_xml = this.gmp.get_credentials()
     try:
         result = ET.fromstring(result_xml)
     except Exception:
         return None
     if not result.attrib["status"] == "200":
         return None
+
+    creds_name = name
+    if name is None:
+        # Set the default value set in engine config
+        creds_name = engine.scanner["options"]["default_credential_name"]["value"]
+
     for credential in result.findall("credential"):
-        if credential.find("name").text == engine.scanner["options"]["credential_name"]["value"]:
+        if credential.find("name").text == creds_name:
             credentials_id = credential.attrib["id"]
             if not is_uuid(credentials_id):
                 return None
@@ -127,61 +122,132 @@ def get_credentials():
     return None
 
 
-def get_scan_config():
+def get_scan_config(name=None):
     """
-    This function returns the scan_config_id from conf
+    This function returns the scan_config_id from conf.
     """
-    result = omp_cmd(["--get-configs"]).split("\n")
-    for config in result:
-        if engine.scanner["options"]["scan_config_name"]["value"] in config:
-            scan_config_id = config.split(" ")[0]
-            if not is_uuid(scan_config_id, version=1):
+    configs_xml = this.gmp.get_configs()
+    try:
+        configs = ET.fromstring(configs_xml)
+    except Exception:
+        return None
+
+    scan_config_name = name
+    if name is None:
+        # Set the default value set in engine config
+        scan_config_name = engine.scanner["options"]["default_scan_config_name"]["value"]
+
+    for config in configs.findall("config"):
+        tmp_config_name = config.find("name").text
+        if scan_config_name == tmp_config_name:
+            scan_config_id = config.get("id")
+            if not is_uuid(scan_config_id, version=1) and not is_uuid(scan_config_id):
                 return None
             return scan_config_id
     return None
 
 
-def create_target(target_name):
+def create_target(
+    target_name,
+    ssh_credential_id=None, ssh_credential_port=None,
+    smb_credential_id=None,
+    esxi_credential_id=None,
+    snmp_credential_id=None):
     """
-    This function creates a target in OpenVAS and returns its target_id
+    This function creates a target in OpenVAS and returns its target_id.
     """
-    result_xml = omp_cmd(["--xml",
-                          "<create_target><name>{target_name}</name><hosts>{target_name}</hosts><ssh_credential id='{credentials_name}'><port>%{ssh_port}</port></ssh_credential></create_target>".format(
-                              target_name=target_name,
-                              credentials_name=engine.scanner["credentials"],
-                              ssh_port=22)])
+    new_target_xml = this.gmp.create_target(
+        target_name,
+        hosts=target_name,
+        ssh_credential_id=ssh_credential_id,
+        ssh_credential_port=ssh_credential_port,
+        smb_credential_id=smb_credential_id,
+        esxi_credential_id=esxi_credential_id,
+        snmp_credential_id=snmp_credential_id
+        )
     try:
-        result = ET.fromstring(result_xml)
+        new_target = ET.fromstring(new_target_xml)
     except Exception:
         return None
-    if not result.attrib["status"] == "201":
+    if not new_target.get("status") == "201":
         return None
-    target_id = result.attrib["id"]
+    target_id = new_target.get("id")
     if not is_uuid(target_id):
         return None
     return target_id
 
 
-def get_task(target_name):
+def get_task_by_target_name(target_name):
     """
-    This function returns the task_id
+    This function returns the task_id.
     """
-    result = omp_cmd(["--get-tasks"]).split("\n")
-    for target in result:
-        if target_name in target:
-            task_id = target.split(" ")[0]
+    tasks_xml = this.gmp.get_tasks()
+    target_id = get_target(target_name)
+    if target_id is None:
+        return None
+    try:
+        tasks = ET.fromstring(tasks_xml)
+    except Exception:
+        return None
+    if not tasks.get("status") == "200":
+        return None
+
+    for task in tasks.findall("task"):
+        if task.find('target').get("id") == target_id:
+            task_id = task.get("id")
             if not is_uuid(task_id):
                 return None
             return task_id
+
     return None
 
 
-def create_task(target_name, target_id):
+def get_scanners(name=None):
     """
-    This function creates a task_id in OpenVAS and returns its task_id
+    This function returns the list of scanners' ID.
     """
-    result = omp_cmd(["-C", "-c", engine.scanner["scan_config"], "--name", target_name, "--target", target_id]).split("\n")
-    task_id = result[0]
+    scanners_xml = this.gmp.get_scanners()
+    try:
+        scanners = ET.fromstring(scanners_xml)
+    except Exception:
+        return None
+    if not scanners.get("status") == "200":
+        return None
+
+    scanners_list = []
+
+    for scanner in scanners.findall("scanner"):
+        if name is not None:
+            if name == scanner.find('name').text:
+                return [scanner.get("id")]
+        else:
+            scanners_list.append(scanner.get("id"))
+    return scanners_list
+
+
+def create_task(target_name, target_id, scan_config_id=None, scanner_id=None):
+    """
+    This function creates a task_id in OpenVAS and returns its task_id.
+    """
+    if scan_config_id is None:
+        scan_config_id = get_scan_config()  # Set the default value
+    if scanner_id is None:
+        scanner_id = get_scanners()[1]  # Set the default value
+
+    new_task_xml = this.gmp.create_task(
+        name=target_name,
+        config_id=scan_config_id,
+        target_id=target_id,
+        scanner_id=scanner_id
+    )
+    try:
+        new_task = ET.fromstring(new_task_xml)
+    except Exception:
+        return None
+    if not new_task.get("status") == "201":
+        return None
+
+    task_id = new_task.get("id")
     if not is_uuid(task_id):
         return None
     return task_id
@@ -189,11 +255,18 @@ def create_task(target_name, target_id):
 
 def start_task(task_id):
     """
-    This function starts a task and returns a report_id
+    This function starts a task and returns a report_id.
     """
-    result = omp_cmd(["-S", task_id]).split("\n")
-    report_id = result[0]
-    if not is_uuid(report_id):
+    start_scan_results_xml = this.gmp.start_task(task_id)
+
+    try:
+        start_scan_results = ET.fromstring(start_scan_results_xml)
+    except Exception:
+        return None
+    if not start_scan_results.get("status") == "202":
+        return None
+    report_id = start_scan_results.find("report_id").text
+    if report_id == "0" or not is_uuid(report_id):
         return None
     return report_id
 
@@ -202,25 +275,33 @@ def get_last_report(task_id):
     """
     This function returns the last report_id of a task_id
     """
-    result = omp_cmd(["--get-tasks", task_id]).split("\n")
+    task_xml = this.gmp.get_task(task_id)
     try:
-        report_id = result[-2].split("  ")[1]
-    except IndexError:
+        task = ET.fromstring(task_xml)
+    except Exception:
         return None
-    if not is_uuid(report_id):
+    if not task.get("status") == "200":
         return None
-    return report_id
+
+    last_report = task.find("task").find("last_report").find("report")
+    if not is_uuid(last_report.get("id")):
+        return None
+    return last_report.get("id")
 
 
-def get_report_status(task_id, report_id):
+def get_report_status(report_id):
     """
-    This function get the status of a report_id
+    This function get the status of a report_id.
     """
-    result = omp_cmd(["--get-tasks", task_id]).split("\n")
-    for report in result:
-        if report_id in report:
-            return report.split("  ")[2]
-    return None
+    report_status_xml = this.gmp.get_report(report_id)
+    try:
+        report_status = ET.fromstring(report_status_xml)
+    except Exception:
+        return None
+    if not report_status.get("status") == "200":
+        return None
+
+    return report_status.find("report").find("report").find("scan_run_status").text
 
 
 def get_multiple_report_status(assets):
@@ -228,7 +309,7 @@ def get_multiple_report_status(assets):
     This function get the status of a set of assets {'task_id': xx, 'report_id': xx}
     """
     assets_status = dict()
-    result_xml = omp_cmd(["--xml", "<get_tasks/>"])
+    result_xml = this.gmp.get_tasks()
     try:
         result = ET.fromstring(result_xml)
     except Exception:
@@ -359,7 +440,9 @@ def status_scan(scan_id):
         try:
             _scan_urls(scan_id)
         except Exception as e:
-            res.update({"status": "error", "reason": "scan_urls did not worked ! ({})".format(e)})
+            res.update({
+                "status": "error",
+                "reason": "scan_urls did not worked ! ({})".format(e)})
             return jsonify(res)
     else:
         res.update({"status": "SCANNING"})
@@ -398,22 +481,34 @@ def _loadconfig():
 
     try:
         connection = TLSConnection(
-            hostname=engine.scanner["options"]["omp_host"]["value"],
-            port=engine.scanner["options"]["omp_port"]["value"]
+            hostname=engine.scanner["options"]["gmp_host"]["value"],
+            port=engine.scanner["options"]["gmp_port"]["value"]
         )
         this.gmp = Gmp(connection)
         this.gmp.authenticate(
-            engine.scanner["options"]["omp_username"]["value"],
-            engine.scanner["options"]["omp_password"]["value"])
-        print(this.gmp.get_version())
-
-        engine.scanner["status"] = "READY"
-        engine.scanner["credentials"] = ()
-        # engine.scanner["scan_config"] = get_scan_config()
+            engine.scanner["options"]["gmp_username"]["value"],
+            engine.scanner["options"]["gmp_password"]["value"])
     except Exception:
         engine.scanner["status"] = "ERROR"
         print("Error: authentication failure Openvas instance")
+        return False
 
+    engine.scanner["status"] = "READY"
+    engine.scanner["credentials"] = ()
+    engine.scanner["scan_config"] = get_scan_config()
+
+    # print(create_target("toto1.patrowl.io"))
+    # print(get_task_by_target_name("patrowl.io"))
+    # print(get_scanners())
+    # print(get_scanners("OpenVAS Default"))
+    # print(get_scan_config())
+    # print(get_scan_config(name="Discovery"))
+    # print(get_credentials())
+    # print(get_credentials(name="coucou"))
+    # print(create_task(target_name="patrowl.io", target_id="0f388a01-dcef-483c-90ea-4fbd3788ee0d"))
+    # print(start_task(create_task(target_name="www.patrowl.io", target_id="0f388a01-dcef-483c-90ea-4fbd3788ee0d")))
+    # print(get_last_report("dd63bb59-345b-41d0-a80f-47372eebbeab"))
+    # print(get_report_status("38db1f52-40d1-451d-ae9f-955c1d8ac1bd"))
 
 
 @app.route("/engines/openvas/reloadconfig", methods=["GET"])
@@ -481,15 +576,6 @@ def start_scan():
 
     scan_id = str(data["scan_id"])
 
-    if data["scan_id"] in engine.scans.keys():
-        res.update({
-            "status": "refused",
-            "details": {
-                "reason": "scan '{}' is probably already launched".format(data["scan_id"]),
-            }
-        })
-        return jsonify(res)
-
     scan = {
         "assets":       assets,
         "threads":      [],
@@ -511,7 +597,7 @@ def start_scan():
         target_id = get_target(asset)
         if target_id is None and options["enable_create_target"]:
             # print("Create target {}".format(asset))
-            target_id = create_target(asset)
+            target_id = create_target(asset)  # Todo: add credentials if needed
         if target_id is None:
             # if options["enable_create_target"]:
             #     print("Fail to create target {}".format(asset))
@@ -519,7 +605,7 @@ def start_scan():
             #     print("Target creation disabled")
             assets_failure.append(asset)
         else:
-            task_id = get_task(asset)
+            task_id = get_task_by_target_name(asset)
             if task_id is None and options["enable_create_task"]:
                 # print("Create task {}".format(asset))
                 task_id = create_task(asset, target_id)
@@ -554,14 +640,14 @@ def start_scan():
                         }
                     })
 
-    if scan["assets"] == dict():
-        res.update({
-            "status": "refused",
-            "details": {
-                "reason": "scan '{}' is probably already launched".format(data["scan_id"]),
-            }
-        })
-        return jsonify(res)
+    # if scan["assets"] == dict():
+    #     res.update({
+    #         "status": "refused",
+    #         "details": {
+    #             "reason": "scan '{}' is probably already launched".format(data["scan_id"]),
+    #         }
+    #     })
+    #     return jsonify(res)
 
     engine.scans.update({scan_id: scan})
     thread = Thread(target=_scan_urls, args=(scan_id,))
@@ -620,7 +706,7 @@ def get_report(asset, scan_id):
     issues = []
 
     if not isfile("results/openvas_report_{scan_id}_{asset}.xml".format(scan_id=scan_id, asset=asset)):
-        result = omp_cmd(["--get-report", report_id])
+        result = this.gmp.get_report(report_id)
         result_file = open("results/openvas_report_{scan_id}_{asset}.xml".format(scan_id=scan_id, asset=asset), "w")
         result_file.write(result)
         result_file.close()
@@ -681,8 +767,8 @@ def _parse_results(scan_id):
                         threat=eng[2],
                         severity=eng[0],
                         cve=eng[1]) + "\n"
-            description = description + "For more detail go to 'https://{omp_host}/omp?cmd=get_report&report_id={report_id}'".format(
-                omp_host=engine.scanner["options"]["omp_host"]["value"],
+            description = description + "For more detail go to 'https://{gmp_host}/omp?cmd=get_report&report_id={report_id}'".format(
+                gmp_host=engine.scanner["options"]["gmp_host"]["value"],
                 report_id=report_id)
 
             criticity = "high"
@@ -732,7 +818,10 @@ def getfindings(scan_id):
     # check if the scan is finished
     status()
     if engine.scans[scan_id]["status"] != "FINISHED":
-        res.update({"status": "error", "reason": "scan_id '{}' not finished (status={})".format(scan_id, engine.scans[scan_id]["status"])})
+        res.update({
+            "status": "error",
+            "reason": "scan_id '{}' not finished (status={})".format(scan_id, engine.scans[scan_id]["status"])
+        })
         return jsonify(res)
 
     issues, summary = _parse_results(scan_id)
@@ -747,12 +836,12 @@ def getfindings(scan_id):
     }
 
     # Store the findings in a file
-    with open(APP_BASE_DIR+"/results/openvas_"+scan_id+".json", "w") as report_file:
+    with open(APP_BASE_DIR+"/results/openvas_"+scan_id+".json", "w") as rf:
         dump({
             "scan": scan,
             "summary": summary,
             "issues": issues
-        }, report_file, default=_json_serial)
+        }, rf, default=_json_serial)
 
     # remove the scan from the active scan list
     clean_scan(scan_id)

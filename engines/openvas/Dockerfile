@@ -21,10 +21,9 @@ COPY README.md .
 RUN mkdir -p results
 RUN apk add --update --no-cache \
     build-base \
-    libffi-dev \
-    python3 \
-    python3-dev \
-    py3-pip \
+    libffi-dev openssl-dev \
+    libxml2-dev libxslt-dev \
+    python3 python3-dev py3-pip \
     git \
   && rm -rf /var/cache/apk/*
 
