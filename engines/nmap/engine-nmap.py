@@ -102,7 +102,7 @@ def start():
         return jsonify(res)
 
     # Load scan parameters
-    data = json.loads(request.data)
+    data = json.loads(request.data.decode("UTF-8"))
     if 'assets' not in data.keys():
         res.update({
             "status": "refused",
