@@ -4,13 +4,8 @@
 NMAP Tests
 """
 
-import sys
-# sys.path.append( os.path.dirname( os.path.dirname( os.path.abspath(__file__) ) ) )
-sys.path.append("..")
-from utils.PatrowlEngineTest import PatrowlEngineTest
-
 # Own library imports
-# from PatrowlEnginesUtils.PatrowlEngineTest import PatrowlEngineTest
+from PatrowlEnginesUtils.PatrowlEngineTest import PatrowlEngineTest
 
 BASE_URL = "http://127.0.0.1:5001/engines/nmap"
 
