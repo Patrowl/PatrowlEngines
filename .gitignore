@@ -21,6 +21,8 @@ engines/owl_code/libs/*
 engines/owl_code/owl_code.json
 engines/sslscan/libs/*
 engines/sslscan/sslscan.json
+engines/openvas/openvas.json
+engines/openvas/libs/*
 engines/certstream/certstream.json
 engines/certstream/whitelist.txt
 engines/eyewitness/eyewitness.json
