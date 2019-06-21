@@ -102,7 +102,7 @@ def start():
         return jsonify(res)
 
     # Load scan parameters
-    data = json.loads(request.data)
+    data = json.loads(request.data.decode("UTF-8"))
     if 'assets' not in data.keys():
         res.update({
             "status": "refused",
@@ -189,7 +189,7 @@ def _scan_thread(scan_id):
 
     this.scans[scan_id]["proc_cmd"] = "not set!!"
     with open(log_path, "w") as stderr:
-        this.scans[scan_id]["proc"] = subprocess.Popen(cmd, shell=True, stdout=open("/dev/null", "w"), stderr=None)
+        this.scans[scan_id]["proc"] = subprocess.Popen(cmd, shell=True, stdout=open("/dev/null", "w"), stderr=stderr)
     this.scans[scan_id]["proc_cmd"] = cmd
 
     return True
@@ -268,39 +268,41 @@ def scan_status(scan_id):
         res.update({"status": "error", "reason": "todo"})
         return jsonify(res)
 
-    if hasattr(proc, 'pid'):
-        if not psutil.pid_exists(proc.pid):
-            res.update({"status": "FINISHED"})
-            this.scans[scan_id]["status"] = "FINISHED"
+    if not hasattr(proc, "pid"):
+        res.update({"status": "ERROR", "reason": "No PID found"})
+        return jsonify(res)
 
-        elif psutil.pid_exists(proc.pid) and psutil.Process(proc.pid).status() in ["sleeping", "running"]:
-            res.update({
-                "status": "SCANNING",
-                "info": {
-                    "pid": proc.pid,
-                    "cmd": this.scans[scan_id]["proc_cmd"]}
-            })
-        elif psutil.pid_exists(proc.pid) and psutil.Process(proc.pid).status() == "zombie":
-            res.update({"status": "FINISHED"})
-            this.scans[scan_id]["status"] = "FINISHED"
-            psutil.Process(proc.pid).terminate()
-            # Check for errors
-            # log_path = BASE_DIR+"/logs/" + scan_id +".error"
-            #
-            # if os.path.isfile(log_path) and os.stat(log_path).st_size != 0:
-            #     error = open(log_path, 'r')
-            #     res.update({
-            #         "status" : "error",
-            #         "details": {
-            #             "error_output" : error.read(),
-            #             "scan_id": scan_id,
-            #             "cmd": this.scans[scan_id]["proc_cmd"] }
-            #     })
-            #     stop()
-            #     os.remove(log_path)
-            #     res.update({"status": "READY"})
-    else:
-        res.update({"status": "ERROR"})
+    if not psutil.pid_exists(proc.pid):
+        res.update({"status": "FINISHED"})
+        this.scans[scan_id]["status"] = "FINISHED"
+
+    elif psutil.pid_exists(proc.pid) and psutil.Process(proc.pid).status() in ["sleeping", "running"]:
+        res.update({
+            "status": "SCANNING",
+            "info": {
+                "pid": proc.pid,
+                "cmd": this.scans[scan_id]["proc_cmd"]}
+        })
+    elif psutil.pid_exists(proc.pid) and psutil.Process(proc.pid).status() == "zombie":
+        res.update({"status": "FINISHED"})
+        this.scans[scan_id]["status"] = "FINISHED"
+        psutil.Process(proc.pid).terminate()
+        # Check for errors
+        # log_path = BASE_DIR+"/logs/" + scan_id +".error"
+        #
+        # if os.path.isfile(log_path) and os.stat(log_path).st_size != 0:
+        #     error = open(log_path, 'r')
+        #     res.update({
+        #         "status" : "error",
+        #         "details": {
+        #             "error_output" : error.read(),
+        #             "scan_id": scan_id,
+        #             "cmd": this.scans[scan_id]["proc_cmd"] }
+        #     })
+        #     stop()
+        #     os.remove(log_path)
+        #     res.update({"status": "READY"})
+
     return jsonify(res)
 
 

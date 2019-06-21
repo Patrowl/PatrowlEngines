@@ -472,7 +472,7 @@ def _parse_report(results, asset_name, asset_port):
     endpoint = results["endpoints"][0]
 
     # Check results
-    if "details" in endpoint and len(endpoint['details']['protocols']) == 0:
+    if not "details" in endpoint or len(endpoint['details']['protocols']) == 0:
         nb_vulns['info'] += 1
         issues.append({
             "issue_id": 1,
@@ -489,8 +489,7 @@ def _parse_report(results, asset_name, asset_port):
             "timestamp": ts,
             "metadata": {
                 "tags": ["ssl", "certificate", "tls", "availability"]
-            },
-            "raw": endpoint["details"]
+            }
         })
 
         summary = {

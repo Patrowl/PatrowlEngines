@@ -98,7 +98,7 @@ class PatrowlEngineTest:
             elif r.json()["status"] == "FINISHED": break
             elif r.json()["status"] == "ERROR":
                 has_error = True
-                assert False
+                print(r.json()) ; assert False
                 break
             time.sleep(3)
 

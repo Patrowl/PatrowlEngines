@@ -23,6 +23,9 @@ engines/sslscan/libs/*
 engines/sslscan/sslscan.json
 engines/openvas/openvas.json
 engines/openvas/libs/*
+engines/certstream/certstream.json
+engines/certstream/whitelist.txt
+engines/eyewitness/eyewitness.json
 env
 env3
 results
