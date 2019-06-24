@@ -24,8 +24,10 @@ engines/sslscan/sslscan.json
 engines/openvas/openvas.json
 engines/openvas/libs/*
 engines/certstream/certstream.json
+engines/certstream/CertStreamMonitor
 engines/certstream/whitelist.txt
 engines/eyewitness/eyewitness.json
+engines/eyewitness/libs/*
 env
 env3
 results

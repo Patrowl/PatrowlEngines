@@ -1,5 +1,7 @@
+# DEV STATUS: STILL IN BETA
+
 ## Description
-CetStream REST API engine
+CertStream REST API engine
 
 ## Dependencies
 - Python 3

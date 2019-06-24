@@ -1,10 +1,12 @@
+# DEV STATUS: STILL IN BETA
+
 ## Description
-CetStream REST API engine
+EyeWitness REST API engine
 
 ## Dependencies
 - Python 3
 - `pip3 install -r requirements.txt`
-- `cd /opt; git clone https://github.com/FortyNorthSecurity/EyeWitness.git`
+- `cd libs; git clone https://github.com/FortyNorthSecurity/EyeWitness.git`
 - Follow EyeWitness documentation to setup
 
 ## Testing URLs

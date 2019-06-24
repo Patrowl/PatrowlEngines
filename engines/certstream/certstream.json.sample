@@ -2,7 +2,7 @@
   "name": "CertStream API",
   "version": "1.1.0",
   "description": "CertStream API",
-  "allowed_asset_types": ["fqdn","ip","domain"],
+  "allowed_asset_types": ["fqdn", "ip", "domain"],
   "options": {
      "CertStreamMonitorFile": { "type": "mandatory", "value": "CertStreamMonitor/conf/example.conf"},
      "Whitelist":             { "type": "optional",  "value": "whitelist.txt"}

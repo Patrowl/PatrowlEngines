@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 """CertStream PatrOwl engine application."""
 
-from __future__ import absolute_import
+# from __future__ import absolute_import
 
 from os import makedirs
 from os.path import dirname, exists, isfile, realpath
@@ -18,7 +18,7 @@ from flask import Flask, request, jsonify
 # Own library
 path.append("CertStreamMonitor")
 from utils.confparser import ConfParser
-import gethost
+import scanhost as gethost
 
 # Own library imports
 from PatrowlEnginesUtils.PatrowlEngine import _json_serial
@@ -46,6 +46,7 @@ engine = PatrowlEngine(
 this = modules[__name__]
 this.keys = []
 
+
 def get_options(payload):
     """
     Extracts formatted options from the payload
@@ -56,9 +57,10 @@ def get_options(payload):
     if "since" in user_opts:
         try:
             options["since"] = int(user_opts["since"])
-        except:
+        except Exception:
             options["since"] = 0
     return options
+
 
 def get_criticity(score):
     """
@@ -73,6 +75,7 @@ def get_criticity(score):
         criticity = "medium"
     return criticity
 
+
 def in_whitelist(domain):
     """
     Returns True if the domain is in the whitelist
@@ -86,6 +89,7 @@ def in_whitelist(domain):
         if domain.endswith(white):
             return True
     return False
+
 
 @app.errorhandler(404)
 def page_not_found(e):
@@ -162,7 +166,7 @@ def status():
         engine.scanner["options"]["DBFile"] = "CertStreamMonitor/" + CONF.DBFile
         engine.scanner["options"]["TABLEname"] = CONF.TABLEname
         engine.scanner["options"]["SearchKeywords"] = CONF.SearchKeywords
-    except:
+    except Exception:
         print("Error: Cannot read CertStreamMonitorFile : {}".format(CertStreamMonitorFile))
         return jsonify({"status": "error", "reason": "Cannot read CertStreamMonitorFile : {}".format(CertStreamMonitorFile)})
 
@@ -252,13 +256,14 @@ def _loadconfig():
         engine.scanner["options"]["DBFile"] = "CertStreamMonitor/" + CONF.DBFile
         engine.scanner["options"]["TABLEname"] = CONF.TABLEname
         engine.scanner["options"]["SearchKeywords"] = CONF.SearchKeywords
-    except:
+    except Exception:
         print("Error: Cannot read CertStreamMonitorFile : {}".format(CertStreamMonitorFile))
         return {"status": "error", "reason": "Cannot read CertStreamMonitorFile : {}".format(CertStreamMonitorFile)}
 
     if not exists(engine.scanner["options"]["DBFile"]):
         print("Error: sqlite file not found : {}".format(engine.scanner["options"]["DBFile"]))
         return {"status": "error", "reason": "sqlite file not found : {}".format(engine.scanner["options"]["DBFile"])}
+
 
 @app.route("/engines/certstream/reloadconfig", methods=["GET"])
 def reloadconfig():
@@ -473,7 +478,7 @@ def _parse_results(scan_id):
 
                 if report[domain]["still_investing"] is not None:
                     cvss_local = float(10)
-                    description_local += "Last time up: {}\n".format(report[domain]["still_investing"]) 
+                    description_local += "Last time up: {}\n".format(report[domain]["still_investing"])
                     issues.append({
                         "issue_id": len(issues)+1,
                         "severity": get_criticity(cvss_local), "confidence": "certain",
@@ -544,12 +549,12 @@ def getfindings(scan_id):
     }
 
     # Store the findings in a file
-    with open(APP_BASE_DIR+"/results/certstream_"+scan_id+".json", "w") as report_file:
+    with open(APP_BASE_DIR+"/results/certstream_"+scan_id+".json", "w") as rf:
         dump({
             "scan": scan,
             "summary": summary,
             "issues": issues
-        }, report_file, default=_json_serial)
+        }, rf, default=_json_serial)
 
     # remove the scan from the active scan list
     clean_scan(scan_id)
@@ -565,6 +570,7 @@ def main():
         makedirs(APP_BASE_DIR+"/results")
     _loadconfig()
     print("Run engine")
+
 
 if __name__ == "__main__":
     engine.run_app(app_debug=APP_DEBUG, app_host=APP_HOST, app_port=APP_PORT)

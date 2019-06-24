@@ -5,9 +5,8 @@
 from __future__ import absolute_import
 
 from os import makedirs, listdir
-from os.path import dirname, exists, isfile, realpath
-from sys import modules, path
-from json import dump, dumps, load, loads
+from os.path import dirname, exists, realpath
+from json import dump, load, loads
 from subprocess import check_output
 from threading import Thread
 from time import time, sleep
@@ -39,13 +38,9 @@ engine = PatrowlEngine(
     max_scans=APP_MAXSCANS
 )
 
-this = modules[__name__]
-this.keys = []
 
 def get_criticity(score):
-    """
-    Returns the level of criicity
-    """
+    """Return the level of criicity."""
     criticity = "high"
     if score == 0:
         criticity = "info"
@@ -57,20 +52,30 @@ def get_criticity(score):
 
 
 def eyewitness_cmd(url, asset_id, scan_id):
-    """
-    Returns the screenshot path
-    """
+    """Return the screenshot path."""
     base_path = engine.scanner["options"]["ScreenshotsDirectory"]["value"] + scan_id
     if not exists(base_path):
         makedirs(base_path, mode=0o755)
     asset_path = base_path + "/" + str(asset_id)
-    result = check_output(["{}/EyeWitness.py".format(engine.scanner["options"]["EyeWitnessDirectory"]["value"]), "--single", url, "--web", "-d", asset_path, "--no-prompt", "--prepend-https"])
+    check_output([
+        "{}/EyeWitness.py".format(
+            engine.scanner["options"]["EyeWitnessDirectory"]["value"]),
+        "--single", url,
+        "--web",
+        "-d", asset_path,
+        "--no-prompt",
+        "--prepend-https"])
     screens_path = asset_path + "/screens"
     screenshot_files = listdir(screens_path)
     if not screenshot_files:
         return list()
-    result_url = "{repo_url}/{scan_id}/{asset_id}/screens/{screenshot}".format(repo_url=engine.scanner["options"]["ScreenshotsURL"]["value"], scan_id=scan_id, asset_id=asset_id, screenshot=screenshot_files[0])
+    result_url = "{repo_url}/{scan_id}/{asset_id}/screens/{screenshot}".format(
+        repo_url=engine.scanner["options"]["ScreenshotsURL"]["value"],
+        scan_id=scan_id,
+        asset_id=asset_id,
+        screenshot=screenshot_files[0])
     return result_url
+
 
 @app.errorhandler(404)
 def page_not_found(e):
@@ -163,7 +168,7 @@ def status_scan(scan_id):
         res.update({"status": "error", "reason": "todo"})
         return jsonify(res)
 
-    if engine.scans[scan_id]["lock"]: 
+    if engine.scans[scan_id]["lock"]:
         res.update({"status": "SCANNING"})
         engine.scans[scan_id]["status"] = "SCANNING"
     else:
@@ -346,7 +351,7 @@ def _scan_urls(scan_id):
             engine.scans[scan_id]["findings"][asset] = {}
         try:
             asset_data = next((x for x in engine.scans[scan_id]["assets_data"] if x["value"] == asset), None)
-            engine.scans[scan_id]["findings"][asset]["issues"] = eyewitness_cmd(asset, asset_data["id"], scan_id) 
+            engine.scans[scan_id]["findings"][asset]["issues"] = eyewitness_cmd(asset, asset_data["id"], scan_id)
         except Exception as e:
             print("_scan_urls: API Connexion error for asset {}".format(asset))
             print(e)
@@ -373,7 +378,6 @@ def _parse_results(scan_id):
     timestamp = int(time() * 1000)
 
     for asset in engine.scans[scan_id]["findings"]:
-        description = ""
         cvss_max = float(0)
         if engine.scans[scan_id]["findings"][asset]["issues"]:
             screenshot_url = engine.scans[scan_id]["findings"][asset]["issues"]
@@ -453,6 +457,7 @@ def main():
         makedirs(APP_BASE_DIR+"/results")
     _loadconfig()
     print("Run engine")
+
 
 if __name__ == "__main__":
     engine.run_app(app_debug=APP_DEBUG, app_host=APP_HOST, app_port=APP_PORT)
