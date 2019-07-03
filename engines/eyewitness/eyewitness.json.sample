@@ -2,7 +2,7 @@
   "name": "EyeWitness API",
   "version": "1.0.0",
   "description": "EyeWitness API",
-  "allowed_asset_types": ["fqdn","ip","domain"],
+  "allowed_asset_types": ["fqdn", "ip", "domain"],
   "options": {
      "EyeWitnessDirectory":  { "type": "mandatory", "value": "libs/EyeWitness/"},
      "ScreenshotsDirectory": { "type": "mandatory", "value": "/var/www/html/"},

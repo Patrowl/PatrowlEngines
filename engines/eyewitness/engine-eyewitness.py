@@ -232,6 +232,7 @@ def _loadconfig():
 
     print("[OK] ScreenshotsDirectory")
 
+
 @app.route("/engines/eyewitness/reloadconfig", methods=["GET"])
 def reloadconfig():
     res = {"page": "reloadconfig"}
@@ -360,6 +361,7 @@ def _scan_urls(scan_id):
     print("lock off")
     engine.scans[scan_id]["lock"] = False
     return True
+
 
 def _parse_results(scan_id):
     while engine.scans[scan_id]["lock"]:

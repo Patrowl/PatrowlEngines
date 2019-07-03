@@ -18,5 +18,6 @@ def test_generic_features():
     """ generic tests """
     PET.do_generic_tests()
 
+
 if __name__ == "__main__":
     test_generic_features()
