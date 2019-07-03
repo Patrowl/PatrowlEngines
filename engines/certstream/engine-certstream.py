@@ -2,8 +2,6 @@
 # -*- coding: utf-8 -*-
 """CertStream PatrOwl engine application."""
 
-# from __future__ import absolute_import
-
 from os import makedirs
 from os.path import dirname, exists, isfile, realpath
 from sys import modules, path
@@ -17,8 +15,11 @@ from flask import Flask, request, jsonify
 
 # Own library
 path.append("CertStreamMonitor")
-from utils.confparser import ConfParser
-import scanhost as gethost
+try:
+    from utils.confparser import ConfParser
+    import gethost
+except ModuleNotFoundError:
+    print("[WARNING] You have to 'git clone https://github.com/AssuranceMaladieSec/CertStreamMonitor.git'")
 
 # Own library imports
 from PatrowlEnginesUtils.PatrowlEngine import _json_serial
@@ -46,7 +47,6 @@ engine = PatrowlEngine(
 this = modules[__name__]
 this.keys = []
 
-
 def get_options(payload):
     """
     Extracts formatted options from the payload
@@ -61,7 +61,6 @@ def get_options(payload):
             options["since"] = 0
     return options
 
-
 def get_criticity(score):
     """
     Returns the level of criicity
@@ -74,7 +73,6 @@ def get_criticity(score):
     elif score < 7.0:
         criticity = "medium"
     return criticity
-
 
 def in_whitelist(domain):
     """
@@ -89,7 +87,6 @@ def in_whitelist(domain):
         if domain.endswith(white):
             return True
     return False
-
 
 @app.errorhandler(404)
 def page_not_found(e):
@@ -263,7 +260,6 @@ def _loadconfig():
     if not exists(engine.scanner["options"]["DBFile"]):
         print("Error: sqlite file not found : {}".format(engine.scanner["options"]["DBFile"]))
         return {"status": "error", "reason": "sqlite file not found : {}".format(engine.scanner["options"]["DBFile"])}
-
 
 @app.route("/engines/certstream/reloadconfig", methods=["GET"])
 def reloadconfig():
@@ -570,7 +566,6 @@ def main():
         makedirs(APP_BASE_DIR+"/results")
     _loadconfig()
     print("Run engine")
-
 
 if __name__ == "__main__":
     engine.run_app(app_debug=APP_DEBUG, app_host=APP_HOST, app_port=APP_PORT)

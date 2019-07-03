@@ -6,7 +6,7 @@ CertStream REST API engine
 ## Dependencies
 - Python 3
 - `pip3 install -r requirements.txt`
-- `git clone https://github.com/nbeguier/CertStreamMonitor.git`
+- `git clone https://github.com/AssuranceMaladieSec/CertStreamMonitor.git`
 - `pip3 install -r CertStreamMonitor/requirements.txt`
 - Configure CertStreamMonitor and start a stream
 - Configure the engine and specify CertStreamMonitor configuration file
