@@ -401,7 +401,7 @@ def _parse_report(filename, scan_id):
         # Find hostnames
         for hostnames in host.findall('hostnames'):
             for hostname in hostnames.getchildren():
-            # for hostname in hostnames._children:
+                # for hostname in hostnames._children:
                 if hostname.get("type") in ["user", "PTR"]:
                     has_hostnames = True
                     addr = hostname.get("name")
@@ -453,7 +453,7 @@ def _parse_report(filename, scan_id):
         # get ports status - generate issues
         if host.find('ports') is not None:
             for port in host.find('ports'):
-            # for port in host.find('ports'):
+                # for port in host.find('ports'):
                 if port.tag == 'extraports':
                     continue
                 proto = port.get('protocol')
@@ -650,10 +650,12 @@ def getreport(scan_id):
     if not os.path.exists(filepath):
         return jsonify({"status": "ERROR", "reason": "report file for scan_id '{}' not found".format(scan_id)})
 
-    return send_file(filepath,
+    return send_file(
+        filepath,
         mimetype='application/json',
         attachment_filename='nmap_'+str(scan_id)+".json",
-        as_attachment=True)
+        as_attachment=True
+    )
 
 
 @app.route('/engines/nmap/test')
