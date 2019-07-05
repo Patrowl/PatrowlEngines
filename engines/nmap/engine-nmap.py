@@ -124,7 +124,7 @@ def start():
         'assets':       data['assets'],
         'threads':      [],
         'proc':         None,
-        'options':      data['options'],
+        'options':      json.loads(data['options']),
         'scan_id':      scan_id,
         'status':       "STARTED",
         'started_at':   int(time.time() * 1000),
