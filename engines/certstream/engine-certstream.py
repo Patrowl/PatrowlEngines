@@ -53,7 +53,7 @@ def get_options(payload):
     """
 
     options = {"since": 99999999999}
-    user_opts = payload["options"]
+    user_opts = loads(payload["options"])
     if "since" in user_opts:
         try:
             options["since"] = int(user_opts["since"])
