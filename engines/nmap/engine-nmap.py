@@ -165,6 +165,13 @@ def _scan_thread(scan_id):
     # ensure no duplicates
     hosts = list(set(hosts))
 
+    # write hosts in a file (cleaner and doesn't break with shell arguments limit (for thousands of hosts)
+    hosts_filename = "/tmp/engine_nmap_hosts_file_scan_id_{}.tmp".format(scan_id)
+
+    with open(hosts_filename, 'w') as hosts_file:
+        for item in hosts:
+            hosts_file.write("%s\n" % item)
+
     # Sanitize args :
     ports = None
     if "ports" in this.scans[scan_id]['options'].keys():
@@ -173,7 +180,7 @@ def _scan_thread(scan_id):
     options = this.scans[scan_id]['options']
     log_path = BASE_DIR+"/logs/" + scan_id + ".error"
 
-    cmd = this.scanner['path'] + " -vvv " + " ".join(hosts) + \
+    cmd = this.scanner['path'] + " -vvv" + " -iL " + hosts_filename + \
         " -oX "+BASE_DIR+"/results/nmap_" + scan_id + ".xml"
 
     # Check options
@@ -628,6 +635,11 @@ def getfindings(scan_id):
             "summary": summary,
             "issues": issues
         }, report_file, default=_json_serial)
+
+    # Delete the tmp hosts file (used with -iL argument upon launching nmap)
+    hosts_filename = "/tmp/engine_nmap_hosts_file_scan_id_{}.tmp".format(scan_id)
+    if os.path.exists(hosts_filename):
+        os.remove(hosts_filename)
 
     res.update({
         "scan": scan,
