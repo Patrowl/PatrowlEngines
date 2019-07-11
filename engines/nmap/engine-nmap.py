@@ -124,7 +124,8 @@ def start():
         'assets':       data['assets'],
         'threads':      [],
         'proc':         None,
-        'options':      json.loads(data['options']),
+        # 'options':      json.loads(data['options']),
+        'options':      data['options'],
         'scan_id':      scan_id,
         'status':       "STARTED",
         'started_at':   int(time.time() * 1000),
@@ -166,7 +167,6 @@ def _scan_thread(scan_id):
     hosts = list(set(hosts))
 
     # write hosts in a file (cleaner and doesn't break with shell arguments limit (for thousands of hosts)
-    hosts_filename = "/tmp/engine_nmap_hosts_file_scan_id_{}.tmp".format(scan_id)
 
     with open(hosts_filename, 'w') as hosts_file:
         for item in hosts:
@@ -180,12 +180,11 @@ def _scan_thread(scan_id):
     options = this.scans[scan_id]['options']
     log_path = BASE_DIR+"/logs/" + scan_id + ".error"
 
-    cmd = this.scanner['path'] + " -vvv" + " -iL " + hosts_filename + \
-        " -oX "+BASE_DIR+"/results/nmap_" + scan_id + ".xml"
+    cmd = this.scanner['path'] + " -vvv" + " -oX "+BASE_DIR+"/results/nmap_" + scan_id + ".xml"
 
     # Check options
     for opt_key in options.keys():
-        if opt_key in this.scanner['options'] and options.get(opt_key) and opt_key not in ["ports", "script", "script_args", "script_output_fields"]:
+        if opt_key in this.scanner['options'] and options.get(opt_key) and opt_key not in ["ports", "script", "script_args", "script_output_fields", "host_file_path"]:
             cmd += " {}".format(this.scanner['options'][opt_key]['value'])
         if opt_key == "ports" and ports is not None:  # /!\ @todo / Security issue: Sanitize parameters here
             cmd += " -p{}".format(ports)

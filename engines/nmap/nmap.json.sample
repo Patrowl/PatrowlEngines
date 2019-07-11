@@ -8,6 +8,7 @@
 		"hosts": 				{ "type": "required" },
 		"ports": 				{ "type": "optional", "value": "-p" },
 		"show_open_ports": 				{ "type": "optional", "value": "--open" },
+		"host_file_path": 			{ "type": "optional", "value": "-iL"},
 		"no_dns": 			{ "type": "optional", "value": "-n"},
 		"scan_udp": 		{ "type": "optional", "value": "-sU --max-retries 3"},
 		"syn_scan": 		{ "type": "optional", "value": "-sS"},
