@@ -17,8 +17,11 @@ RUN mkdir -p /var/www/html/
 
 WORKDIR /opt/patrowl-engines/eyewitness
 
-COPY . .
+COPY __init__.py .
+COPY engine-eyewitness.py .
 COPY eyewitness.json.sample eyewitness.json
+COPY requirements.txt .
+COPY README.md .
 
 RUN pip3 install --no-cache-dir -r requirements.txt
 

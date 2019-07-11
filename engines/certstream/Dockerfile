@@ -15,8 +15,11 @@ RUN mkdir -p /opt/patrowl-engines/certstream/results
 
 WORKDIR /opt/patrowl-engines/certstream
 
-COPY . .
+COPY __init__.py .
+COPY engine-certstream.py .
 COPY certstream.json.sample certstream.json
+COPY requirements.txt .
+COPY README.md .
 COPY whitelist.txt.sample whitelist.txt
 
 RUN pip3 install --no-cache-dir -U pip

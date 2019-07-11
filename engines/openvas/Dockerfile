@@ -13,7 +13,7 @@ WORKDIR /opt/patrowl-engines/openvas
 # Copy the current directory contents into the container at /
 COPY __init__.py .
 COPY engine-openvas.py .
-COPY openvas.json.sample .
+COPY openvas.json.sample openvas.json
 COPY requirements.txt .
 COPY README.md .
 
@@ -35,7 +35,6 @@ RUN pip3 install -e python-gvm
 
 WORKDIR /opt/patrowl-engines/openvas
 RUN pip3 install --trusted-host pypi.python.org -r requirements.txt
-COPY openvas.json.sample openvas.json
 
 # TCP port exposed by the container (NAT)
 EXPOSE 5016
