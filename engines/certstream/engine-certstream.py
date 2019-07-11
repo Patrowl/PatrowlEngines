@@ -53,7 +53,9 @@ def get_options(payload):
     """
 
     options = {"since": 99999999999}
-    user_opts = loads(payload["options"])
+    user_opts = payload["options"]
+    if isinstance(user_opts, str):
+        user_opts = loads(user_opts)
     if "since" in user_opts:
         try:
             options["since"] = int(user_opts["since"])
