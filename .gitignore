@@ -22,7 +22,7 @@ engines/owl_code/owl_code.json
 engines/sslscan/libs/*
 engines/sslscan/sslscan.json
 engines/openvas/openvas.json
-engines/openvas/libs/*
+engines/openvas/libs
 engines/certstream/certstream.json
 engines/certstream/CertStreamMonitor
 engines/certstream/whitelist.txt
