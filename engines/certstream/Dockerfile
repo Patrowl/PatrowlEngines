@@ -19,6 +19,7 @@ COPY . .
 COPY certstream.json.sample certstream.json
 COPY whitelist.txt.sample whitelist.txt
 
+RUN pip3 install --no-cache-dir -U pip
 RUN pip3 install --no-cache-dir -r requirements.txt
 
 RUN git clone https://github.com/AssuranceMaladieSec/CertStreamMonitor.git
