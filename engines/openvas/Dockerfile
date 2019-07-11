@@ -41,4 +41,4 @@ COPY openvas.json.sample openvas.json
 EXPOSE 5016
 
 # Run app.py when the container launches
-CMD ["gunicorn", "engine-openvas:app", "-b", "0.0.0.0:5016"]
+CMD ["gunicorn", "engine-openvas:app", "-b", "0.0.0.0:5016", "--access-logfile", "-"]
