@@ -46,4 +46,4 @@ RUN pip3 install --trusted-host pypi.python.org -r requirements.txt
 EXPOSE 5014
 
 # Run app.py when the container launches
-CMD ["gunicorn", "engine-sslscan:app", "-b", "0.0.0.0:5014"]
+CMD ["gunicorn", "engine-sslscan:app", "-b", "0.0.0.0:5014", "--access-logfile", "-"]

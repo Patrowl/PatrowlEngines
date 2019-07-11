@@ -40,4 +40,4 @@ EXPOSE 5001
 USER alpine
 
 # Run app when the container launches
-CMD ["sudo", "gunicorn", "engine-nmap:app", "-b", "0.0.0.0:5001"]
+CMD ["sudo", "gunicorn", "engine-nmap:app", "-b", "0.0.0.0:5001", "--access-logfile", "-"]

@@ -31,4 +31,4 @@ RUN pip3 install --trusted-host pypi.python.org -r requirements.txt
 EXPOSE 5009
 
 # Run app.py when the container launches
-CMD ["gunicorn", "engine-cortex:app", "-b", "0.0.0.0:5009"]
+CMD ["gunicorn", "engine-cortex:app", "-b", "0.0.0.0:5009", "--access-logfile", "-"]
