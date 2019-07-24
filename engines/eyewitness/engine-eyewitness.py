@@ -2,12 +2,12 @@
 # -*- coding: utf-8 -*-
 """EyeWitness PatrOwl engine application."""
 
-from __future__ import absolute_import
-
-from os import makedirs, listdir
-from os.path import dirname, exists, realpath
 from json import dump, load, loads
-from subprocess import check_output
+from logging import getLogger
+from os import makedirs, listdir, walk
+from os.path import dirname, exists, realpath
+from re import search
+from subprocess import check_output, CalledProcessError, STDOUT
 from threading import Thread
 from time import time, sleep
 from urllib.parse import urlparse
@@ -30,6 +30,7 @@ APP_PORT = 5018
 APP_MAXSCANS = 5
 APP_ENGINE_NAME = "eyewitness"
 APP_BASE_DIR = dirname(realpath(__file__))
+LOG = getLogger("werkzeug")
 
 engine = PatrowlEngine(
     app=app,
@@ -51,36 +52,74 @@ def get_criticity(score):
     return criticity
 
 
-def eyewitness_cmd(url, asset_id, scan_id):
-    """Return the screenshot path."""
+def eyewitness_cmd(list_url, asset_id, scan_id):
+    """
+    Returns the screenshot path
+    """
+    result = dict()
     base_path = engine.scanner["options"]["ScreenshotsDirectory"]["value"] + scan_id
+    asset_base_path = base_path + "/" + str(asset_id)
     if not exists(base_path):
         makedirs(base_path, mode=0o755)
-    asset_path = base_path + "/" + str(asset_id)
-    check_output([
-        "{}/EyeWitness.py".format(
-            engine.scanner["options"]["EyeWitnessDirectory"]["value"]),
-        "--single", url,
-        "--web",
-        "-d", asset_path,
-        "--no-prompt",
-        "--prepend-https"])
-    screens_path = asset_path + "/screens"
-    screenshot_files = listdir(screens_path)
-    if not screenshot_files:
-        return list()
-    result_url = "{repo_url}/{scan_id}/{asset_id}/screens/{screenshot}".format(
-        repo_url=engine.scanner["options"]["ScreenshotsURL"]["value"],
-        scan_id=scan_id,
-        asset_id=asset_id,
-        screenshot=screenshot_files[0])
-    return result_url
+    if not exists(asset_base_path):
+        makedirs(asset_base_path, mode=0o755)
+    count = 0
+    for url in list_url:
+        screenshot_base_path = asset_base_path + "/" + str(count)
+        check_output(["{}/EyeWitness.py".format(engine.scanner["options"]["EyeWitnessDirectory"]["value"]), "--single", url, "--web", "-d", screenshot_base_path, "--no-prompt"])
+        screenshot_files = listdir(screenshot_base_path + "/screens")
+        if not screenshot_files:
+            continue
+        result_url = "{repo_url}/{scan_id}/{asset_id}/{count}/screens/{screenshot}".format(repo_url=engine.scanner["options"]["ScreenshotsURL"]["value"], scan_id=scan_id, asset_id=asset_id, count=count, screenshot=screenshot_files[0])
+        result.update({url: {"path": "{}/screens/{}".format(screenshot_base_path, screenshot_files[0]), "url": result_url}})
+        count += 1
+    return result
+
+
+def get_last_screenshot(current_path, asset_id, scan_id):
+    """
+    Returns the path and the URL of the last screenshot taken
+    """
+    last_scan_id = 0
+    last_scan_path = current_path
+    last_scan_url = ''
+    for root, dirs, files in walk(engine.scanner["options"]["ScreenshotsDirectory"]["value"]):
+        if current_path.split("/")[-1] in files:
+            _scan_id = int(root.split("/")[4])
+            # Get the latest scan_id valid
+            if _scan_id < int(scan_id) and _scan_id >= last_scan_id:
+                last_scan_id = _scan_id
+                last_scan_path = "{}/{}".format(root, current_path.split("/")[-1])
+
+    last_scan_url = "{repo_url}/{scan_id}/{asset_id}/{count}/screens/{screenshot}".format(repo_url=engine.scanner["options"]["ScreenshotsURL"]["value"], scan_id=last_scan_id, asset_id=asset_id, count=last_scan_path.split("/")[6], screenshot=last_scan_path.split("/")[-1])
+
+    return last_scan_path, last_scan_url
+
+def diff_screenshot(screenshot1, screenshot2):
+    """
+    Returns the percentage of differences between screenshot & screenshot2
+    """
+    try:
+        output = check_output([engine.scanner["options"]["ImageMagickComparePath"]["value"], "-metric", "RMSE", screenshot1, screenshot2, "NULL:"], stderr=STDOUT)
+    except CalledProcessError as e:
+        output = e.output
+        returncode = e.returncode
+    except ValueError:
+        return None
+
+    try:
+        diff = search("(\((.*?)\))", str(output))
+        percent_diff = int(float(diff.group(2)) * 100)
+    except AttributeError:
+        return None
+
+    return percent_diff
 
 
 @app.errorhandler(404)
 def page_not_found(e):
     """Page not found."""
-    print(e)
+    LOG.debug(e)
     return engine.page_not_found()
 
 
@@ -145,13 +184,18 @@ def status():
     """Get status on engine and all scans."""
     EyeWitnessDirectory = engine.scanner["options"]["EyeWitnessDirectory"]["value"]
     if not exists(EyeWitnessDirectory):
-        print("Error: EyeWitnessDirectory not found : {}".format(EyeWitnessDirectory))
+        LOG.error("Error: EyeWitnessDirectory not found : {}".format(EyeWitnessDirectory))
         return jsonify({"status": "error", "reason": "EyeWitnessDirectory not found : {}".format(EyeWitnessDirectory)})
 
     ScreenshotsDirectory = engine.scanner["options"]["ScreenshotsDirectory"]["value"]
     if not exists(ScreenshotsDirectory):
-        print("Error: ScreenshotsDirectory not found : {}".format(ScreenshotsDirectory))
+        LOG.error("Error: ScreenshotsDirectory not found : {}".format(ScreenshotsDirectory))
         return {"status": "error", "reason": "ScreenshotsDirectory not found : {}".format(ScreenshotsDirectory)}
+
+    ImageMagickComparePath = engine.scanner["options"]["ImageMagickComparePath"]["value"]
+    if not exists(ImageMagickComparePath):
+        LOG.error("Error: ImageMagickComparePath not found : {}".format(ImageMagickComparePath))
+        return {"status": "error", "reason": "ImageMagickComparePath not found : {}".format(ImageMagickComparePath)}
 
     return engine.getstatus()
 
@@ -203,34 +247,45 @@ def _loadconfig():
         engine.scanner = load(json_data)
         engine.scanner["status"] = "READY"
     else:
-        print("Error: config file '{}' not found".format(conf_file))
+        LOG.error("Error: config file '{}' not found".format(conf_file))
         return {"status": "error", "reason": "config file not found"}
 
     if "EyeWitnessDirectory" not in engine.scanner["options"]:
-        print("Error: You have to specify EyeWitnessDirectory in options")
+        LOG.error("Error: You have to specify EyeWitnessDirectory in options")
         return {"status": "error", "reason": "You have to specify EyeWitnessDirectory in options"}
 
     EyeWitnessDirectory = engine.scanner["options"]["EyeWitnessDirectory"]["value"]
     if not exists(EyeWitnessDirectory):
-        print("Error: EyeWitnessDirectory not found : {}".format(EyeWitnessDirectory))
+        LOG.error("Error: EyeWitnessDirectory not found : {}".format(EyeWitnessDirectory))
         return {"status": "error", "reason": "EyeWitnessDirectory not found : {}".format(EyeWitnessDirectory)}
 
-    print("[OK] EyeWitnessDirectory")
+    LOG.info("[OK] EyeWitnessDirectory")
 
     if "ScreenshotsURL" not in engine.scanner["options"]:
-        print("Error: You have to specify ScreenshotsURL in options")
+        LOG.error("Error: You have to specify ScreenshotsURL in options")
         return {"status": "error", "reason": "You have to specify ScreenshotsURL in options"}
 
     if "ScreenshotsDirectory" not in engine.scanner["options"]:
-        print("Error: You have to specify ScreenshotsDirectory in options")
+        LOG.error("Error: You have to specify ScreenshotsDirectory in options")
         return {"status": "error", "reason": "You have to specify ScreenshotsDirectory in options"}
 
     ScreenshotsDirectory = engine.scanner["options"]["ScreenshotsDirectory"]["value"]
     if not exists(ScreenshotsDirectory):
-        print("Error: ScreenshotsDirectory not found : {}".format(ScreenshotsDirectory))
+        LOG.error("Error: ScreenshotsDirectory not found : {}".format(ScreenshotsDirectory))
         return {"status": "error", "reason": "ScreenshotsDirectory not found : {}".format(ScreenshotsDirectory)}
 
-    print("[OK] ScreenshotsDirectory")
+    LOG.info("[OK] ScreenshotsDirectory")
+
+
+    if "ImageMagickComparePath" not in engine.scanner["options"]:
+        LOG.error("Error: You have to specify ImageMagickComparePath in options")
+        return {"status": "error", "reason": "You have to specify ImageMagickComparePath in options"}
+    ImageMagickComparePath = engine.scanner["options"]["ImageMagickComparePath"]["value"]
+    if not exists(ImageMagickComparePath):
+        LOG.error("Error: ImageMagickComparePath not found : {}".format(ImageMagickComparePath))
+        return {"status": "error", "reason": "ImageMagickComparePath not found : {}".format(ImageMagickComparePath)}
+
+    LOG.info("[OK] ImageMagickComparePath")
 
 
 @app.route("/engines/eyewitness/reloadconfig", methods=["GET"])
@@ -337,11 +392,11 @@ def start_scan():
 def _scan_urls(scan_id):
     # Is it locked ?
     if engine.scans[scan_id]["lock"]:
-        print("locked")
+        LOG.debug("locked")
         return True
 
     engine.scans[scan_id]["lock"] = True
-    print("lock on")
+    LOG.debug("lock on")
 
     assets = []
     for asset in engine.scans[scan_id]["assets"]:
@@ -352,20 +407,42 @@ def _scan_urls(scan_id):
             engine.scans[scan_id]["findings"][asset] = {}
         try:
             asset_data = next((x for x in engine.scans[scan_id]["assets_data"] if x["value"] == asset), None)
-            engine.scans[scan_id]["findings"][asset]["issues"] = eyewitness_cmd(asset, asset_data["id"], scan_id)
+            urls = list()
+            if asset.startswith("http://"):
+                urls.append("http://"+asset)
+            elif asset.startswith("https://"):
+                urls.append("https://"+asset)
+            else:
+                # Check both
+                urls.append("http://"+asset)
+                urls.append("https://"+asset)
+
+            result = eyewitness_cmd(urls, asset_data["id"], scan_id)
+
+            # Get differences with the last screenshot
+            for url in result:
+                last_screenshot_path, last_screenshot_url = get_last_screenshot(result[url]["path"], asset_data["id"], scan_id)
+                result[url].update({"previous_diff": diff_screenshot(result[url]["path"], last_screenshot_path), "last_screenshot_path": last_screenshot_path, "last_screenshot_url": last_screenshot_url})
+
+            # Get the difference between the current screenshots
+            current_diff = None
+            if len(result) == 2:
+                current_diff = diff_screenshot(result[urls[0]]["path"], result[urls[1]]["path"])
+            result["current_diff"] = current_diff
+
+            engine.scans[scan_id]["findings"][asset]["issues"] = result
         except Exception as e:
-            print("_scan_urls: API Connexion error for asset {}".format(asset))
-            print(e)
+            LOG.error("_scan_urls: API Connexion error for asset {}: {}".format(asset, e))
             return False
 
-    print("lock off")
+    LOG.debug("lock off")
     engine.scans[scan_id]["lock"] = False
     return True
 
 
 def _parse_results(scan_id):
     while engine.scans[scan_id]["lock"]:
-        print("report is not terminated yet, going to sleep")
+        LOG.debug("report is not terminated yet, going to sleep")
         sleep(10)
 
     issues = []
@@ -382,9 +459,46 @@ def _parse_results(scan_id):
     for asset in engine.scans[scan_id]["findings"]:
         cvss_max = float(0)
         if engine.scans[scan_id]["findings"][asset]["issues"]:
-            screenshot_url = engine.scans[scan_id]["findings"][asset]["issues"]
-            if not screenshot_url:
-                screenshot_url = "No screenshot available"
+            asset_issues = engine.scans[scan_id]["findings"][asset]["issues"]
+            screenshot_urls = list()
+            if not asset_issues:
+                screenshot_urls = "No screenshots available"
+            for url in asset_issues:
+                if url == "current_diff":
+                    continue
+                screenshot_urls.append(asset_issues[url]["url"])
+                # Create an issue if the screenshot differs from last time
+                previous_diff = asset_issues[url]["previous_diff"]
+                if previous_diff is None:
+                    nb_vulns[get_criticity(cvss_max)] += 1
+                    issues.append({
+                        "issue_id": len(issues)+1,
+                        "severity": get_criticity(0), "confidence": "certain",
+                        "target": {"addr": [asset], "protocol": "http"},
+                        "title": "[{}] Screenshot differs from last time".format(timestamp),
+                        "solution": "n/a",
+                        "metadata": {"risk": {"cvss_base_score": 0}, "links": [asset_issues[url]["url"], asset_issues[url]["last_screenshot_url"]]},
+                        "type": "eyewitness_screenshot_diff",
+                        "timestamp": timestamp,
+                        "description": "Too much differences"
+                    })
+                elif previous_diff >= 15:
+                    nb_vulns[get_criticity(cvss_max)] += 1
+                    issues.append({
+                        "issue_id": len(issues)+1,
+                        "severity": get_criticity(0), "confidence": "certain",
+                        "target": {"addr": [asset], "protocol": "http"},
+                        "title": "[{}] Screenshot differs from last time".format(timestamp),
+                        "solution": "n/a",
+                        "metadata": {"risk": {"cvss_base_score": 0}, "links": [asset_issues[url]["url"], asset_issues[url]["last_screenshot_url"]]},
+                        "type": "eyewitness_screenshot_diff",
+                        "timestamp": timestamp,
+                        "description": "The difference is about {}%".format(previous_diff)
+                    })
+
+            current_diff = "These screeshots are different"
+            if asset_issues["current_diff"] is not None:
+                current_diff = "The diffence between these screenshots is {}%".format(asset_issues["current_diff"])
             nb_vulns[get_criticity(cvss_max)] += 1
             issues.append({
                 "issue_id": len(issues)+1,
@@ -392,10 +506,10 @@ def _parse_results(scan_id):
                 "target": {"addr": [asset], "protocol": "http"},
                 "title": "[{}] Some domain has been screenshoted by eyewitness".format(timestamp),
                 "solution": "n/a",
-                "metadata": {"risk": {"cvss_base_score": cvss_max}, "links": [screenshot_url]},
+                "metadata": {"risk": {"cvss_base_score": cvss_max}, "links": screenshot_urls},
                 "type": "eyewitness_screenshot",
                 "timestamp": timestamp,
-                "description": screenshot_url
+                "description": "Screenshots: {}, Current Diff: {}".format(screenshot_urls, current_diff)
             })
 
     summary = {
@@ -458,7 +572,7 @@ def main():
     if not exists(APP_BASE_DIR+"/results"):
         makedirs(APP_BASE_DIR+"/results")
     _loadconfig()
-    print("Run engine")
+    LOG.debug("Run engine")
 
 
 if __name__ == "__main__":

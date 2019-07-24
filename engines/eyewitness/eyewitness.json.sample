@@ -4,8 +4,9 @@
   "description": "EyeWitness API",
   "allowed_asset_types": ["fqdn", "ip", "domain"],
   "options": {
-     "EyeWitnessDirectory":  { "type": "mandatory", "value": "libs/EyeWitness/"},
-     "ScreenshotsDirectory": { "type": "mandatory", "value": "/var/www/html/"},
-     "ScreenshotsURL":       { "type": "mandatory", "value": "http://eyewitness.domain.net:80"}
+     "EyeWitnessDirectory":      { "type": "mandatory", "value": "libs/EyeWitness/"},
+     "ScreenshotsDirectory":     { "type": "mandatory", "value": "/var/www/html/"},
+     "ScreenshotsURL":           { "type": "mandatory", "value": "http://eyewitness.domain.net:80"},
+     "ImageMagickComparePath":   { "type": "mandatory", "value": "/usr/bin/compare"}
   }
 }
