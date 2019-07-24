@@ -334,7 +334,13 @@ def _scan_domain(scan_id):
         if not asset in engine.scans[scan_id]["findings"]:
             engine.scans[scan_id]["findings"][asset] = {}
         try:
-            engine.scans[scan_id]["findings"][asset]['scan_domain'] = get_result_ratelimit(asset, "domain") 
+            domain_result = get_result_ratelimit(asset, "domain")
+            if "detected_urls" in domain_result["results"]:
+                count = 0
+                for asset_url_dict in domain_result["results"]["detected_urls"]:
+                    domain_result["results"]["detected_urls"][count]["report"] = get_result_ratelimit(asset_url_dict['url'], "url")
+                    count += 1
+            engine.scans[scan_id]["findings"][asset]["scan_domain"] = domain_result
         except Exception as e:
             LOG.error("API Connexion error (quota?) : {}".format(e))
             return False
@@ -659,6 +665,24 @@ def _parse_results(scan_id):
                     for record in sorted(results['detected_urls'], key=operator.itemgetter('url')):
                         entry = "{} (total: {}, scan date: {})".format(record['url'], record['total'], record['scan_date'])
                         detected_url_str = "".join((detected_url_str, entry+"\n"))
+                        if record["report"]["results"]["positives"] > 0:
+                            url_hash = hashlib.sha1(str(record["url"]).encode('utf-8')).hexdigest()[:6]
+                            nb_vulns['high'] += 1
+                            issues.append({
+                                "issue_id": len(issues)+1,
+                                "severity": "high", "confidence": "certain",
+                                "target": {"addr": [asset], "protocol": "url"},
+                                "title": "URL scan for '{}' detected at least 1 positive match (Score: {}/{}, HASH: {})".format(
+                                    record["url"], record["report"]["results"]["positives"], record["report"]["results"]["total"], url_hash),
+                                "description": "URL report for '{}' stated at least 1 positive match ({}/{}):\n\n{}".format(
+                                    record["url"], record["report"]["results"]["positives"], record["report"]["results"]["total"], record["url"]),
+                                "solution": "n/a",
+                                "metadata": {"tags": ["url"], "links": [record["report"]["results"]["permalink"]]},
+                                "type": "vt_url_positivematch",
+                                "raw": {"detected_urls": results['detected_urls']},
+                                "timestamp": ts
+                            })
+
                     detected_url_hash = hashlib.sha1(str(detected_url_str).encode('utf-8')).hexdigest()[:6]
 
                     nb_vulns['info'] += 1
@@ -961,7 +985,7 @@ def _parse_results(scan_id):
 
         # URL SCAN
         asset_findings = engine.scans[scan_id]["findings"][asset]
-        if "scan_ip" in asset_findings and "results" in asset_findings["scan_ip"]:
+        if "scan_url" in asset_findings and "results" in asset_findings["scan_url"]:
             results = asset_findings["scan_url"]["results"]
             if results["response_code"] != 1:
                 nb_vulns["info"] += 1
