@@ -675,7 +675,7 @@ def _parse_results(scan_id):
                                 "title": "URL scan for '{}' detected at least 1 positive match (Score: {}/{}, HASH: {})".format(
                                     record["url"], record["report"]["results"]["positives"], record["report"]["results"]["total"], url_hash),
                                 "description": "URL report for '{}' stated at least 1 positive match ({}/{}):\n\n{}".format(
-                                    record["url"], record["report"]["results"]["positives"], record["report"]["results"]["total"], record["url"]),
+                                    record["url"], record["report"]["results"]["positives"], record["report"]["results"]["total"], record["report"]["results"]["permalink"]),
                                 "solution": "n/a",
                                 "metadata": {"tags": ["url"], "links": [record["report"]["results"]["permalink"]]},
                                 "type": "vt_url_positivematch",
