@@ -39,6 +39,10 @@ APP_PORT = 5017
 APP_MAXSCANS = 5
 APP_ENGINE_NAME = "certstream"
 APP_BASE_DIR = dirname(realpath(__file__))
+CREATED_CERT_CVSS = 5
+UP_DOMAIN_CVSS = 7
+PARENT_ASSET_CREATE_FINDING_CVSS = 1
+PARENT_ASSET_CREATE_FINDING_CEIL = 0
 
 engine = PatrowlEngine(
     app=app,
@@ -458,7 +462,7 @@ def _parse_results(scan_id):
             for domain in report:
                 if in_whitelist(domain):
                     continue
-                cvss_local = float(5)
+                cvss_local = CREATED_CERT_CVSS
                 description_local = "Domain: {} has been created\nIssuer: {}\nFingerprint {}\n".format(
                     domain,
                     report[domain]["issuer"],
@@ -477,7 +481,7 @@ def _parse_results(scan_id):
                 nb_vulns[get_criticity(cvss_local)] += 1
 
                 if report[domain]["still_investing"] is not None:
-                    cvss_local = float(7)
+                    cvss_local = UP_DOMAIN_CVSS
                     description_local += "Last time up: {}\n".format(report[domain]["still_investing"])
                     issues.append({
                         "issue_id": len(issues)+1,
@@ -495,19 +499,20 @@ def _parse_results(scan_id):
                 cvss_max = max(cvss_local, cvss_max)
                 description += description_local
 
-        nb_vulns[get_criticity(cvss_max)] += 1
+        if cvss_max > PARENT_ASSET_CREATE_FINDING_CEIL:
+            issues.append({
+                "issue_id": len(issues)+1,
+                "severity": get_criticity(PARENT_ASSET_CREATE_FINDING_CVSS), "confidence": "certain",
+                "target": {"addr": [asset], "protocol": "http"},
+                "title": "[{}] Some domain has been identified in certstream".format(timestamp),
+                "solution": "n/a",
+                "metadata": {"risk": {"cvss_base_score": PARENT_ASSET_CREATE_FINDING_CVSS}},
+                "type": "certstream_report",
+                "timestamp": timestamp,
+                "description": description,
+            })
+            nb_vulns[get_criticity(PARENT_ASSET_CREATE_FINDING_CVSS)] += 1
 
-        issues.append({
-            "issue_id": len(issues)+1,
-            "severity": get_criticity(cvss_max), "confidence": "certain",
-            "target": {"addr": [asset], "protocol": "http"},
-            "title": "[{}] Some domain has been identified in certstream".format(timestamp),
-            "solution": "n/a",
-            "metadata": {"risk": {"cvss_base_score": cvss_max}},
-            "type": "certstream_report",
-            "timestamp": timestamp,
-            "description": description,
-        })
 
     summary = {
         "nb_issues": len(issues),
