@@ -672,8 +672,8 @@ def _parse_results(scan_id):
                                 "issue_id": len(issues)+1,
                                 "severity": "high", "confidence": "certain",
                                 "target": {"addr": [asset], "protocol": "url"},
-                                "title": "URL scan for '{}' detected at least 1 positive match (Score: {}/{}, HASH: {})".format(
-                                    record["url"], record["report"]["results"]["positives"], record["report"]["results"]["total"], url_hash),
+                                "title": "URL scan detected at least 1 positive match (Score: {}/{}, HASH: {})".format(
+                                    record["report"]["results"]["positives"], record["report"]["results"]["total"], url_hash),
                                 "description": "URL report for '{}' stated at least 1 positive match ({}/{}):\n\n{}".format(
                                     record["url"], record["report"]["results"]["positives"], record["report"]["results"]["total"], record["report"]["results"]["permalink"]),
                                 "solution": "n/a",
