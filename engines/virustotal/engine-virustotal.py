@@ -11,12 +11,16 @@ import threading
 import socket
 import operator
 import random
+import logging
 from flask import Flask, request, jsonify
 
 # Own library imports
 from PatrowlEnginesUtils.PatrowlEngine import _json_serial
 from PatrowlEnginesUtils.PatrowlEngine import PatrowlEngine
 from PatrowlEnginesUtils.PatrowlEngineExceptions import PatrowlEngineExceptions
+
+# Debug
+# from pdb import set_trace as st
 
 app = Flask(__name__)
 APP_DEBUG = True
@@ -25,6 +29,7 @@ APP_PORT = 5007
 APP_MAXSCANS = 25
 APP_ENGINE_NAME = "virustotal"
 APP_BASE_DIR = os.path.dirname(os.path.realpath(__file__))
+LOG = logging.getLogger("werkzeug")
 
 this = sys.modules[__name__]
 this.vts = []
@@ -35,6 +40,61 @@ engine = PatrowlEngine(
     name=APP_ENGINE_NAME,
     max_scans=APP_MAXSCANS
 )
+
+def get_result_ratelimit(asset_name, asset_type):
+    """
+    This function get the virustotal result and try randomly each apikeys
+    In case of error, generally a 204, it retries.
+    """
+    # Shuffle the virustotal apikeys
+    random.shuffle(this.vts)
+
+    count = 0
+    vts_engine = this.vts[count]
+
+    if asset_type == "domain":
+        result = vts_engine.get_domain_report(this_domain=asset_name)
+        while result["response_code"] != 200 and vts_engine != this.vts[-1]:
+            count += 1
+            vts_engine = this.vts[count]
+            result = vts_engine.get_domain_report(this_domain=asset_name)
+        if result["response_code"] == 204:
+            # Last try, try to wait a minute to reset the time limit
+            time.sleep(60)
+            result = vts_engine.get_domain_report(this_domain=asset_name)
+        if result["response_code"] == 200:
+            return result
+
+    elif asset_type == "ip":
+        result = vts_engine.get_ip_report(this_ip=asset_name)
+        while result["response_code"] != 200 and vts_engine != this.vts[-1]:
+            count += 1
+            vts_engine = this.vts[count]
+            result = vts_engine.get_ip_report(this_ip=asset_name)
+        if result["response_code"] == 204:
+            # Last try, try to wait a minute to reset the time limit
+            time.sleep(60)
+            result = vts_engine.get_ip_report(this_ip=asset_name)
+        if result["response_code"] == 200:
+            return result
+    elif asset_type == "url":
+        result = vts_engine.get_url_report(this_url=asset_name, scan='1', allinfo='1')
+        while result["response_code"] != 200 and vts_engine != this.vts[-1]:
+            count += 1
+            vts_engine = this.vts[count]
+            result = vts_engine.get_url_report(this_url=asset_name, scan='1', allinfo='1')
+        if result["response_code"] == 204:
+            # Last try, try to wait a minute to reset the time limit
+            time.sleep(60)
+            result = vts_engine.get_url_report(this_url=asset_name, scan='1', allinfo='1')
+        if result["response_code"] == 200:
+            return result
+    else:
+        LOG.error("Wrong asset_type for {}: {}".format(asset_name, asset_type))
+        result = dict()
+
+    LOG.error("Wrong response for {}: {}".format(asset_name, result))
+    return dict()
 
 
 @app.errorhandler(404)
@@ -160,7 +220,7 @@ def _loadconfig():
         del engine.scanner["apikeys"]
         engine.scanner['status'] = "READY"
     else:
-        print("Error: config file '{}' not found".format(conf_file))
+        LOG.error("Error: config file '{}' not found".format(conf_file))
         return {"status": "error", "reason": "config file not found"}
 
 
@@ -187,8 +247,8 @@ def start_scan():
         }})
         return jsonify(res)
 
-    data = json.loads(request.data)
-    if 'assets' not in data.keys():
+    data = json.loads(request.data.decode("UTF-8", "ignore"))
+    if 'assets' not in data:
         res.update({
             "status": "refused",
             "details": {
@@ -197,11 +257,15 @@ def start_scan():
         return jsonify(res)
 
     # Sanitize args :
+    user_opts = data['options']
+    while not isinstance(user_opts, dict):
+        user_opts = json.loads(user_opts)
+
     scan_id = str(data['scan_id'])
     scan = {
         'assets':       data['assets'],
         'threads':      [],
-        'options':      data['options'],
+        'options':      user_opts,
         'scan_id':      scan_id,
         'status':       "STARTED",
         'started_at':   int(time.time() * 1000),
@@ -209,18 +273,17 @@ def start_scan():
     }
 
     engine.scans.update({scan_id: scan})
-
-    if 'do_scan_ip' in scan['options'].keys() and data['options']['do_scan_ip']:
+    if 'do_scan_ip' in scan['options'] and scan['options']['do_scan_ip']:
         th = threading.Thread(target=_scan_ip, args=(scan_id,))
         th.start()
         engine.scans[scan_id]['threads'].append(th)
 
-    if 'do_scan_domain' in scan['options'].keys() and data['options']['do_scan_domain']:
+    if 'do_scan_domain' in scan['options'] and scan['options']['do_scan_domain']:
         th = threading.Thread(target=_scan_domain, args=(scan_id,))
         th.start()
         engine.scans[scan_id]['threads'].append(th)
 
-    if 'do_scan_url' in scan['options'].keys() and data['options']['do_scan_url']:
+    if 'do_scan_url' in scan['options'] and scan['options']['do_scan_url']:
         th = threading.Thread(target=_scan_url, args=(scan_id,))
         th.start()
         engine.scans[scan_id]['threads'].append(th)
@@ -253,13 +316,11 @@ def _scan_ip(scan_id):
         if asset not in engine.scans[scan_id]["findings"]:
             engine.scans[scan_id]["findings"][asset] = {}
         try:
-            engine.scans[scan_id]["findings"][asset]['scan_ip'] = this.vts[random.randint(0,len(this.vts)-1)].get_ip_report(this_ip=asset)
-        except Exception:
-            print("API Connexion error (quota?)")
+            engine.scans[scan_id]["findings"][asset]['scan_ip'] = get_result_ratelimit(asset, "ip")
+        except Exception as e:
+            LOG.error("API Connexion error (quota?) : {}".format(e))
             return False
 
-        # API Quota (todo: review this)
-        # if not asset == assets[-1]: time.sleep(30)
     return True
 
 
@@ -273,13 +334,17 @@ def _scan_domain(scan_id):
         if not asset in engine.scans[scan_id]["findings"]:
             engine.scans[scan_id]["findings"][asset] = {}
         try:
-            engine.scans[scan_id]["findings"][asset]['scan_domain'] = this.vts[random.randint(0,len(this.vts)-1)].get_domain_report(this_domain=asset)
-        except Exception:
-            print("API Connexion error (quota?)")
+            domain_result = get_result_ratelimit(asset, "domain")
+            if "detected_urls" in domain_result["results"]:
+                count = 0
+                for asset_url_dict in domain_result["results"]["detected_urls"]:
+                    domain_result["results"]["detected_urls"][count]["report"] = get_result_ratelimit(asset_url_dict['url'], "url")
+                    count += 1
+            engine.scans[scan_id]["findings"][asset]["scan_domain"] = domain_result
+        except Exception as e:
+            LOG.error("API Connexion error (quota?) : {}".format(e))
             return False
 
-        # API Quota (todo: review this)
-        # if not asset == engine.scans[scan_id]['assets'][-1]: time.sleep(30)
     return True
 
 
@@ -295,14 +360,11 @@ def _scan_url(scan_id):
         try:
             this.vts[random.randint(0,len(this.vts)-1)].scan_url(this_url=asset)
             time.sleep(5)
-            engine.scans[scan_id]["findings"][asset]['scan_url'] = this.vts[random.randint(0,len(this.vts)-1)].get_url_report(this_url=asset, scan='1', allinfo='1')
-
-        except Exception:
-            print("API Connexion error (quota?)")
+            engine.scans[scan_id]["findings"][asset]['scan_url'] = get_result_ratelimit(asset, "url")
+        except Exception as e:
+            LOG.error("API Connexion error (quota?) : {}".format(e))
             return False
 
-        # API Quota (todo: review this)
-        # if not asset == engine.scans[scan_id]['assets'][-1]: time.sleep(30)
     return True
 
 
@@ -318,8 +380,6 @@ def _parse_results(scan_id):
         "high": 0
     }
     ts = int(time.time() * 1000)
-
-    # print "_parse_report/scan['findings'].keys():", scan['findings'].keys()
 
     for asset in scan["findings"].keys():
         # IP SCAN
@@ -605,6 +665,24 @@ def _parse_results(scan_id):
                     for record in sorted(results['detected_urls'], key=operator.itemgetter('url')):
                         entry = "{} (total: {}, scan date: {})".format(record['url'], record['total'], record['scan_date'])
                         detected_url_str = "".join((detected_url_str, entry+"\n"))
+                        if record["report"]["results"]["positives"] > 0:
+                            url_hash = hashlib.sha1(str(record["url"]).encode('utf-8')).hexdigest()[:6]
+                            nb_vulns['high'] += 1
+                            issues.append({
+                                "issue_id": len(issues)+1,
+                                "severity": "high", "confidence": "certain",
+                                "target": {"addr": [asset], "protocol": "url"},
+                                "title": "URL scan detected at least 1 positive match (Score: {}/{}, HASH: {})".format(
+                                    record["report"]["results"]["positives"], record["report"]["results"]["total"], url_hash),
+                                "description": "URL report for '{}' stated at least 1 positive match ({}/{}):\n\n{}".format(
+                                    record["url"], record["report"]["results"]["positives"], record["report"]["results"]["total"], record["report"]["results"]["permalink"]),
+                                "solution": "n/a",
+                                "metadata": {"tags": ["url"], "links": [record["report"]["results"]["permalink"]]},
+                                "type": "vt_url_positivematch",
+                                "raw": {"detected_urls": results['detected_urls']},
+                                "timestamp": ts
+                            })
+
                     detected_url_hash = hashlib.sha1(str(detected_url_str).encode('utf-8')).hexdigest()[:6]
 
                     nb_vulns['info'] += 1
@@ -907,7 +985,7 @@ def _parse_results(scan_id):
 
         # URL SCAN
         asset_findings = engine.scans[scan_id]["findings"][asset]
-        if "scan_ip" in asset_findings and "results" in asset_findings["scan_ip"]:
+        if "scan_url" in asset_findings and "results" in asset_findings["scan_url"]:
             results = asset_findings["scan_url"]["results"]
             if results["response_code"] != 1:
                 nb_vulns["info"] += 1
