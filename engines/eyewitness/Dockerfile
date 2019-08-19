@@ -31,4 +31,4 @@ RUN git clone https://github.com/FortyNorthSecurity/EyeWitness.git libs/EyeWitne
 EXPOSE 5018
 
 # Run the application when the container launches
-CMD ["gunicorn", "engine-eyewitness:app", "-b", "0.0.0.0:5018", "--timeout", "120", "--graceful-timeout", "60"]
+CMD ["gunicorn", "engine-eyewitness:app", "-b", "0.0.0.0:5018", "--timeout", "120", "--graceful-timeout", "60", "--access-logfile", "-"]

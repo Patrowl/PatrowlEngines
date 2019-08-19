@@ -37,4 +37,4 @@ RUN pip3 install --trusted-host pypi.python.org -r requirements.txt
 EXPOSE 5006
 
 # Run app.py when the container launches
-CMD ["gunicorn", "engine-owl_dns:app", "-b", "0.0.0.0:5006"]
+CMD ["gunicorn", "engine-owl_dns:app", "-b", "0.0.0.0:5006", "--access-logfile", "-"]

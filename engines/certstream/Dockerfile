@@ -33,4 +33,4 @@ COPY tests/CertStreamMonitor_empty.sqlite3 CertStreamMonitor/db/CertStreamMonito
 EXPOSE 5017
 
 # Run the application when the container launches
-CMD ["gunicorn", "engine-certstream:app", "-b", "0.0.0.0:5017", "--timeout", "120", "--graceful-timeout", "60"]
+CMD ["gunicorn", "engine-certstream:app", "-b", "0.0.0.0:5017", "--timeout", "120", "--graceful-timeout", "60", "--access-logfile", "-"]

@@ -32,4 +32,4 @@ RUN pip3 install --trusted-host pypi.python.org -r requirements.txt
 EXPOSE 5002
 
 # Run app.py when the container launches
-CMD ["gunicorn", "engine-nessus:app", "-b", "0.0.0.0:5002"]
+CMD ["gunicorn", "engine-nessus:app", "-b", "0.0.0.0:5002", "--access-logfile", "-"]

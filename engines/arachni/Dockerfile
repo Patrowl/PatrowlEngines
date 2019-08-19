@@ -44,4 +44,4 @@ WORKDIR /opt/patrowl-engines/arachni/
 EXPOSE 5005
 
 # Run app.py when the container launches
-CMD ["gunicorn", "engine-arachni:app", "-k", "gevent", "-w", "1", "-b", "0.0.0.0:5005", "--preload"]
+CMD ["gunicorn", "engine-arachni:app", "-k", "gevent", "-w", "1", "-b", "0.0.0.0:5005", "--preload", "--access-logfile", "-"]
