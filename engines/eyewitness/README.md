@@ -8,6 +8,7 @@ EyeWitness REST API engine
 - `pip3 install -r requirements.txt`
 - `cd libs; git clone https://github.com/FortyNorthSecurity/EyeWitness.git`
 - Follow EyeWitness documentation to setup
+- Install imagemagick
 
 ## Testing URLs
 
