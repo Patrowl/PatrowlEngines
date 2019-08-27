@@ -665,7 +665,7 @@ def _parse_results(scan_id):
                     for record in sorted(results['detected_urls'], key=operator.itemgetter('url')):
                         entry = "{} (total: {}, scan date: {})".format(record['url'], record['total'], record['scan_date'])
                         detected_url_str = "".join((detected_url_str, entry+"\n"))
-                        if record["report"]["results"]["positives"] > 0:
+                        if "positives" in record["report"]["results"] and record["report"]["results"]["positives"] > 0:
                             url_hash = hashlib.sha1(str(record["url"]).encode('utf-8')).hexdigest()[:6]
                             nb_vulns['high'] += 1
                             issues.append({
