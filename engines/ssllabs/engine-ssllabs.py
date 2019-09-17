@@ -25,7 +25,7 @@ APP_PORT = 5004
 APP_MAXSCANS = 10
 APP_ENGINE_NAME = "ssllabs"
 APP_BASE_DIR = os.path.dirname(os.path.realpath(__file__))
-DEFAULT_API_URL = "https://api.ssllabs.com/api/v2/"
+DEFAULT_API_URL = "https://api.ssllabs.com/api/v3/"
 
 engine = PatrowlEngine(
     app=app,
@@ -125,13 +125,30 @@ def clean_scan(scan_id):
 @app.route('/engines/ssllabs/status')
 def status():
     """Get status on engine and all scans."""
-    return engine.getstatus()
+    res = {"page": "status"}
+    if len(engine.scans) == APP_MAXSCANS:
+        engine.scanner['status'] = "BUSY"
+    else:
+        engine.scanner['status'] = "READY"
 
+    res.update({"status": engine.scanner['status']})
 
-@app.route('/engines/ssllabs/status/<scan_id>')
-def status_scan(scan_id):
-    """Get status on scan identified by id."""
-    return engine.getstatus_scan(scan_id)
+    # display info on the scanner
+    res.update({"scanner": engine.scanner})
+    scans = {}
+    for scan in engine.scans.keys():
+        scan_status(scan)
+        scans.update({scan: {
+            "status": engine.scans[scan]["status"]
+        }})
+    res.update({"scans": scans})
+    return jsonify(res)
+
+#
+# @app.route('/engines/ssllabs/status/<scan_id>')
+# def status_scan(scan_id):
+#     """Get status on scan identified by id."""
+#     return engine.getstatus_scan(scan_id)
 
 
 @app.route('/engines/ssllabs/stopscans')
@@ -171,7 +188,7 @@ def _loadconfig():
 
         return {"status": engine.scanner['status']}
     else:
-        print("Error: config file '{}' not found".format(conf_file))
+        app.logger.debug("Error: config file '{}' not found".format(conf_file))
         return {
             "status": "error",
             "reason": "config file not found",
@@ -196,18 +213,18 @@ def _is_scan_finished(scan_id):
     if engine.scans[scan_id]["status"] == "FINISHED":
         return True
 
-    all_scans_done = True
+    all_scans_done = False
     try:
         for host in engine.scans[scan_id]["assets"]:
             r = requests.get(url=host["url"], verify=False)
-            if r.status_code == 200 and json.loads(r.text)["status"] not in ["READY", "ERROR"]:
-                all_scans_done = False
+            if r.status_code == 200 and json.loads(r.text)["status"] in ["READY", "ERROR"]:
+                all_scans_done = True
 
     except Exception:
-        print("API connexion error")
+        app.logger.debug("API connexion error")
         return False
 
-    if all_scans_done:
+    if all_scans_done is True:
         engine.scans[scan_id]["status"] = "FINISHED"
         engine.scans[scan_id]["finished_at"] = datetime.datetime.now()
         return True
@@ -228,7 +245,7 @@ def scan_status(scan_id):
 
     # return the scan parameters and the status
     res.update({
-        "scan": engine.scans[scan_id],
+        # "scan": engine.scans[scan_id],
         "status": engine.scans[scan_id]["status"]
     })
 
@@ -265,8 +282,8 @@ def start_scan():
     if 'assets' not in data.keys() or 'scan_id' not in data.keys():
         res.update({
             "status": "refused",
-			"reason": "arg error, something is missing (ex: 'assets', 'scan_id')"
-		})
+            "reason": "arg error, something is missing (ex: 'assets', 'scan_id')"
+        })
         return jsonify(res)
 
     valid_assets = copy.deepcopy(data["assets"])
@@ -299,7 +316,7 @@ def start_scan():
     if 'ports' not in data['options'].keys():
         scan["target_port"] = "443"
     else:
-        scan["target_port"] = str(list(data['options']['ports'])[0]) # get the 1st in list
+        scan["target_port"] = str(list(data['options']['ports'])[0])  # get the 1st in list
 
     scan["assets"] = []
     for asset in valid_assets:
@@ -309,6 +326,7 @@ def start_scan():
             scan["assets"].append({"host": target_host, "url": target_url})
 
     scan["started_at"] = datetime.datetime.now()
+    scan["status"] = "STARTED"
     scan["threads"] = []
     scan["findings"] = []
 
@@ -359,7 +377,7 @@ def getfindings(scan_id):
     port = scan['target_port']
     issues = []
     summary = {}
-    nb_vulns = {"info": 0, "low": 0, "medium": 0, "high": 0}
+    nb_vulns = {"info": 0, "low": 0, "medium": 0, "high": 0, "critical": 0}
 
     for host in scan["assets"]:
         try:
@@ -387,6 +405,7 @@ def getfindings(scan_id):
         nb_vulns["low"] = nb_vulns["low"] + tmp_summary["nb_low"]
         nb_vulns["medium"] = nb_vulns["medium"] + tmp_summary["nb_medium"]
         nb_vulns["high"] = nb_vulns["high"] + tmp_summary["nb_high"]
+        nb_vulns["critical"] = nb_vulns["critical"] + tmp_summary["nb_critical"]
 
     summary = {
         "nb_issues": len(issues),
@@ -394,6 +413,7 @@ def getfindings(scan_id):
         "nb_low": nb_vulns["low"],
         "nb_medium": nb_vulns["medium"],
         "nb_high": nb_vulns["high"],
+        "nb_critical": nb_vulns["critical"],
         "engine_name": "ssllabs",
         "engine_version": engine.scanner["version"]
     }
@@ -437,7 +457,9 @@ def _parse_report(results, asset_name, asset_port):
         "low": 0,
         "medium": 0,
         "high": 0,
+        "critical": 0
     }
+
     ts = int(time.time() * 1000)
     if results["status"] == "ERROR":
         issues.append({
@@ -464,7 +486,8 @@ def _parse_report(results, asset_name, asset_port):
             "nb_info": 1,
             "nb_low": 0,
             "nb_medium": 0,
-            "nb_high": 0
+            "nb_high": 0,
+            "nb_critical": 0
         }
 
         return issues, summary
@@ -472,7 +495,7 @@ def _parse_report(results, asset_name, asset_port):
     endpoint = results["endpoints"][0]
 
     # Check results
-    if not "details" in endpoint or len(endpoint['details']['protocols']) == 0:
+    if "details" not in endpoint or len(endpoint['details']['protocols']) == 0:
         nb_vulns['info'] += 1
         issues.append({
             "issue_id": 1,
@@ -497,7 +520,8 @@ def _parse_report(results, asset_name, asset_port):
             "nb_info": 1,
             "nb_low": 0,
             "nb_medium": 0,
-            "nb_high": 0
+            "nb_high": 0,
+            "nb_critical": 0
         }
         return issues, summary
 
@@ -793,7 +817,8 @@ def _parse_report(results, asset_name, asset_port):
         "nb_info": nb_vulns["info"],
         "nb_low": nb_vulns["low"],
         "nb_medium": nb_vulns["medium"],
-        "nb_high": nb_vulns["high"]
+        "nb_high": nb_vulns["high"],
+        "nb_critical": nb_vulns["critical"]
     }
 
     return issues, summary
