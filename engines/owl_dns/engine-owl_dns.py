@@ -218,20 +218,23 @@ def __dns_resolve_asset(asset):
                     "values": [str(rdata) for rdata in answers]
                 })
             except dns.resolver.NoAnswer:
-                #print "*** No answer ***"
+                # print "*** No answer ***"
+                pass
+            except dns.resolver.Timeout:
+                # print "*** No answer ***"
                 pass
     except dns.resolver.NXDOMAIN:
-        #print "*** The name", t, "does not exist ***"
+        # print "*** The name", t, "does not exist ***"
         pass
     return sub_res
-
 
 
 def _reverse_dns(scan_id, asset):
     res = {}
 
     # check the asset is a valid domain name
-    if not __is_ip_addr(asset): return res
+    if not __is_ip_addr(asset):
+        return res
 
     try:
         answers = this.resolver.query(dns.reversename.from_address(asset), "PTR")
@@ -253,7 +256,6 @@ def _reverse_dns(scan_id, asset):
 def _get_whois(scan_id, asset):
     res = {}
 
-    #for asset in this.scans[scan_id]['assets']:
     # check the asset is a valid domain name
     if not __is_domain(asset):
         return res
@@ -282,16 +284,16 @@ def _subdomain_bruteforce(scan_id, asset):
         "ftp", "ftp1", "ftp2", "ftp3", "sftp",
         "mail", "mail1", "mail2", "mail3", "webmail", "smtp", "mx", "email", "owa", "imap",
         "prod", "dev", "pro", "test", "demo", "demo1", "demo2", "beta", "pre-prod", "preprod",
-        "intra", "intranet", "internal", "backup", "backups",
-        "db", "data", "mysql", "oracle", "pg",
+        "intra", "intranet", "internal", "backup", "backups", "share",
+        "db", "db1", "db2", "data", "mysql", "oracle", "pg",
         "ldap", "ldap2", "open", "survey",
         "remote", "blog", "blogs", "server", "git", "sys", "svn",
         "ns", "ns1", "ns2", "dns", "dns1", "dns2",
         "vpn", "vpn2", "support", "web", "api", "cdn", "ssh", "admin", "adm",
-        "int", "recette", "re7", "pp", "stag", "staging",
+        "int", "rec", "recette", "re7", "pp", "stag", "staging",
         "video", "videos", "mob", "mobile", "mobi", "ws", "ad", "doc", "docs",
         "store", "feeds", "rss", "files",
-        "mantis", "nagios", "owa", "outlook", "zabbix"
+        "mantis", "nagios", "outlook", "zabbix"
     ]
 
     valid_sudoms = []
@@ -332,7 +334,9 @@ def _subdomain_enum(scan_id, asset):
 
     sub_res = turbolist3r.main(
         asset, 1, None,
-        ports=None, silent=True, verbose=False, enable_bruteforce=False, engines=None)
+        ports=None, silent=True,
+        verbose=False, enable_bruteforce=False,
+        engines=None)
 
     res.update({asset: sub_res})
 
@@ -401,7 +405,7 @@ def clean_scan(scan_id):
     res = {"page": "clean_scan"}
     res.update({"scan_id": scan_id})
 
-    if not scan_id in this.scans.keys():
+    if scan_id not in this.scans.keys():
         res.update({"status": "error", "reason": "scan_id '{}' not found".format(scan_id)})
         return jsonify(res)
 
@@ -412,7 +416,7 @@ def clean_scan(scan_id):
 
 @app.route('/engines/owl_dns/status/<scan_id>')
 def scan_status(scan_id):
-    if not scan_id in this.scans.keys():
+    if scan_id not in this.scans.keys():
         return jsonify({
             "status": "ERROR",
             "details": "scan_id '{}' not found".format(scan_id)})
@@ -912,7 +916,7 @@ def _json_serial(obj):
     if isinstance(obj, datetime.datetime) or isinstance(obj, datetime.date):
         serial = obj.isoformat()
         return serial
-    raise TypeError ("Type not serializable")
+    raise TypeError("Type not serializable")
 
 
 @app.route('/engines/owl_dns/test')
