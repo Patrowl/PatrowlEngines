@@ -10,4 +10,4 @@ PatrowlEnginesUtils>=0.0.12
 requests==2.20.0
 six==1.12.0
 urllib3==1.25.2
-Werkzeug==0.14.1
+werkzeug>=0.15.6

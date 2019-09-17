@@ -12,5 +12,5 @@ python-dateutil==2.7.2
 six==1.11.0
 smmap2==2.0.3
 svn==0.3.45
-Werkzeug==0.14.1
+werkzeug>=0.15.6
 PatrowlEnginesUtils>=0.0.12

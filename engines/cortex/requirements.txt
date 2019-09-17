@@ -13,4 +13,4 @@ MarkupSafe==1.0
 python-magic==0.4.15
 requests==2.22.0
 urllib3>=1.25
-Werkzeug==0.14.1
+werkzeug>=0.15.6

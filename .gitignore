@@ -3,6 +3,7 @@ engines/arachni/libs/*
 engines/arachni/logs/*
 engines/arachni/arachni.json
 engines/nmap/nmap.json
+engines/nmap/tmp/*
 engines/nessus/tmp/*
 engines/nessus/nessus.json
 engines/owl_dns/libs/*

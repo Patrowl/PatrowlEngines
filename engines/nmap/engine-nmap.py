@@ -61,11 +61,11 @@ def loadconfig():
         this.scanner['status'] = "READY"
     else:
         this.scanner['status'] = "ERROR"
-        print ("Error: config file '{}' not found".format(conf_file))
+        # print ("Error: config file '{}' not found".format(conf_file))
         return {"status": "ERROR", "reason": "config file not found."}
     if not os.path.isfile(this.scanner['path']):
         this.scanner['status'] = "ERROR"
-        print ("Error: path to nmap '{}' not found".format(this.scanner['path']))
+        # print ("Error: path to nmap '{}' not found".format(this.scanner['path']))
         return {"status": "ERROR", "reason": "path to nmap binary not found."}
 
 
@@ -167,10 +167,11 @@ def _scan_thread(scan_id):
     hosts = list(set(hosts))
 
     # write hosts in a file (cleaner and doesn't break with shell arguments limit (for thousands of hosts)
-
+    hosts_filename = BASE_DIR+"/tmp/engine_nmap_hosts_file_scan_id_{}.tmp".format(scan_id)
     with open(hosts_filename, 'w') as hosts_file:
         for item in hosts:
             hosts_file.write("%s\n" % item)
+            app.logger.debug('asset: %s', item)
 
     # Sanitize args :
     ports = None
@@ -180,7 +181,7 @@ def _scan_thread(scan_id):
     options = this.scans[scan_id]['options']
     log_path = BASE_DIR+"/logs/" + scan_id + ".error"
 
-    cmd = this.scanner['path'] + " -vvv" + " -oX "+BASE_DIR+"/results/nmap_" + scan_id + ".xml"
+    cmd = this.scanner['path'] + " -vvv" + " -oX " +BASE_DIR+"/results/nmap_" + scan_id + ".xml"
 
     # Check options
     for opt_key in options.keys():
@@ -192,6 +193,14 @@ def _scan_thread(scan_id):
             cmd += " --script {}".format(options.get(opt_key))
         if opt_key == "script_args":  # /!\ @todo / Security issue: Sanitize parameters here
             cmd += " --script-args {}".format(options.get(opt_key))
+        if opt_key == "host_file_path":  # /!\ @todo / Security issue: Sanitize parameters here
+            if os.path.isfile(options.get(opt_key)):
+                with open(options.get(opt_key), 'r') as f:
+                    with open(hosts_filename, 'a') as hosts_file:
+                        for line in f:
+                            hosts_file.write(line)
+
+    cmd += " -iL " + hosts_filename
 
     this.scans[scan_id]["proc_cmd"] = "not set!!"
     with open(log_path, "w") as stderr:
@@ -321,6 +330,11 @@ def status():
     else:
         this.scanner['status'] = "READY"
 
+    if not os.path.exists(BASE_DIR+'/nmap.json'):
+        this.scanner['status'] = "ERROR"
+    if not os.path.isfile(this.scanner['path']):
+        this.scanner['status'] = "ERROR"
+
     res.update({"status": this.scanner['status']})
 
     # display info on the scanner
@@ -384,6 +398,7 @@ def _add_issue(scan_id, target, ts, title, desc, type, severity="info", confiden
 
 
 def _parse_report(filename, scan_id):
+    """Parse the nmap report."""
     res = []
     target = {}
     try:
@@ -407,7 +422,6 @@ def _parse_report(filename, scan_id):
         # Find hostnames
         for hostnames in host.findall('hostnames'):
             for hostname in hostnames.getchildren():
-                # for hostname in hostnames._children:
                 if hostname.get("type") in ["user", "PTR"]:
                     has_hostnames = True
                     addr = hostname.get("name")
@@ -473,7 +487,8 @@ def _parse_report(filename, scan_id):
 
                 res.append(deepcopy(_add_issue(scan_id, target, ts,
                     "Port '{}/{}' is {}".format(proto, portid, port_state),
-                    "The scan detected that the port '{}/{}' was {}".format(proto, portid, port_state),
+                    "The scan detected that the port '{}/{}' was {}".format(
+                        proto, portid, port_state),
                     type="port_status")))
 
                 # get service information if available
@@ -520,7 +535,8 @@ def _parse_report(filename, scan_id):
                             port_severity = "low"
 
                         res.append(deepcopy(_add_issue(scan_id, target, ts,
-                            "Nmap script '{}' detected findings on port {}/{}".format(script_id, proto, portid),
+                            "Nmap script '{}' detected findings on port {}/{}"
+                                .format(script_id, proto, portid),
                             "The script '{}' detected following findings:\n{}"
                                 .format(script_id, script_output),
                             severity=port_severity,
@@ -532,7 +548,8 @@ def _parse_report(filename, scan_id):
                             )))
                     else:
                         res.append(deepcopy(_add_issue(scan_id, target, ts,
-                            "Nmap script '{}' detected findings on port {}/{}".format(script_id, proto, portid),
+                            "Nmap script '{}' detected findings on port {}/{}"
+                                .format(script_id, proto, portid),
                             "The script '{}' detected following findings:\n{}"
                                 .format(script_id, script_output),
                             type="port_script",
@@ -544,15 +561,18 @@ def _parse_report(filename, scan_id):
                 script_output = script.get('output')
                 res.append(deepcopy(_add_issue(scan_id, target, ts,
                     "Script '{}' has given results".format(script.get('id')),
-                    "The script '{}' revealed following information: \n{}".format(script.get('id'), script_output),
+                    "The script '{}' revealed following information: \n{}"
+                        .format(script.get('id'), script_output),
                     type="host_script")))
 
                 if "script_output_fields" in this.scans[scan_id]["options"].keys():
                     for elem in script.findall("elem"):
                         if elem.get("key") in this.scans[scan_id]["options"]["script_output_fields"]:
                             res.append(deepcopy(_add_issue(scan_id, target, ts,
-                                "Script results '{}/{}' set to '{}'".format(script.get('id'), elem.get("key"), elem.text),
-                                "The script '{}' revealed following information: \n'{}' was identified to '{}'".format(script.get('id'), elem.get("key"), elem.text),
+                                "Script results '{}/{}' set to '{}'"
+                                    .format(script.get('id'), elem.get("key"), elem.text),
+                                "The script '{}' revealed following information: \n'{}' was identified to '{}'"
+                                    .format(script.get('id'), elem.get("key"), elem.text),
                                 type="host_script_advanced")))
 
     for unidentified_asset in unidentified_assets:
@@ -636,7 +656,7 @@ def getfindings(scan_id):
         }, report_file, default=_json_serial)
 
     # Delete the tmp hosts file (used with -iL argument upon launching nmap)
-    hosts_filename = "/tmp/engine_nmap_hosts_file_scan_id_{}.tmp".format(scan_id)
+    hosts_filename = BASE_DIR+"/tmp/engine_nmap_hosts_file_scan_id_{}.tmp".format(scan_id)
     if os.path.exists(hosts_filename):
         os.remove(hosts_filename)
 
@@ -696,6 +716,8 @@ def main():
         sys.exit(-1)
     if not os.path.exists(BASE_DIR+"/results"):
         os.makedirs(BASE_DIR+"/results")
+    if not os.path.exists(BASE_DIR+"/tmp"):
+        os.makedirs(BASE_DIR+"/tmp")
     loadconfig()
 
 
