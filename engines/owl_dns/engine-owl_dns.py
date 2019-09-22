@@ -18,7 +18,7 @@ this.scans = {}
 this.scan_lock = threading.RLock()
 
 this.resolver = dns.resolver.Resolver()
-this.resolver.lifetime = this.resolver.timeout = 40.0
+this.resolver.lifetime = this.resolver.timeout = 5.0
 
 
 @app.route('/')
@@ -372,7 +372,8 @@ def stop_scan(scan_id):
         return jsonify(res)
 
     for t in this.scans[scan_id]['threads']:
-        t._Thread__stop()
+        # t._Thread__stop()
+        t.terminate()
     this.scans[scan_id]['status'] = "STOPPED"
     this.scans[scan_id]['finished_at'] = int(time.time() * 1000)
 
@@ -950,6 +951,9 @@ def main():
 
 
 if __name__ == '__main__':
+    if sys.platform == "darwin":
+        os.environ['OBJC_DISABLE_INITIALIZE_FORK_SAFETY'] = 'YES'
+
     parser = optparse.OptionParser()
     parser.add_option(
         "-H", "--host",
