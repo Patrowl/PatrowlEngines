@@ -66,8 +66,17 @@ def eyewitness_cmd(list_url, asset_id, scan_id):
     count = 0
     for url in list_url:
         screenshot_base_path = asset_base_path + "/" + str(count)
-        check_output(["{}/EyeWitness.py".format(engine.scanner["options"]["EyeWitnessDirectory"]["value"]), "--single", url, "--web", "-d", screenshot_base_path, "--no-prompt"])
+        try:
+            check_output(["{}/EyeWitness.py".format(engine.scanner["options"]["EyeWitnessDirectory"]["value"]), "--single", url, "--web", "--proxy-ip", "127.0.0.1", "--proxy-port", "9050", "--proxy-type", "socks5", "-d", screenshot_base_path, "--no-prompt"])
+        except:
+            continue 
         screenshot_files = listdir(screenshot_base_path + "/screens")
+        # Retry screenshot capture if previous fail
+        if not screenshot_files:
+            try:
+                check_output(["{}/EyeWitness.py".format(engine.scanner["options"]["EyeWitnessDirectory"]["value"]), "--single", url, "--web", "--proxy-ip", "127.0.0.1", "--proxy-port", "9050", "--proxy-type", "socks5", "-d", screenshot_base_path, "--no-prompt"])
+            except:
+                continue
         if not screenshot_files:
             continue
         result_url = "{repo_url}/{scan_id}/{asset_id}/{count}/screens/{screenshot}".format(repo_url=engine.scanner["options"]["ScreenshotsURL"]["value"], scan_id=scan_id, asset_id=asset_id, count=count, screenshot=screenshot_files[0])
@@ -482,7 +491,7 @@ def _parse_results(scan_id):
                         "timestamp": timestamp,
                         "description": "Too much differences"
                     })
-                elif previous_diff >= 15:
+                elif previous_diff >= 20:
                     nb_vulns[get_criticity(cvss_max)] += 1
                     issues.append({
                         "issue_id": len(issues)+1,
