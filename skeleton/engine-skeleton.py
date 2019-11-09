@@ -6,7 +6,7 @@ import sys
 import json
 import time
 import threading
-import urlparse
+from urllib.parse import urlparse
 from flask import Flask, request, jsonify
 from PatrowlEnginesUtils.PatrowlEngine import _json_serial
 from PatrowlEnginesUtils.PatrowlEngine import PatrowlEngine
@@ -133,7 +133,7 @@ def _loadconfig():
         engine.scanner['status'] = "READY"
 
     else:
-        print "Error: config file '{}' not found".format(conf_file)
+        print("Error: config file '{}' not found".format(conf_file))
         return {"status": "error", "reason": "config file not found"}
 
 
@@ -248,8 +248,8 @@ def _scan_urls(scan_id):
         try:
             engine.scans[scan_id]["findings"][asset]['issues'] = get_report(asset)
         except Exception as e:
-            print "_scan_urls: API Connexion error (quota?)"
-            print e
+            print("_scan_urls: API Connexion error (quota?)")
+            print(e)
             return False
 
     return True
