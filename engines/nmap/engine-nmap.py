@@ -407,6 +407,7 @@ def _parse_report(filename, scan_id):
         # No Element found in XML file
         return {"status": "ERROR", "reason": "no issues found"}
 
+    print(tree)
     ts = tree.find("taskbegin").get("time")
 
     unidentified_assets = set([a["value"] for a in this.scans[scan_id]["assets"]])

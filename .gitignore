@@ -29,6 +29,7 @@ engines/certstream/CertStreamMonitor
 engines/certstream/whitelist.txt
 engines/eyewitness/eyewitness.json
 engines/eyewitness/libs/*
+engines/curl/curl.json
 env
 env3
 results

@@ -4,7 +4,7 @@ click==6.7
 decorator==4.4.0
 dnslib==0.9.10
 dnspython==1.15.0
-flask==1.0.3
+flask==1.1.1
 future==0.17.1
 gunicorn==19.9.0
 idna==2.5

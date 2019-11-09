@@ -1,0 +1,7 @@
+{
+  "name": "Curl API",
+  "version": "1.0.0",
+  "description": "Curl API",
+  "allowed_asset_types": ["fqdn", "ip", "domain", "url"],
+  "options": {}
+}
