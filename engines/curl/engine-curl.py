@@ -6,6 +6,8 @@ import sys
 import json
 import time
 import threading
+import copy
+import logging
 from urllib.parse import urlparse
 from flask import Flask, request, jsonify
 from PatrowlEnginesUtils.PatrowlEngine import _json_serial
@@ -167,7 +169,9 @@ def start_scan():
             }})
         return jsonify(res)
 
+    scan = {}
     data = json.loads(request.data)
+
     if 'assets' not in data.keys() or 'scan_id' not in data.keys():
         res.update({
             "status": "refused",
@@ -176,51 +180,51 @@ def start_scan():
             }})
         return jsonify(res)
 
-    assets = []
-    for asset in data["assets"]:
-        # Value
-        if "value" not in asset.keys() or not asset["value"]:
-            res.update({
-                "status": "error",
-                "reason": "arg error, something is missing ('asset.value')"
-            })
-            return jsonify(res)
-
-        # Supported datatypes
-        if asset["datatype"] not in engine.scanner["allowed_asset_types"]:
-            res.update({
-                "status": "error",
-                "reason": "arg error, bad value for '{}' datatype (not supported)".format(asset["value"])
-            })
-            return jsonify(res)
-
-        if asset["datatype"] == "url":
-            parsed_uri = urlparse.urlparse(asset["value"])
-            asset["value"] = parsed_uri.netloc
-
-        assets.append(asset["value"])
-
-    scan_id = str(data['scan_id'])
-
-    if data['scan_id'] in engine.scans.keys():
+    # Check assets
+    if 'assets' not in data.keys() or 'scan_id' not in data.keys():
         res.update({
             "status": "refused",
-            "details": {
-                "reason": "scan '{}' already launched".format(data['scan_id']),
-            }
+            "reason": "arg error, something is missing (ex: 'assets', 'scan_id')"
         })
         return jsonify(res)
 
-    scan = {
-        # 'assets':       data['assets'],
-        'assets':       assets,
-        'threads':      [],
-        'options':      data['options'],
-        'scan_id':      scan_id,
-        'status':       "STARTED",
-        'started_at':   int(time.time() * 1000),
-        'findings':     {}
-    }
+    valid_assets = copy.deepcopy(data["assets"])
+    for asset in data["assets"]:
+        # Value
+        if "value" not in asset.keys() or not asset["value"]:
+            valid_assets.remove(asset)
+
+        # Supported datatypes
+        if asset["datatype"] not in engine.scanner["allowed_asset_types"]:
+            valid_assets.remove(asset)
+
+        # url transform
+        if asset["datatype"] == 'url':
+            valid_assets.remove(asset)
+            valid_assets.append({
+                "id": asset["id"],
+                "datatype": asset["datatype"],
+                "criticity": asset["criticity"],
+                "value": "{uri.netloc}".format(uri=urlparse(asset["value"]))
+            })
+
+    # Check scan_id
+    scan["scan_id"] = str(data["scan_id"])
+    if data["scan_id"] in engine.scans.keys():
+        res.update({"status": "error", "reason": "scan already started (scan_id={})".format(data["scan_id"])})
+        return jsonify(res)
+
+    scan["assets"] = []
+    for asset in valid_assets:
+        if asset["value"] not in [h["host"] for h in scan["assets"]]:
+            target_host = asset["value"]
+            target_url = "{}analyze?host={}&port={}&publish=off&ignoreMismatch=on&maxAge=2&fromCache=on".format(engine.scanner['api_url'], target_host, scan["target_port"])
+            scan["assets"].append({"host": target_host, "url": target_url})
+
+    scan["started_at"] = datetime.datetime.now()
+    scan["status"] = "STARTED"
+    scan["threads"] = []
+    scan["findings"] = []
 
     engine.scans.update({scan_id: scan})
     thread = threading.Thread(target=_scan_urls, args=(scan_id,))
