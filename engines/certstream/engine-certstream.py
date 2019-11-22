@@ -6,7 +6,7 @@ from json import dump, dumps, load, loads
 from logging import getLogger
 from os import makedirs
 from os.path import dirname, exists, isfile, realpath
-from sys import modules, path
+from sys import argv, modules, path
 from threading import Thread
 from time import time, sleep
 from urllib.parse import urlparse
@@ -93,7 +93,7 @@ def in_whitelist(domain):
     if domain in whitelist:
         return True
     for white in whitelist:
-        if domain.endswith(white):
+        if domain.endswith("."+white):
             return True
     return False
 
@@ -227,6 +227,8 @@ def getreport(scan_id):
 
 def _loadconfig():
     conf_file = APP_BASE_DIR+"/certstream.json"
+    if len(argv) > 1 and exists(APP_BASE_DIR+"/"+argv[1]):
+        conf_file = APP_BASE_DIR + "/" + argv[1]
     if exists(conf_file):
         json_data = open(conf_file)
         engine.scanner = load(json_data)
@@ -343,6 +345,9 @@ def start_scan():
             }
         })
         return jsonify(res)
+    # Default Value
+    if not "options" in data:
+        data["options"] = {"since": 3600}
 
     scan = {
         "assets":       assets,
