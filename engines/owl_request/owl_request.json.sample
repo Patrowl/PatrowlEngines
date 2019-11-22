@@ -1,7 +1,7 @@
 {
-  "name": "Curl API",
+  "name": "Owl_request API",
   "version": "1.0.0",
-  "description": "Curl API",
+  "description": "Request API",
   "allowed_asset_types": ["fqdn", "ip", "domain", "url"],
   "options": {}
 }

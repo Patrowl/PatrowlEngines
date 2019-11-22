@@ -17,7 +17,7 @@ COPY requirements.txt .
 COPY README.md .
 
 # Install any needed packages specified in requirements.txt
-RUN apk add --update \
+RUN apk add --update --no-cache \
     python3 \
     python3-dev \
     py3-pip \

@@ -22,6 +22,7 @@ env:
 # - PATROWL_ENGINE=openvas ENGINE_PORT=5016
 - PATROWL_ENGINE=certstream ENGINE_PORT=5017
 - PATROWL_ENGINE=eyewitness ENGINE_PORT=5018
+- PATROWL_ENGINE=owl_request ENGINE_PORT=5019
 before_install:
 - cd engines
 install:

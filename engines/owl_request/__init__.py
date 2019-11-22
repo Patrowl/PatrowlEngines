@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-__title__ = 'patrowl_engine_curl'
+__title__ = 'patrowl_engine_owl_request'
 __version__ = '1.0.0'
 __author__ = 'Nicolas MATTIOCCO'
 __license__ = 'AGPLv3'

@@ -3,7 +3,7 @@ MAINTAINER Patrowl.io "getsupport@patrowl.io"
 LABEL Name="Patrowl\ DNS\ \(Patrowl engine\)" Version="1.0.0"
 
 # Install dependencies
-RUN apk add --update \
+RUN apk add --update --no-cache \
     python3 \
     python3-dev \
     py3-pip \

@@ -15,6 +15,8 @@
 		"tcp_scan": 		{ "type": "optional", "value": "-sT"},
 		"ping_scan": 		{ "type": "optional", "value": "-sP"},
 		"all_scan": 		{ "type": "optional", "value": "-A"},
+		"fast_scan": 		{ "type": "optional", "value": "-F"},
+		"top_ports": 		{ "type": "optional", "value": "--top-ports"},
 		"detect_service_version": { "type": "optional", "value": "-sV"},
 		"detect_os": 		{ "type": "optional", "value": "-O --osscan-guess --max-os-tries 1"},
 		"no_ping": 			{ "type": "optional", "value": "-Pn"},

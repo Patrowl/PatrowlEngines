@@ -124,7 +124,6 @@ def start():
         'assets':       data['assets'],
         'threads':      [],
         'proc':         None,
-        # 'options':      json.loads(data['options']),
         'options':      data['options'],
         'scan_id':      scan_id,
         'status':       "STARTED",
@@ -139,9 +138,8 @@ def start():
 
     res.update({
         "status": "accepted",
-        "details": {
-            "scan_id": scan['scan_id']
-    }})
+        "details": {"scan_id": scan['scan_id']}
+    })
 
     return jsonify(res)
 
@@ -152,9 +150,9 @@ def _scan_thread(scan_id):
     for asset in this.scans[scan_id]['assets']:
         if asset["datatype"] not in this.scanner["allowed_asset_types"]:
             return jsonify({
-                    "status": "refused",
-                    "details": {
-                        "reason": "datatype '{}' not supported for the asset {}.".format(asset["datatype"], asset["value"])
+                "status": "refused",
+                "details": {
+                    "reason": "datatype '{}' not supported for the asset {}.".format(asset["datatype"], asset["value"])
             }})
         else:
             # extract the net location from urls if needed
@@ -179,16 +177,20 @@ def _scan_thread(scan_id):
         ports = ",".join(this.scans[scan_id]['options']['ports'])
     # del this.scans[scan_id]['options']['ports']
     options = this.scans[scan_id]['options']
+    app.logger.debug('options: %s', options)
+
     log_path = BASE_DIR+"/logs/" + scan_id + ".error"
 
     cmd = this.scanner['path'] + " -vvv" + " -oX " +BASE_DIR+"/results/nmap_" + scan_id + ".xml"
 
     # Check options
     for opt_key in options.keys():
-        if opt_key in this.scanner['options'] and options.get(opt_key) and opt_key not in ["ports", "script", "script_args", "script_output_fields", "host_file_path"]:
+        if opt_key in this.scanner['options'] and options.get(opt_key) and opt_key not in ["ports", "script", "top_ports", "script_args", "script_output_fields", "host_file_path"]:
             cmd += " {}".format(this.scanner['options'][opt_key]['value'])
         if opt_key == "ports" and ports is not None:  # /!\ @todo / Security issue: Sanitize parameters here
             cmd += " -p{}".format(ports)
+        if opt_key == "top_ports": # /!\ @todo / Security issue: Sanitize parameters here
+            cmd += " --top-ports {}".format(options.get(opt_key))
         if opt_key == "script" and options.get(opt_key).endswith('.nse'):  # /!\ @todo / Security issue: Sanitize parameters here
             cmd += " --script {}".format(options.get(opt_key))
         if opt_key == "script_args":  # /!\ @todo / Security issue: Sanitize parameters here
@@ -201,6 +203,7 @@ def _scan_thread(scan_id):
                             hosts_file.write(line)
 
     cmd += " -iL " + hosts_filename
+    app.logger.debug('cmd: %s', cmd)
 
     this.scans[scan_id]["proc_cmd"] = "not set!!"
     with open(log_path, "w") as stderr:
@@ -422,7 +425,8 @@ def _parse_report(filename, scan_id):
         has_hostnames = False
         # Find hostnames
         for hostnames in host.findall('hostnames'):
-            for hostname in hostnames.getchildren():
+            # for hostname in hostnames.getchildren():
+            for hostname in list(hostnames):
                 if hostname.get("type") in ["user", "PTR"]:
                     has_hostnames = True
                     addr = hostname.get("name")

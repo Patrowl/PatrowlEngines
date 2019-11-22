@@ -11,3 +11,4 @@ requests==2.20.0
 urllib3>=1.23
 werkzeug>=0.15.6
 PatrowlEnginesUtils>=0.0.12
+pythonping==1.0.5

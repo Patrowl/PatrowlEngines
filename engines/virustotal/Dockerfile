@@ -12,20 +12,19 @@ WORKDIR /opt/patrowl-engines/virustotal
 # Copy the current directory contents into the container at /
 COPY __init__.py .
 COPY engine-virustotal.py .
-COPY virustotal.json.sample .
+COPY virustotal.json.sample virustotal.json
 COPY requirements.txt .
 COPY README.md .
 
 # Install any needed packages specified in requirements.txt
 RUN mkdir -p results
-RUN apk add --update \
+RUN apk add --update --no-cache \
     python3 \
     python3-dev \
     py3-pip \
   && rm -rf /var/cache/apk/*
 RUN pip3 install --upgrade pip
 RUN pip3 install --trusted-host pypi.python.org -r requirements.txt
-COPY virustotal.json.sample virustotal.json
 
 # TCP port exposed by the container (NAT)
 EXPOSE 5007
