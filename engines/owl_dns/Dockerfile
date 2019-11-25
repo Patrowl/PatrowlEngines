@@ -13,7 +13,7 @@ RUN apk add --update --no-cache \
 # Create the target repo
 RUN mkdir -p /opt/patrowl-engines/owl_dns
 RUN mkdir -p /opt/patrowl-engines/owl_dns/results
-RUN mkdir -p /opt/patrowl-engines/owl_dns/libs
+RUN mkdir -p /opt/patrowl-engines/owl_dns/external-libs
 
 # Set the working directory to /opt/<engine_name>
 WORKDIR /opt/patrowl-engines/owl_dns
@@ -25,8 +25,11 @@ COPY owl_dns.json.sample owl_dns.json
 COPY requirements.txt .
 COPY README.md .
 COPY etc/ etc/
-WORKDIR /opt/patrowl-engines/owl_dns/libs
-RUN git clone https://github.com/fleetcaptain/Turbolist3r/
+COPY libs/ etc/
+WORKDIR /opt/patrowl-engines/owl_dns/external-libs
+RUN git clone https://github.com/aboul3la/Sublist3r
+WORKDIR /opt/patrowl-engines/owl_dns/external-libs/Sublist3r
+RUN git apply /opt/patrowl-engines/owl_dns/etc/sublist3r.patch
 
 # Install python modules
 WORKDIR /opt/patrowl-engines/owl_dns

@@ -6,7 +6,7 @@ engines/nmap/nmap.json
 engines/nmap/tmp/*
 engines/nessus/tmp/*
 engines/nessus/nessus.json
-engines/owl_dns/libs/*
+engines/owl_dns/external-libs/*
 engines/owl_dns/owl_dns.json
 engines/ssllabs/ssllabs.json
 engines/burp/extres/*

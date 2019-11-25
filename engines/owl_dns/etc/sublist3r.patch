@@ -1,0 +1,89 @@
+diff --git a/sublist3r.py b/sublist3r.py
+index 4d716dd..ec810e8 100755
+--- a/sublist3r.py
++++ b/sublist3r.py
+@@ -267,8 +267,9 @@ class enumratorBaseThreaded(multiprocessing.Process, enumratorBase):
+ 
+     def run(self):
+         domain_list = self.enumerate()
+-        for domain in domain_list:
+-            self.q.append(domain)
++        if domain_list is not None:
++            for domain in domain_list:
++                self.q.append(domain)
+ 
+ 
+ class GoogleEnum(enumratorBaseThreaded):
+@@ -301,7 +302,8 @@ class GoogleEnum(enumratorBaseThreaded):
+         return links_list
+ 
+     def check_response_errors(self, resp):
+-        if (type(resp) is str or type(resp) is unicode) and 'Our systems have detected unusual traffic' in resp:
++        # if (type(resp) is str or type(resp) is unicode) and 'Our systems have detected unusual traffic' in resp:
++        if (type(resp) is str or type(resp) is bytes) and 'Our systems have detected unusual traffic' in resp:
+             self.print_(R + "[!] Error: Google probably now is blocking our requests" + W)
+             self.print_(R + "[~] Finished now the Google Enumeration ..." + W)
+             return False
+@@ -564,15 +566,16 @@ class NetcraftEnum(enumratorBaseThreaded):
+     def enumerate(self):
+         start_url = self.base_url.format(domain='example.com')
+         resp = self.req(start_url)
+-        cookies = self.get_cookies(resp.headers)
+-        url = self.base_url.format(domain=self.domain)
+-        while True:
+-            resp = self.get_response(self.req(url, cookies))
+-            self.extract_domains(resp)
+-            if 'Next page' not in resp:
+-                return self.subdomains
+-                break
+-            url = self.get_next(resp)
++        if 'headers' in dir(resp):
++            cookies = self.get_cookies(resp.headers)
++            url = self.base_url.format(domain=self.domain)
++            while True:
++                resp = self.get_response(self.req(url, cookies))
++                self.extract_domains(resp)
++                if not isinstance(resp, int) and 'Next page' not in resp:
++                    return self.subdomains
++                    break
++                url = self.get_next(resp)
+ 
+     def extract_domains(self, resp):
+         links_list = list()
+@@ -642,14 +645,15 @@ class DNSdumpster(enumratorBaseThreaded):
+ 
+     def enumerate(self):
+         resp = self.req('GET', self.base_url)
+-        token = self.get_csrftoken(resp)
+-        params = {'csrfmiddlewaretoken': token, 'targetip': self.domain}
+-        post_resp = self.req('POST', self.base_url, params)
+-        self.extract_domains(post_resp)
+-        for subdomain in self.subdomains:
+-            t = threading.Thread(target=self.check_host, args=(subdomain,))
+-            t.start()
+-            t.join()
++        if isinstance(resp, str):
++            token = self.get_csrftoken(resp)
++            params = {'csrfmiddlewaretoken': token, 'targetip': self.domain}
++            post_resp = self.req('POST', self.base_url, params)
++            self.extract_domains(post_resp)
++            for subdomain in self.subdomains:
++                t = threading.Thread(target=self.check_host, args=(subdomain,))
++                t.start()
++                t.join()
+         return self.live_subdomains
+ 
+     def extract_domains(self, resp):
+@@ -696,7 +700,11 @@ class Virustotal(enumratorBaseThreaded):
+     def enumerate(self):
+         while self.url != '':
+             resp = self.send_req(self.url)
+-            resp = json.loads(resp)
++            try:
++                resp = json.loads(resp)
++            except Exception:
++                self.print_(R + "[!] Error: Virustotal returns 'int' values" + W)
++                break
+             if 'error' in resp:
+                 self.print_(R + "[!] Error: Virustotal probably now is blocking our requests" + W)
+                 break

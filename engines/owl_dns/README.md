@@ -14,10 +14,17 @@ DNS REST API engine
   * try/except calls to external modules (python-whois and Sublist3r)
   * Check whois with invalid domain names
 
-## MacOs workaround
+## Workaround
+### MacOs
+
 If the engine fails to resolve domains, consider setting the following env parameter:
 ```
 export OBJC_DISABLE_INITIALIZE_FORK_SAFETY=YES
+```
+### Ulimit (max open files)
+```
+ulimit -Sn 10000
+docker run --ulimit	nofile=10000:10000 patrowl/engine-owl_dns
 ```
 
 ## Testing URLs

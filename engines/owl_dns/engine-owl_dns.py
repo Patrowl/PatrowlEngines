@@ -37,8 +37,10 @@ def _loadconfig():
         json_data = open(conf_file)
         this.scanner = json.load(json_data)
         this.scanner['status'] = "READY"
-        sys.path.append(this.scanner['turbolist3r_bin_path'])
-        globals()['turbolist3r'] = __import__('turbolist3r')
+        # sys.path.append(this.scanner['turbolist3r_bin_path'])
+        # globals()['turbolist3r'] = __import__('turbolist3r')
+        sys.path.append(this.scanner['sublist3r_bin_path'])
+        globals()['sublist3r'] = __import__('sublist3r')
     else:
         print("Error: config file '{}' not found".format(conf_file))
         return {"status": "error", "reason": "config file not found"}
@@ -311,6 +313,7 @@ def _subdomain_bruteforce(scan_id, asset):
         if asset in this.scans[scan_id]['findings']['subdomains_list']:
             if subdom not in this.scans[scan_id]['findings']['subdomains_list'][asset]:
                 this.scans[scan_id]['findings']['subdomains_list'][asset].extend(valid_sudoms)
+                # this.scans[scan_id]['findings']['subdomains_list'][asset].update(valid_sudoms)
         else:
             this.scans[scan_id]['findings']['subdomains_list'][asset] = valid_sudoms
     else:
@@ -332,10 +335,13 @@ def _subdomain_enum(scan_id, asset):
     if not __is_domain(asset):
         return res
 
-    sub_res = turbolist3r.main(
+    # sub_res = turbolist3r.main(
+    sub_res = sublist3r.main(
         asset, 1, None,
-        ports=None, silent=True,
-        verbose=False, enable_bruteforce=False,
+        ports=None,
+        silent=True,
+        verbose=True,
+        enable_bruteforce=False,
         engines=None)
 
     res.update({asset: sub_res})
@@ -348,11 +354,11 @@ def _subdomain_enum(scan_id, asset):
                     this.scans[scan_id]['findings']['subdomains_list'][asset].extend(sub_res)
         else:
             # with this.scan_lock:
-            this.scans[scan_id]['findings']['subdomains_list'][asset] = sub_res
+            this.scans[scan_id]['findings']['subdomains_list'][asset] = list(sub_res)
     else:
         # with this.scan_lock:
         this.scans[scan_id]['findings']['subdomains_list'] = {}
-        this.scans[scan_id]['findings']['subdomains_list'][asset] = sub_res
+        this.scans[scan_id]['findings']['subdomains_list'][asset] = list(sub_res)
 
     # time.sleep(2)
     return res
@@ -373,7 +379,8 @@ def stop_scan(scan_id):
 
     for t in this.scans[scan_id]['threads']:
         # t._Thread__stop()
-        t.terminate()
+        # t.terminate()
+        t.join()
     this.scans[scan_id]['status'] = "STOPPED"
     this.scans[scan_id]['finished_at'] = int(time.time() * 1000)
 
@@ -595,8 +602,28 @@ def _parse_results(scan_id):
                     continue
                 s = subdomain.replace("From http://PTRarchive.com: ", "")
                 subdomains_str = "".join((subdomains_str, s+"\n"))
-                # subdomains_str = "".join((subdomains_str, s+"\n"))
 
+                # New issue when a subdomain is found
+                nb_vulns['info'] += 1
+                issues.append({
+                    "issue_id": len(issues)+1,
+                    "severity": "info", "confidence": "certain",
+                    "target": {
+                        "addr": [asset],
+                        "protocol": "domain"
+                        },
+                    "title": "Subdomain found: {}".format(s),
+                    "description": "Subdomain found:\n\n{}".format(s),
+                    "solution": "n/a",
+                    "metadata": {
+                        "tags": ["domains", "subdomain"]
+                    },
+                    "type": "subdomain",
+                    "raw": s,
+                    "timestamp": ts
+                })
+
+            # New issue when on the domain list
             subdomains_hash = hashlib.sha1(subdomains_str.encode("utf-8")).hexdigest()[:6]
             if len(subdomains_list) == 0:
                 subdomains_list = []
