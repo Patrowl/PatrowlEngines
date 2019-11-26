@@ -4,12 +4,16 @@ import os, sys, json, time, urllib, hashlib, threading, datetime, copy, dns.reso
 from flask import Flask, request, jsonify, redirect, url_for, send_from_directory
 import validators
 import whois
+from modules.dnstwist import dnstwist
+from concurrent.futures import ThreadPoolExecutor
+
 
 app = Flask(__name__)
 APP_DEBUG = False
 APP_HOST = "0.0.0.0"
 APP_PORT = 5006
 APP_MAXSCANS = 25
+APP_TIMEOUT = 3600
 
 BASE_DIR = os.path.dirname(os.path.realpath(__file__))
 this = sys.modules[__name__]
@@ -20,6 +24,7 @@ this.scan_lock = threading.RLock()
 this.resolver = dns.resolver.Resolver()
 this.resolver.lifetime = this.resolver.timeout = 5.0
 
+this.pool = ThreadPoolExecutor(4)
 
 @app.route('/')
 def default():
@@ -37,10 +42,10 @@ def _loadconfig():
         json_data = open(conf_file)
         this.scanner = json.load(json_data)
         this.scanner['status'] = "READY"
-        # sys.path.append(this.scanner['turbolist3r_bin_path'])
-        # globals()['turbolist3r'] = __import__('turbolist3r')
         sys.path.append(this.scanner['sublist3r_bin_path'])
         globals()['sublist3r'] = __import__('sublist3r')
+        dnstwist(this.scanner['dnstwist_bin_path'])
+
     else:
         print("Error: config file '{}' not found".format(conf_file))
         return {"status": "error", "reason": "config file not found"}
@@ -91,6 +96,8 @@ def start_scan():
     scan = {
         'assets':       data['assets'],
         'threads':      [],
+        'futures':      [],
+        'dnstwist':     {},
         'options':      data['options'],
         'scan_id':      scan_id,
         'status':       "STARTED",
@@ -156,6 +163,36 @@ def start_scan():
                 th = threading.Thread(target=_reverse_dns, args=(scan_id, asset["value"]))
                 th.start()
                 this.scans[scan_id]['threads'].append(th)
+
+    if 'do_dnstwist_subdomain_search' in scan['options'].keys() and data['options']['do_dnstwist_subdomain_search']:
+        # Check if extra TLD should be tested
+        tld = False
+        if 'dnstwist_check_tld' in scan['options'].keys() and data['options']['dnstwist_check_tld']:
+            tld = this.scanner['dnstwist_common_tlds']
+        check_ssdeep = False
+        if 'dnstwist_check_ssdeep' in scan['options'].keys() and data['options']['dnstwist_check_ssdeep']:
+            check_ssdeep = True
+        check_geoip = False
+        if 'dnstwist_check_geoip' in scan['options'].keys() and data['options']['dnstwist_check_geoip']:
+            check_geoip = True
+        check_mx = False
+        if 'dnstwist_check_mx' in scan['options'].keys() and data['options']['dnstwist_check_mx']:
+            check_mx = True
+        check_whois = False
+        if 'dnstwist_check_whois' in scan['options'].keys() and data['options']['dnstwist_check_whois']:
+            check_whois = True
+        check_banners = False
+        if 'dnstwist_check_banners' in scan['options'].keys() and data['options']['dnstwist_check_banners']:
+            check_banners = True
+        timeout = APP_TIMEOUT
+        if 'max_timeout' in scan['options'].keys() and data['options']['max_timeout']:
+            timeout = data['options']['max_timeout']
+
+        for asset in data["assets"]:
+            if asset["datatype"] == "domain":
+                th = this.pool.submit(dnstwist.search_subdomains, scan_id, asset["value"], tld, check_ssdeep, check_geoip, check_mx, check_whois, check_banners, timeout)
+                this.scans[scan_id]['dnstwist'][asset["value"]] = {}
+                this.scans[scan_id]['futures'].append(th)
 
     res.update({
         "status": "accepted",
@@ -432,8 +469,8 @@ def scan_status(scan_id):
     all_threads_finished = True
 
     for t in this.scans[scan_id]['threads']:
-        #print "status/thread:", t
-        #print "status/thread.isAlive():", t.isAlive()
+        #print ("status/thread:", t)
+        #print ("status/thread.isAlive():", t.isAlive())
         if t.isAlive():
             this.scans[scan_id]['status'] = "SCANNING"
             all_threads_finished = False
@@ -442,10 +479,22 @@ def scan_status(scan_id):
             this.scans[scan_id]['threads'].remove(t)
             #all_threads_finished = True
 
+    for f in this.scans[scan_id]['futures']:
+        if not f.done():
+            this.scans[scan_id]['status'] = "SCANNING"
+            all_threads_finished = False
+            break
+        else:
+            dnstwist_asset, dnstwist_results = f.result()
+            this.scans[scan_id]['dnstwist'][dnstwist_asset] = dnstwist_results
+            this.scans[scan_id]['futures'].remove(f)
+
+            #all_threads_finished = True
+
     #print "status/len(threads):", len(this.scans[scan_id]['threads'])
     #print "status/all_threads_finished:", all_threads_finished, ", ", len(this.scans[scan_id]['threads'])
     # if all_threads_finished and len(this.scans[scan_id]['threads']) >=1:
-    if all_threads_finished and len(this.scans[scan_id]['threads']) == 0:
+    if all_threads_finished and len(this.scans[scan_id]['threads']) == 0 and len(this.scans[scan_id]['futures']) == 0:
         this.scans[scan_id]['status'] = "FINISHED"
         this.scans[scan_id]['finished_at'] = int(time.time() * 1000)
 
@@ -494,8 +543,22 @@ def _parse_results(scan_id):
         "low": 0,
         "medium": 0,
         "high": 0,
+        "critical": 0,
     }
     ts = int(time.time() * 1000)
+
+    # dnstwist
+    if 'dnstwist' in this.scans[scan_id].keys():
+        # for domain in this.scans[scan_id]['dnstwist']:
+        #     print(domain['domain-name'])
+        for asset in this.scans[scan_id]['dnstwist'].keys():
+            dnstwist_issues = dnstwist.parse_results(
+                ts, asset, this.scans[scan_id]['dnstwist'][asset])
+            for dnstwist_issue in dnstwist_issues:
+                nb_vulns[dnstwist_issue['severity']] += 1
+                issues.append(dnstwist_issue)
+
+        #@todo: update nb_vulns
 
     # dns resolve
     if 'dns_resolve' in scan['findings'].keys():
@@ -882,6 +945,7 @@ def _parse_results(scan_id):
         "nb_low": nb_vulns["low"],
         "nb_medium": nb_vulns["medium"],
         "nb_high": nb_vulns["high"],
+        "nb_critical": nb_vulns["critical"],
         # "delta_time": results["delta_time"],
         "engine_name": "owl_dns",
         "engine_version": this.scanner["version"]

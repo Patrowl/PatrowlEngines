@@ -4,9 +4,7 @@ LABEL Name="Patrowl\ DNS\ \(Patrowl engine\)" Version="1.0.0"
 
 # Install dependencies
 RUN apk add --update --no-cache \
-    python3 \
-    python3-dev \
-    py3-pip \
+    python3 python3-dev py3-pip \
     git \
   && rm -rf /var/cache/apk/*
 
@@ -25,15 +23,16 @@ COPY owl_dns.json.sample owl_dns.json
 COPY requirements.txt .
 COPY README.md .
 COPY etc/ etc/
-COPY libs/ etc/
+COPY modules/ modules/
 WORKDIR /opt/patrowl-engines/owl_dns/external-libs
 RUN git clone https://github.com/aboul3la/Sublist3r
 WORKDIR /opt/patrowl-engines/owl_dns/external-libs/Sublist3r
 RUN git apply /opt/patrowl-engines/owl_dns/etc/sublist3r.patch
 
 # Install python modules
-WORKDIR /opt/patrowl-engines/owl_dns
 RUN pip3 install --upgrade pip
+RUN pip3 install --trusted-host pypi.python.org -r requirements
+WORKDIR /opt/patrowl-engines/owl_dns
 RUN pip3 install --trusted-host pypi.python.org -r requirements.txt
 
 # TCP port exposed by the container (NAT)
