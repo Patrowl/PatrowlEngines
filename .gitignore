@@ -5,6 +5,7 @@ engines/arachni/arachni.json
 engines/nmap/nmap.json
 engines/nmap/tmp/*
 engines/nessus/tmp/*
+engines/nessus/external-libs/*
 engines/nessus/nessus.json
 engines/owl_dns/external-libs/*
 engines/owl_dns/owl_dns.json

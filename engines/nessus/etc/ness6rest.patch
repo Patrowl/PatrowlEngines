@@ -1,0 +1,107 @@
+diff --git a/nessrest/ness6rest.py b/nessrest/ness6rest.py
+index 0616963..64b34fb 100644
+--- a/nessrest/ness6rest.py
++++ b/nessrest/ness6rest.py
+@@ -38,6 +38,7 @@ import time
+ import requests
+ import json
+ import collections
++import re
+ 
+ 
+ class SSLException(Exception):
+@@ -86,6 +87,7 @@ class Scanner(object):
+         self.targets = ''
+         self.policy_template_uuid = ''
+         self.token = ''
++        self.api_token = ''
+         self.url = url
+         self.ver_feed = ''
+         self.ver_gui = ''
+@@ -107,9 +109,11 @@ class Scanner(object):
+             self.api_akey = api_akey
+             self.api_skey = api_skey
+             self.use_api = True
++            self.api_token = self._get_api_token()
+         else:
+             # Initial login to get our token for all subsequent transactions
+             self._login(login, password)
++            # self.api_token = self._get_api_token()
+ 
+             # Register a call to the logout action automatically
+             if auto_logout:
+@@ -120,6 +124,18 @@ class Scanner(object):
+         self._get_scanner_id()
+ 
+ ################################################################################
++
++    def _get_api_token(self):
++        r = ""
++        api_pattern = re.compile('getApiToken\"\,value\:function\(\)\{return\"([0-9A-F]*-[0-9A-F]*-[0-9A-F]*-[0-9A-F]*-[0-9A-F]*)"\}\}')
++        api_token = ""
++        try:
++            r = requests.get(self.url+"/nessus6.js", verify=False)
++            api_token = api_pattern.findall(str(r.content))[0]
++        except Exception as e:
++            print("something goes wrong in coolecting API-TOKEN from js :/")
++        return api_token
++
+     def _login(self, login="", password=""):
+         if login and password:
+             self.auth = [login,password]
+@@ -132,6 +148,7 @@ class Scanner(object):
+ 
+         try:
+             self.token = self.res["token"]
++            self.api_token = self._get_api_token()
+ 
+         except KeyError:
+             if self.res["error"]:
+@@ -181,10 +198,15 @@ class Scanner(object):
+         payload = {}
+         payload.update(extra)
+         if self.use_api:
+-            headers = {'X-ApiKeys': 'accessKey=' + self.api_akey +
+-                       '; secretKey=' + self.api_skey}
++            headers = {
++                'X-ApiKeys': 'accessKey=' + self.api_akey + '; secretKey=' + self.api_skey,
++                'X-API-Token': self.api_token
++            }
+         else:
+-            headers = {'X-Cookie': 'token=' + str(self.token)}
++            headers = {
++                'X-Cookie': 'token=' + str(self.token),
++                'X-API-Token': self.api_token
++            }
+ 
+         if json_req:
+             headers.update({'Content-type': 'application/json',
+@@ -331,7 +353,7 @@ class Scanner(object):
+                 return True
+ 
+         return False
+-        
++
+ ################################################################################
+     def policy_delete(self, name):
+         '''
+@@ -343,7 +365,7 @@ class Scanner(object):
+             if policy["name"] == name:
+                 self.action(action="policies/" + str(policy["id"]), method="DELETE")
+                 return True
+-                
++
+         return False
+ 
+ ################################################################################
+@@ -783,8 +805,8 @@ class Scanner(object):
+ 
+         self.scan_uuid = self.res["scan_uuid"]
+ 
+-        print("Scan name : %s" % self.scan_name)
+-        print("Scan UUID : %s" % self.scan_uuid)
++        # print("Scan name : %s" % self.scan_name)
++        # print("Scan UUID : %s" % self.scan_uuid)
+ 
+ ################################################################################
+     def _scan_status(self):

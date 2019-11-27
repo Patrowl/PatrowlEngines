@@ -9,14 +9,26 @@ Nessus engine (online service)
 # Install notes
 - Install python packages on system (use virtualenv)
 	* cd patrowl/engines/nessus
-	* virtualenv env
+	* virtualenv env --python=python3
 	* source env/bin/activate
 	* pip3 install -r requirements.txt
+
+- Install the Nessus python cli and apply the patch
+	* cd external-libs
+	* git clone https://github.com/tenable/nessrest
+	* cd nessrest
+	* git apply ../../etc/ness6rest.patch
+
 - Create a configuration file (see nessus.json.sample) named 'nessus.json', and customize the following options:
   * "server_host": "NESSUS_IP",
 	* "server_port": "8834",
 	* "server_username": "NESSUS_USERNAME",
 	* "server_password": "NESSUS_PASSWORD",
+
+You can also use API credentials:
+	* "access_key": "xxxxxxxx",
+	* "secret_key": "yyyyyyyy",
+
 - Start the engine:
   * python engine-nessus.py [--port 5002] [--host 0.0.0.0] [--debug]
 

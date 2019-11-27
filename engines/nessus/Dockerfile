@@ -1,7 +1,4 @@
-# Use an official Python runtime as a parent image
-#FROM python:2.7-slim
 FROM alpine:latest
-# FROM ubuntu:latest
 MAINTAINER Patrowl.io "getsupport@patrowl.io"
 LABEL Name="Nessus\ \(Patrowl engine\)" Version="1.0.0"
 
@@ -9,6 +6,7 @@ LABEL Name="Nessus\ \(Patrowl engine\)" Version="1.0.0"
 RUN mkdir -p /opt/patrowl-engines/nessus
 RUN mkdir -p /opt/patrowl-engines/nessus/results
 RUN mkdir -p /opt/patrowl-engines/nessus/reports
+RUN mkdir -p /opt/patrowl-engines/nessus/external-libs
 WORKDIR /opt/patrowl-engines/nessus
 
 # Copy the current directory contents into the container at /
@@ -19,14 +17,18 @@ COPY requirements.txt .
 COPY README.md .
 COPY etc/ ./etc/
 
-# RUN apk add nmap --no-cache && rm -f /var/cache/apk/*
 RUN apk add --update \
-    python \
-    python-dev \
-    py3-pip \
+    python python-dev py3-pip \
+    git \
   && rm -rf /var/cache/apk/*
 RUN pip3 install --upgrade pip
 RUN pip3 install --trusted-host pypi.python.org -r requirements.txt
+
+WORKDIR /opt/patrowl-engines/nessus/external-libs
+RUN git clone https://github.com/tenable/nessrest
+WORKDIR /opt/patrowl-engines/nessus/external-libs/nessrest/
+RUN git apply /opt/patrowl-engines/nessus/etc/ness6rest.patch
+RUN pip3 install --trusted-host pypi.python.org -e /opt/patrowl-engines/nessus/external-libs/nessrest/
 
 # TCP port exposed by the container (NAT)
 EXPOSE 5002

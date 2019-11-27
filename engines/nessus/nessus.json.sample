@@ -7,5 +7,5 @@
 	"server_username": "NESSUS_USERNAME",
 	"server_password": "NESSUS_PASSWORD",
 	"default_policy": "NESSUS_POLICY_NETWORK_SCAN.nessus",
-	"allowed_asset_types": ["ip", "domain", "ip-range", "subnet"]
+	"allowed_asset_types": ["ip", "domain", "ip-range", "ip-subnet", "url"]
 }
