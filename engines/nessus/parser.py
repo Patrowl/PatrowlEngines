@@ -1,32 +1,28 @@
 #!/usr/bin/python3
 # -*- coding: utf-8 -*-
 
-def parse_report(report_filename):
+import xml.etree.cElementTree as ET
+import re
+import hashlib
 
+
+def parse_report(report_filename):
+    """Parse a Nessus report file."""
     summary = {
         "info": 0, "low": 0, "medium": 0, "high": 0, "critical": 0,
-        "missing": 0, "new": 0, "total": 0
+        "new": 0, "total": 0
     }
+    level_to_value = {'info': 0, 'low': 1, 'medium': 2, 'high': 3, 'critical': 4}
+    value_to_level = {v: k for k, v in level_to_value.items()}
 
-    try:
-        import cElementTree as ET
-    except ImportError:
-        try:
-            # Python 2.5 need to import a different module
-            import xml.etree.cElementTree as ET
-        except ImportError:
-            Event.objects.create(message="[EngineTasks/importfindings_task()] Unable to import xml parser.", type="ERROR", severity="ERROR")
-            return False
-
-    # parse nessus file
     data = list()
     try:
         dom = ET.parse(open(report_filename, "r"))
         root = dom.getroot()
-    except Exception as e:
-        Event.objects.create(message="[EngineTasks/importfindings_task()] Unable to open and parse report file.", description="{}".format(e.message),
-                     type="ERROR", severity="ERROR")
+    except Exception:
+        print("Unable to open and parse report file.")
         return False
+
     try:
         for block in root:
             if block.tag == 'Report':
@@ -37,19 +33,16 @@ def parse_report(report_filename):
                         if report_item.tag == 'HostProperties':
                             for tag in report_item:
                                 asset[tag.attrib['name']] = tag.text
-                        if not net.is_valid_ip(asset.get('host-ip', asset.get('name'))):
-                            Event.objects.create(
-                                message="[EngineTasks/importfindings_task()] finding not added.",
-                                type="DEBUG", severity="DEBUG",
-                                description="No ip address for asset {} found".format(asset.get('name'))
-                            )
-                            summary['missing'] += 1
-                            continue
                         if 'pluginName' in report_item.attrib:
                             summary['total'] += 1
                             finding = {
                                 "target": {
-                                    "addr": [asset.get('host-ip', asset.get('name'))]
+                                    "addr": [
+                                        asset.get('host-ip'),
+                                        asset.get('name')
+                                    ],
+                                    "port_type": report_item.attrib['protocol'],
+                                    "port_id": report_item.attrib['port']
                                 },
                                 "metadata": {
                                     "risk": {
@@ -57,20 +50,22 @@ def parse_report(report_filename):
                                     },
                                     "vuln_refs": {},
                                     "links": list(),
-                                    "tags": ["nessus"]
+                                    "tags": [
+                                        "nessus",
+                                        report_item.attrib['pluginFamily'].lower(),
+                                        report_item.find('plugin_type').text,
+                                        "pluginid_"+str(report_item.attrib['pluginID']),
+                                    ]
                                 },
                                 "title": report_item.attrib['pluginName'],
-                                "type": "nessus_manual_import",
-                                "confidence": "3",
+                                "type": report_item.attrib['pluginFamily'].lower().replace(" ", "_"),
+                                "confidence": "certain",
                                 "severity": "info",
                                 "description": "n/a",
                                 "solution": "n/a",
                                 "raw": None
                             }
-                            if int(report_item.attrib['severity']) < min_level:
-                                # if below min level descard finding
-                                summary['missing'] += 1
-                                continue
+
                             finding['severity'] = value_to_level.get(int(report_item.attrib['severity']), 'info')
                             summary[finding['severity']] += 1
 
@@ -82,6 +77,8 @@ def parse_report(report_filename):
                                     finding['solution'] = param.text
                                 if param.tag == 'description':
                                     finding['description'] = param.text
+                                if param.tag == 'synopsis':
+                                    finding['title'] = param.text
 
                                 if param.tag == 'cvss_vector':
                                     finding['metadata']['risk']['cvss_vector'] = param.text
@@ -112,8 +109,14 @@ def parse_report(report_filename):
                                 if param.tag == 'patch_publication_date':
                                     finding['metadata']['risk']['patch_publication_date'] = param.text
 
+                                if param.tag == 'cwe':
+                                    finding['metadata']['vuln_refs']['CWE'] = param.text.split(', ')
+                                if param.tag == 'cpe':
+                                    finding['metadata']['vuln_refs']['CPE'] = param.text.split(', ')
                                 if param.tag == 'cve':
                                     finding['metadata']['vuln_refs']['CVE'] = param.text.split(', ')
+                                if param.tag == 'cert':
+                                    finding['metadata']['vuln_refs']['CERT'] = param.text.split(', ')
                                 if param.tag == 'bid':
                                     finding['metadata']['vuln_refs']['BID'] = param.text.split(', ')
                                 if param.tag == 'xref':
@@ -124,4 +127,15 @@ def parse_report(report_filename):
 
                                 if param.tag == 'plugin_output':
                                     finding['raw'] = param.text
+                                    plugin_output = str(re.sub('\nDate:.*\n', '\n', str(param.text)))
+                                    finding['description'] = finding['description'] + "\n\nScanner output:\n\n" + plugin_output
+
+                            finding_hash = hashlib.sha1(str(finding['description']).encode("utf-8")).hexdigest()[:6]
+                            finding['title'] += " ({})".format(finding_hash)
                             data.append(finding)
+
+    except Exception as e:
+        print("Error parsing nessus report file '{}'".format(report_filename))
+        print(e)
+        return False
+    return summary, data

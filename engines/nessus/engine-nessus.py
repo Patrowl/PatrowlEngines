@@ -16,6 +16,9 @@ import datetime
 import optparse
 import logging
 
+# Import local report parser
+from parser import parse_report
+
 
 app = Flask(__name__)
 APP_DEBUG = False
@@ -121,7 +124,6 @@ def getfindings(scan_id):
         res.update({"status": "error", "reason": "scan_id '{}' not found".format(scan_id)})
         return jsonify(res)
 
-
     # check the scan status
     scan_status(scan_id)
     if this.scans[scan_id]['status'] not in ['FINISHED', 'STOPPED']:
@@ -130,160 +132,16 @@ def getfindings(scan_id):
 
     nessscan_id = str(this.scans[scan_id]["nessscan_id"])
     this.nessscan.action(action="scans/"+nessscan_id, method="GET")
-    block_summary = {}
-    block_issues = []
-    issue_id = 1
 
-    block_summary.update({
-        "scanner_srvhost": this.scanner['server_host'],
-        "scanner_srvport": this.scanner['server_port'],
-        "status": this.nessscan.res['info']['status'],
-        "policy": this.nessscan.res['info']['policy'],
-        "assets": this.nessscan.res['info']['targets'],
-        "nessus_scan_id": this.nessscan.res['info']['folder_id'],
-        "scanner_start": this.nessscan.res['info']['scanner_start'],
-        "uuid": this.nessscan.res['info']['uuid'],
-        "hostcount": this.nessscan.res['info']['hostcount'],
-        "name": this.nessscan.res['info']['name'],
-        "scan_type": this.nessscan.res['info']['scan_type'],
-        "hosts": {}
-    })
-    if this.nessscan.res['info']['status'] != "running":
-        block_summary.update({"scanner_end": this.nessscan.res['info']['scanner_end']})
+    ######
+    report_content = this.nessscan.download_scan(export_format='nessus')
+    report_filename = "{}/reports/nessus_{}_{}.nessus".format(
+        BASE_DIR, scan_id, int(time.time()))
+    with open(report_filename, 'wb') as w:
+        w.write(report_content)
 
-    sum_hosts = []
-    host_list = this.nessscan.res['hosts']
-    # this.scans[scan_id]["assets"]
-    for h in host_list:
-        sum_hosts.append({
-            "hostname": h['hostname'],
-            "critical": h['critical'],
-            "high": h['high'],
-            "medium": h['medium'],
-            "low": h['low'],
-            "info": h['info'],
-            "severity": h['severity']
-        })
-
-    # optimize that shit
-    for a in this.scans[scan_id]["assets"]:
-        if a not in [h['hostname'] for h in host_list]:
-            sum_hosts.append({
-                "hostname": a,
-                "critical": 0,
-                "high": 0,
-                "medium": 0,
-                "low": 0,
-                "info": 0,
-                "severity": "info"
-            })
-
-    block_summary.update({"hosts": sum_hosts})
-
-    vulnerabilities = this.nessscan.res['vulnerabilities']
-    # do it host by host baby
-    for h in host_list:
-        for v in vulnerabilities:
-            this.nessscan.action(action="scans/"+nessscan_id+'/hosts/'+str(h['host_id'])+'/plugins/'+str(v['plugin_id']), method="GET")
-            hostvulns = this.nessscan.res
-
-            if hostvulns['outputs'] is None:
-                continue
-
-            for hv in hostvulns['outputs']:
-                #convert severity numbers
-                if hv['severity'] == 0: hv['severity'] = 'info'
-                if hv['severity'] == 1: hv['severity'] = 'low'
-                if hv['severity'] == 2: hv['severity'] = 'medium'
-                if hv['severity'] == 3: hv['severity'] = 'high'
-                if hv['severity'] == 4: hv['severity'] = 'critical'
-
-                _port = list(hv['ports'].keys())
-                _porttype = _port[0].split(" / ")[1]
-                _portid = _port[0].split(" / ")[0]
-
-                plugin_output = str(re.sub('\nDate:.*\n', '\n', str(hv['plugin_output']))).encode("utf-8")
-                finding_hash = hashlib.sha1(plugin_output).hexdigest()[:6]
-                finding_type = str(hostvulns['info']['plugindescription']['pluginattributes']['plugin_information']['plugin_family']).lower().replace(" ", "_")
-                finding_title = str(hostvulns['info']['plugindescription']['pluginattributes']['synopsis']) + " (" + _porttype + "/" + _portid + ") - " + finding_hash
-
-                metadata = {
-                    "tags": [
-                        "nessus",
-                        hostvulns['info']['plugindescription']['pluginattributes']['plugin_information']['plugin_family'].lower(),
-                        hostvulns['info']['plugindescription']['pluginattributes']['plugin_information']['plugin_type'],
-                        "pluginid_"+str(hostvulns['info']['plugindescription']['pluginattributes']['plugin_information']['plugin_id']),
-                    ],
-                }
-
-                # metadata links ('see_also')
-                if 'see_also' in hostvulns['info']['plugindescription']['pluginattributes'].keys():
-                    metadata.update({"links": hostvulns['info']['plugindescription']['pluginattributes']['see_also']})
-
-                # metadata vuln_refs ('ref_information')
-                if 'ref_information' in hostvulns['info']['plugindescription']['pluginattributes'].keys():
-                    vuln_refs = {}  # {"CWE": "180, 120"}
-                    for ref in hostvulns['info']['plugindescription']['pluginattributes']['ref_information']['ref']:
-                        vuln_refs.update({
-                            ref["name"]: ', '.join(ref['values']['value'])
-                        })
-                    metadata.update({"vuln_refs": vuln_refs})
-
-                # metadata risk ('risk_information' + 'vuln_information')
-                risk = {}
-                if 'risk_information' in hostvulns['info']['plugindescription']['pluginattributes'].keys():
-                    risk.update(hostvulns['info']['plugindescription']['pluginattributes']['risk_information'])
-                if 'vuln_information' in hostvulns['info']['plugindescription']['pluginattributes'].keys():
-                    risk.update(hostvulns['info']['plugindescription']['pluginattributes']['vuln_information'])
-                if risk != {}:
-                    metadata.update({"risk": risk})
-
-                block_issues.append({
-                    "issue_id": issue_id,
-                    "timestamp": block_summary['scanner_start'],
-                    "target": {
-                        "addr": [h['hostname']],
-                        "port_type": _porttype,
-                        "port_id": _portid
-                    },
-                    "severity": hv['severity'],
-                    "confidence": "certain",
-                    "description": str(hostvulns['info']['plugindescription']['pluginattributes']['description']) + "\n\nScanner output:\n\n" + str(hv['plugin_output']),
-                    "type": finding_type,
-                    "solution": hostvulns['info']['plugindescription']['pluginattributes']['solution'],
-                    "title": finding_title,
-                    "metadata": metadata,
-                    "raw": {
-                        "outputs": hv,
-                        "plugin_description": hostvulns['info']['plugindescription']['pluginattributes']
-                    }
-                })
-
-            issue_id += 1
-
-    # Generate a generic finding if not finding has been found on assets
-    for a in this.scans[scan_id]["assets"]:
-        if a['value'] not in host_list:
-            block_issues.append({
-                "issue_id": issue_id,
-                "timestamp": block_summary['scanner_start'],
-                "target": {
-                    "addr": [a['value']]
-                },
-                "severity": "info",
-                "confidence": "certain",
-                "description": "The host '"+str(a['value'])+"' seems to be not reachable from the scanner access point.",
-                "type": "availability",
-                "solution": "None.",
-                "title": "Host '"+str(a['value'])+"' seems to be down",
-                "metadata": {
-                    "tags": ["nessus", "availability"]
-                },
-                "raw": {
-                    "outputs": "The host '"+str(a['value'])+"' seems to be not reachable from the scanner access point."
-                }
-            })
-            issue_id += 1
+    block_summary, block_issues = parse_report(report_filename)
+    ######
 
     # Store the findings in a file
     with open(BASE_DIR+"/results/nessus_"+scan_id+".json", 'w') as report_file:
@@ -533,13 +391,16 @@ def start_scan():
             name="[TO] Nessus Scan - {} ({})".format(scan_id, int(time.time())),
             )
 
+        nessscan_id = this.nessscan.res["scan"]["id"]
+        nessscan_name = this.nessscan.res["scan"]["name"]
+
         this.nessscan.scan_run()
 
         this.scans.update({
             scan_id: {
                 "scan_id": scan_id,
-                "scan_name": this.nessscan.scan_name,
-                "nessscan_id": this.nessscan.res["scan"]["id"],
+                "scan_name": nessscan_name,
+                "nessscan_id": nessscan_id,
                 "nessscan_uuid": this.nessscan.res['scan_uuid'],
                 "options": post_args['options'],
                 "policy_name": policy_name,
@@ -829,6 +690,19 @@ def test():
         res += urlparse.unquote("{0:50s} {1:20s} <a href='{2}'>{2}</a><br/>".format(rule.endpoint, methods, url))
 
     return res
+
+#
+# @app.route('/coucou', methods=['GET'])
+# def coucou():
+#     if this.nessscan.scan_exists('MODINT2'):
+#         report_content = this.nessscan.download_scan(export_format='nessus')
+#         report_filename = "{}/reports/nessus_{}_{}.nessus".format(
+#             BASE_DIR, 'scanid', int(time.time()))
+#         with open(report_filename, 'wb') as w:
+#             w.write(report_content)
+#
+#         print(parse_report(report_filename))
+#     return jsonify({})
 
 
 @app.errorhandler(404)
