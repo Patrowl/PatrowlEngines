@@ -12,6 +12,7 @@ WORKDIR /opt/patrowl-engines/nessus
 # Copy the current directory contents into the container at /
 COPY __init__.py .
 COPY engine-nessus.py .
+COPY parser.py .
 COPY nessus.json.sample nessus.json
 COPY requirements.txt .
 COPY README.md .
@@ -26,9 +27,11 @@ RUN pip3 install --trusted-host pypi.python.org -r requirements.txt
 
 WORKDIR /opt/patrowl-engines/nessus/external-libs
 RUN git clone https://github.com/tenable/nessrest
+RUN cd nessrest && git reset --hard af28834d6253db0d00e3ab46ab259dd5bc903063
 WORKDIR /opt/patrowl-engines/nessus/external-libs/nessrest/
 RUN git apply /opt/patrowl-engines/nessus/etc/ness6rest.patch
 RUN pip3 install --trusted-host pypi.python.org -e /opt/patrowl-engines/nessus/external-libs/nessrest/
+WORKDIR /opt/patrowl-engines/nessus/
 
 # TCP port exposed by the container (NAT)
 EXPOSE 5002
