@@ -62,13 +62,13 @@ def default():
     '''Route by default.'''
     return engine.default()
 
-@app.route('/engines/assets_monitor/status')
+@app.route('/engines/pastebin_monitor/status')
 def status():
     '''Get status on engine and all scans.'''
     res = {'page': 'status', 'status': 'READY'}
     return jsonify(res)
 
-@app.route('/engines/assets_monitor/status/<scan_id>')
+@app.route('/engines/pastebin_monitor/status/<scan_id>')
 def status_scan(scan_id):
     '''Get status on scan identified by id.'''
     res = {'page': 'status', 'status': 'UNKNOWN'}
@@ -83,20 +83,20 @@ def status_scan(scan_id):
 
     return jsonify(res)
 
-@app.route('/engines/assets_monitor/getreport/<scan_id>')
+@app.route('/engines/pastebin_monitor/getreport/<scan_id>')
 def getreport(scan_id):
     '''Get report on finished scans.'''
     res = {'status': 'ERROR', 'reason': 'no issues found'}
 
-    if os.path.isfile('results/assets_monitor_report_{}.txt'.format(scan_id)):
-        result_file = open('results/assets_monitor_report_{scan_id}.txt'
+    if os.path.isfile('results/pastebin_monitor_report_{}.txt'.format(scan_id)):
+        result_file = open('results/pastebin_monitor_report_{scan_id}.txt'
                            .format(scan_id=scan_id), 'r')
         result = result_file.read()
         result_file.close()
         return jsonify(result)
     return jsonify(res)
 
-@app.route('/engines/assets_monitor/getfindings/<scan_id>')
+@app.route('/engines/pastebin_monitor/getfindings/<scan_id>')
 def getfindings(scan_id):
     '''Get findings on finished scans.'''
     res = {'page': 'getfindings', 'scan_id': scan_id}
@@ -117,7 +117,7 @@ def getfindings(scan_id):
             "title": "Asset found on: {}".format(row[2]),
             "solution": "n/a",
             "metadata": {"risk": {"criticity": row[4]}},
-            "type": "assets_monitor_report",
+            "type": "pastebin_monitor_report",
             "timestamp": int(time.time() * 1000),
             "description": "The asset '{}' is available on this pastebin link: {}\n\nContent:\n\n{}"
                            .format(row[1], row[2], row[3]),
@@ -144,11 +144,11 @@ def getfindings(scan_id):
         "nb_low": nb_vulns["low"],
         "nb_medium": nb_vulns["medium"],
         "nb_high": nb_vulns["high"],
-        "engine_name": "assets_monitor"
+        "engine_name": "pastebin_monitor"
     }
 
-    if not os.path.isfile('results/assets_monitor_report_{}.txt'.format(scan_id)):
-        result_file = open('results/assets_monitor_report_{}.txt'.format(scan_id), 'w')
+    if not os.path.isfile('results/pastebin_monitor_report_{}.txt'.format(scan_id)):
+        result_file = open('results/pastebin_monitor_report_{}.txt'.format(scan_id), 'w')
         result_file.write(json.dumps({'scan': scan, 'summary': summary, 'issues': issues}))
         result_file.close()
 
@@ -162,7 +162,7 @@ def getfindings(scan_id):
 
     return jsonify(res)
 
-@app.route('/engines/assets_monitor/startscan', methods=['POST'])
+@app.route('/engines/pastebin_monitor/startscan', methods=['POST'])
 def start_scan():
     '''Start a new scan.'''
     try:
