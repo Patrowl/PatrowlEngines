@@ -74,7 +74,6 @@ def status_scan(scan_id):
     res = {'page': 'status', 'status': 'UNKNOWN'}
 
     if scan_id not in engine.scans.keys():
-        print('fail')
         res.update({'status': 'error', 'reason': "scan_id '{}' not found".format(scan_id)})
         return jsonify(res)
 
@@ -200,8 +199,8 @@ class PastebinCrawler:
                 sql = conn.cursor()
                 sql.execute('SELECT id from findings WHERE link = ?', (link,))
                 data = sql.fetchall()
+                conn.close()
                 if not data:
-                    conn.close()
                     logging.info('ALERT FOUND ON: {} / Criticity: {}'.format(link, criticity))
                     logging.info('=== Content: ===\r\n{}'.format(text))
                     conn = sqlite3.connect('database.db')
