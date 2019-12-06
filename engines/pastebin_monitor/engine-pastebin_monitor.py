@@ -326,7 +326,7 @@ def crawl_pastebin_without_api_key(threadname):
 
 def _loadconfig():
     '''Function to load the Engine configuration'''
-    conf_file = APP_BASE_DIR+'/config.json'
+    conf_file = APP_BASE_DIR+'/pastebin_monitor.json'
     if len(argv) > 1 and os.path.exists(APP_BASE_DIR+"/"+argv[1]):
         conf_file = APP_BASE_DIR + "/" + argv[1]
     if os.path.exists(conf_file):
