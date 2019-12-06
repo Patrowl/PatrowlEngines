@@ -1,0 +1,3 @@
+flask==1.1.1
+PatrowlEnginesUtils==0.0.12
+beautifulsoup4==4.8.1
