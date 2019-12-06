@@ -14,14 +14,11 @@ COPY cortexapi.py .
 COPY cortex.json.sample cortex.json
 COPY requirements.txt .
 COPY tests/ tests/
-#COPY README.md .
 
 # Install any needed packages specified in requirements.txt
 RUN mkdir -p results
 RUN apk add --update \
-    python3 \
-    python3-dev \
-    py3-pip \
+    python3 python3-dev py3-pip \
     libmagic \
   && rm -rf /var/cache/apk/*
 RUN pip3 install --upgrade pip

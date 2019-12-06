@@ -4,9 +4,7 @@ LABEL Name="SSL-Labs\ \(Patrowl engine\)" Version="1.0.1"
 
 # Install dependencies
 RUN apk add --update --no-cache \
-    python3 \
-    python3-dev \
-    py3-pip \
+    python3 python3-dev py3-pip \
     git \
   && rm -rf /var/cache/apk/*
 
@@ -19,7 +17,8 @@ COPY . .
 COPY ssllabs.json.sample ssllabs.json
 
 
-RUN pip3 install --no-cache-dir -r requirements.txt
+RUN pip3 install --no-cache-dir --upgrade pip
+RUN pip3 install --no-cache-dir --trusted-host pypi.python.org -r requirements.txt
 
 # TCP port exposed by the container (NAT)
 EXPOSE 5004

@@ -2,8 +2,11 @@ FROM alpine:latest
 MAINTAINER Patrowl.io "getsupport@patrowl.io"
 LABEL Name="Nessus\ \(Patrowl engine\)" Version="1.0.0"
 
+ENV LOGLEVEL info
+
 # Set the working directory
 RUN mkdir -p /opt/patrowl-engines/nessus
+RUN mkdir -p /opt/patrowl-engines/nessus/logs
 RUN mkdir -p /opt/patrowl-engines/nessus/results
 RUN mkdir -p /opt/patrowl-engines/nessus/reports
 RUN mkdir -p /opt/patrowl-engines/nessus/external-libs
@@ -19,7 +22,7 @@ COPY README.md .
 COPY etc/ ./etc/
 
 RUN apk add --update \
-    python python-dev py3-pip \
+    python3 python3-dev py3-pip \
     git \
   && rm -rf /var/cache/apk/*
 RUN pip3 install --upgrade pip
@@ -37,4 +40,4 @@ WORKDIR /opt/patrowl-engines/nessus/
 EXPOSE 5002
 
 # Run app.py when the container launches
-CMD ["gunicorn", "engine-nessus:app", "-b", "0.0.0.0:5002", "--access-logfile", "-"]
+CMD ["gunicorn", "engine-nessus:app", "-b", "0.0.0.0:5002", "--preload", "--timeout", "300", "--access-logfile", "-", "--log-file", "/opt/patrowl-engines/nessus/logs/patrowlengine.nessus.log", "--log-level", "$LOGLEVEL", "--capture-output", "--log-syslog"]

@@ -530,7 +530,7 @@ def status():
 @app.route('/engines/owl_dns/info')
 def info():
     status()
-    return jsonify({"page": "info",    "engine_config": this.scanner})
+    return jsonify({"page": "info", "engine_config": this.scanner})
 
 
 def _parse_results(scan_id):

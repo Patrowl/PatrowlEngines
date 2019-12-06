@@ -1,6 +1,7 @@
 #!/usr/bin/python3
 # -*- coding: utf-8 -*-
-import os, sys, json, time, datetime, threading, urlparse, hashlib, optparse
+import os, sys, json, time, datetime, threading, hashlib, optparse
+from urllib.parse import urlparse
 from flask import Flask, request, jsonify, redirect, url_for, send_from_directory
 from cortexapi import CortexApi, CortexException
 
@@ -326,7 +327,7 @@ def info():
 
 def _parse_results(scan_id, results):
     issues = []
-    scan = this.scans[scan_id]
+    # scan = this.scans[scan_id]
     ts = int(time.time() * 1000)
 
     # if failure: return an issue
