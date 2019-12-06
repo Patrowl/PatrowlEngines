@@ -6,7 +6,7 @@ PastebinMonitor PatrOwl engine to crawl pastebin with or without API key with a 
 ## Dependencies
 - Python 3
 - `pip3 install -r requirements.txt`
-- Configure PastebinMonitor (config.json)
+- Configure PastebinMonitor (pastebin_monitor.json)
 - Set your proxies list if you want to use them (proxies.txt)
 - Set your user-agents list (useragents.txt)
 - Run the engine: `python3 pastebin_monitor.py`

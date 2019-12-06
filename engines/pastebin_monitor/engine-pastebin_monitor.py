@@ -14,7 +14,7 @@ import sqlite3
 import logging
 from sys import argv
 from multiprocessing import Pool
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, redirect, url_for
 from bs4 import BeautifulSoup
 from PatrowlEnginesUtils.PatrowlEngine import PatrowlEngine
 from PatrowlEnginesUtils.PatrowlEngineExceptions import PatrowlEngineExceptions
@@ -27,9 +27,10 @@ logging.basicConfig(level=logging.INFO)
 
 APP_DEBUG = False
 APP_HOST = '0.0.0.0'
-APP_PORT = 5030
+APP_PORT = 5020
 APP_MAXSCANS = 5
 APP_ENGINE_NAME = 'pastebin_monitor'
+APP_DBNAME = 'database.db'
 APP_BASE_DIR = os.path.dirname(os.path.realpath(__file__))
 
 SESSION = requests.Session()
@@ -44,11 +45,13 @@ engine = PatrowlEngine(
 
 SCRAPPED_URLS = []
 
-#@app.errorhandler(404)
+
+@app.errorhandler(404)
 def page_not_found(error):
     '''Page not found.'''
     logging.debug(error)
     return engine.page_not_found()
+
 
 @app.errorhandler(PatrowlEngineExceptions)
 def handle_invalid_usage(error):
@@ -57,16 +60,42 @@ def handle_invalid_usage(error):
     response.status_code = 404
     return response
 
+
 @app.route('/')
 def default():
-    '''Route by default.'''
-    return engine.default()
+    return redirect(url_for('index'))
+
+
+@app.route('/engines/pastebin_monitor/')
+def index():
+    return jsonify({"page": "index"})
+
 
 @app.route('/engines/pastebin_monitor/status')
 def status():
     '''Get status on engine and all scans.'''
-    res = {'page': 'status', 'status': 'READY'}
+    res = {'page': 'status', 'status': 'UNKNOWN'}
+    if len(engine.scans) == APP_MAXSCANS:
+        engine.scanner['status'] = "BUSY"
+    else:
+        engine.scanner['status'] = "READY"
+
+    scans = []
+    for scan_id in engine.scans.keys():
+        status_scan(scan_id)
+        scans.append({scan_id: {
+            "status": engine.scans[scan_id]['status'],
+            "started_at": engine.scans[scan_id]['started_at'],
+            "assets": engine.scans[scan_id]['assets']
+        }})
+
+    res.update({
+        "nb_scans": len(engine.scans),
+        "status": engine.scanner['status'],
+        "scanner": engine.scanner,
+        "scans": scans})
     return jsonify(res)
+
 
 @app.route('/engines/pastebin_monitor/status/<scan_id>')
 def status_scan(scan_id):
@@ -82,6 +111,7 @@ def status_scan(scan_id):
 
     return jsonify(res)
 
+
 @app.route('/engines/pastebin_monitor/getreport/<scan_id>')
 def getreport(scan_id):
     '''Get report on finished scans.'''
@@ -95,12 +125,13 @@ def getreport(scan_id):
         return jsonify(result)
     return jsonify(res)
 
+
 @app.route('/engines/pastebin_monitor/getfindings/<scan_id>')
 def getfindings(scan_id):
     '''Get findings on finished scans.'''
     res = {'page': 'getfindings', 'scan_id': scan_id}
 
-    conn = sqlite3.connect('database.db')
+    conn = sqlite3.connect(APP_DBNAME)
     sql = conn.cursor()
     sql.execute('SELECT id, asset, link, content, criticity FROM findings')
     data = sql.fetchall()
@@ -126,7 +157,8 @@ def getfindings(scan_id):
         "info": 0,
         "low": 0,
         "medium": 0,
-        "high": 0
+        "high": 0,
+        "critical": 0
     }
 
     scan = {
@@ -143,6 +175,7 @@ def getfindings(scan_id):
         "nb_low": nb_vulns["low"],
         "nb_medium": nb_vulns["medium"],
         "nb_high": nb_vulns["high"],
+        "nb_critical": nb_vulns["critical"],
         "engine_name": "pastebin_monitor"
     }
 
@@ -153,13 +186,14 @@ def getfindings(scan_id):
 
     res.update({'scan': scan, 'summary': summary, 'issues': issues, 'status': 'success'})
 
-    conn = sqlite3.connect('database.db')
+    conn = sqlite3.connect(APP_DBNAME)
     sql = conn.cursor()
     sql.execute('DELETE FROM findings;')
     conn.commit()
     conn.close()
 
     return jsonify(res)
+
 
 @app.route('/engines/pastebin_monitor/startscan', methods=['POST'])
 def start_scan():
@@ -171,13 +205,12 @@ def start_scan():
             return jsonify(res)
 
         scan_id = res['details']['scan_id']
-
         engine.scans[scan_id]['status'] = 'SCANNING'
 
         for asset in engine.scans[scan_id]['assets']:
             engine.scanner['assets'].update({asset['value']: asset['criticity']})
 
-        file = open('config.json', 'w')
+        file = open('pastebin_monitor.json', 'w')
         file.write(json.dumps(engine.scanner, indent=4))
         file.close()
 
@@ -188,14 +221,15 @@ def start_scan():
     except(KeyboardInterrupt, SystemExit):
         sys.exit(0)
 
+
 class PastebinCrawler:
     '''PastebinCrawler Class'''
     def find_assets(self, link, text):
-        '''Function to find regexes in a pastebin post'''
+        '''Find regexes in a pastebin post.'''
         for asset, criticity in engine.scanner['assets'].items():
             search = re.findall('{}'.format(asset.lower()), text.lower())
             if len(search) > 0:
-                conn = sqlite3.connect('database.db')
+                conn = sqlite3.connect(APP_DBNAME)
                 sql = conn.cursor()
                 sql.execute('SELECT id from findings WHERE link = ?', (link,))
                 data = sql.fetchall()
@@ -203,7 +237,7 @@ class PastebinCrawler:
                 if not data:
                     logging.info('ALERT FOUND ON: {} / Criticity: {}'.format(link, criticity))
                     logging.info('=== Content: ===\r\n{}'.format(text))
-                    conn = sqlite3.connect('database.db')
+                    conn = sqlite3.connect(APP_DBNAME)
                     sql = conn.cursor()
                     sql.execute('INSERT INTO findings(asset, link, content, criticity) \
                                  VALUES (?, ?, ?, ?);', (asset, link, text, criticity))
@@ -212,14 +246,14 @@ class PastebinCrawler:
         SCRAPPED_URLS.append(link)
 
     def do_get_request(self, res, url):
-        '''Function to do a GET request'''
+        '''Perform GET request.'''
         try:
             with open('useragents.txt') as file:
                 lines = file.readlines()
                 line = random.choice(lines)
                 line = line.replace('\r', '').replace('\n', '')
                 return SESSION.get(url,
-                                   headers={'user-agent':'{}'.format(line)},
+                                   headers={'user-agent': '{}'.format(line)},
                                    proxies=res['proxy'],
                                    verify=False,
                                    timeout=res['timeout'], allow_redirects=False)
@@ -245,7 +279,7 @@ class PastebinCrawler:
             pass
 
     def get_random_proxy(self):
-        '''Function to set a random proxy from a text file'''
+        '''Get random proxy from a text file.'''
         with open('proxies.txt') as file:
             lines = file.readlines()
             line = random.choice(lines)
@@ -256,7 +290,7 @@ class PastebinCrawler:
             return proxy
 
     def connect_proxy(self, res, url):
-        '''Function to use a proxy for pastebin'''
+        '''Use a proxy for pastebin.'''
         data = requests.Response()
         while data is None or data.status_code != 200:
             proxy = self.get_random_proxy()
@@ -264,8 +298,9 @@ class PastebinCrawler:
             data = self.do_get_request(res, url)
         return data
 
+
 def crawl_pastebin_with_api_key():
-    '''Function to crawl pastebin.com with an api key'''
+    '''Crawl pastebin.com with an API key.'''
     while True:
         res = {'threadname': 'MainThread', 'url': None, 'proxy': None,
                'timeout': 3, 'last_index': None}
@@ -282,7 +317,7 @@ def crawl_pastebin_with_api_key():
 
 
 def crawl_pastebin_without_api_key(threadname):
-    '''Function to crawl pastebin.com'''
+    '''Crawl pastebin.com without an API key.'''
     while True:
         res = {'threadname': threadname, 'url': None, 'proxy': None,
                'timeout': 3, 'last_index': None}
@@ -324,9 +359,16 @@ def crawl_pastebin_without_api_key(threadname):
                     crawl.find_assets(link, data.text)
                     time.sleep(1)
 
+
+@app.route('/engines/pastebin_monitor/info')
+def info():
+    status()
+    return jsonify({"page": "info", "engine_config": engine.scanner})
+
+
 def _loadconfig():
-    '''Function to load the Engine configuration'''
-    conf_file = APP_BASE_DIR+'/config.json'
+    '''Load the Engine configuration.'''
+    conf_file = APP_BASE_DIR+'/pastebin_monitor.json'
     if len(argv) > 1 and os.path.exists(APP_BASE_DIR+"/"+argv[1]):
         conf_file = APP_BASE_DIR + "/" + argv[1]
     if os.path.exists(conf_file):
@@ -336,12 +378,21 @@ def _loadconfig():
         return {"status": "success"}
     return {"status": "error", "reason": "config file not found"}
 
+
+@app.route('/engines/pastebin_monitor/reloadconfig')
+def reloadconfig():
+    res = {"page": "reloadconfig"}
+    _loadconfig()
+    res.update({"config": engine.scanner})
+    return jsonify(res)
+
+
 if __name__ == '__main__':
     if not os.path.exists(APP_BASE_DIR+'/results'):
         os.makedirs(APP_BASE_DIR+'/results')
     _loadconfig()
 
-    conn = sqlite3.connect('database.db')
+    conn = sqlite3.connect(APP_DBNAME)
     sql = conn.cursor()
     sql.execute('CREATE TABLE IF NOT EXISTS findings \
                 (id INTEGER PRIMARY KEY, asset TEXT NOT NULL, \

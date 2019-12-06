@@ -1,6 +1,6 @@
 FROM alpine:latest
 MAINTAINER Patrowl.io "getsupport@patrowl.io"
-LABEL Name="SSL-Labs\ \(Patrowl engine\)" Version="1.0.1"
+LABEL Name="PastebinMonitor\ \(Patrowl engine\)" Version="1.0.1"
 
 # Install dependencies
 RUN apk add --update --no-cache \
@@ -8,20 +8,19 @@ RUN apk add --update --no-cache \
     git \
   && rm -rf /var/cache/apk/*
 
-RUN mkdir -p /opt/patrowl-engines/ssllabs
-RUN mkdir -p /opt/patrowl-engines/ssllabs/results
+RUN mkdir -p /opt/patrowl-engines/pastebin_monitor
+RUN mkdir -p /opt/patrowl-engines/pastebin_monitor/results
 
-WORKDIR /opt/patrowl-engines/ssllabs
+WORKDIR /opt/patrowl-engines/pastebin_monitor
 
 COPY . .
-COPY ssllabs.json.sample ssllabs.json
-
+COPY pastebin_monitor.json.sample pastebin_monitor.json
 
 RUN pip3 install --no-cache-dir --upgrade pip
 RUN pip3 install --no-cache-dir --trusted-host pypi.python.org -r requirements.txt
 
 # TCP port exposed by the container (NAT)
-EXPOSE 5004
+EXPOSE 5020
 
 # Run the application when the container launches
-CMD ["gunicorn", "engine-ssllabs:app", "-b", "0.0.0.0:5004", "--timeout", "120", "--graceful-timeout", "60"]
+CMD ["gunicorn", "engine-pastebin_monitor:app", "-b", "0.0.0.0:5020", "--timeout", "120", "--graceful-timeout", "60"]
