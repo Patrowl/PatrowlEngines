@@ -1,1 +1,24 @@
-{"policies": [{"engine": 8, "status": "", "description": "Cortex Abuse_Finder and MaxMind", "scopes": [6, 8], "file": null, "owner": 1, "id": 14, "scope_names": ["E-Reputation", "Availability"], "name": "Cortex Abuse_Finder and MaxMind", "engine_name": "CORTEX", "default": false, "options": {"display_failures": false, "max_timeout": 3600, "get_artifacts": false, "summary": true, "use_analyzers": ["Abuse_Finder_2_0", "MaxMind_GeoIP_3_0"], "all_datatype_analyzers": false, "meta_analyzers ": ["passivedns", "osint", "threats", "reputation", "ssl"]}}]}
+{
+  "policies": [{
+    "engine": 8,
+    "status": "",
+    "description": "Cortex Abuse_Finder and MaxMind",
+    "scopes": [6, 8],
+    "file": null,
+    "owner": 1,
+    "id": 14,
+    "scope_names": ["E-Reputation", "Availability"],
+    "name": "Cortex Abuse_Finder and MaxMind",
+    "engine_name": "CORTEX",
+    "default": false,
+    "options": {
+      "display_failures": false,
+      "max_timeout": 3600,
+      "get_artifacts": false,
+      "summary": true,
+      "use_analyzers": ["Abuse_Finder_2_0", "MaxMind_GeoIP_3_0"],
+      "all_datatype_analyzers": false,
+      "meta_analyzers ": ["passivedns", "osint", "threats", "reputation", "ssl"]
+    }
+  }]
+}

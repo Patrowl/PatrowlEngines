@@ -6,7 +6,7 @@ Nessus engine (online service)
 - Nessus instance
 - See requirements.txt for others python packages (use "pip3 install -r requirements.txt")
 
-# Install notes
+## Install notes
 - Install python packages on system (use virtualenv)
 	* cd patrowl/engines/nessus
 	* virtualenv env --python=python3
@@ -18,6 +18,7 @@ Nessus engine (online service)
 	* git clone https://github.com/tenable/nessrest
 	* cd nessrest
 	* git apply ../../etc/ness6rest.patch
+	* pip3 install --trusted-host pypi.python.org -e $PWD/nessrest/
 
 - Create a configuration file (see nessus.json.sample) named 'nessus.json', and customize the following options:
   * "server_host": "NESSUS_IP",
@@ -33,7 +34,16 @@ You can also use API credentials:
   * python engine-nessus.py [--port 5002] [--host 0.0.0.0] [--debug]
 
 
-http://0.0.0.0:5002/engines/nessus/startscan?policy=NESSUS_POLICY_NETWORK_SCAN.nessus&targets=8.8.8.8,8.8.4.4
+## Sample policies
+- Unauthenticated scan
+{'action': 'scan', 'policy': 'NESSUS_POLICY_NETWORK_SCAN.nessus'}
+
+- Authenticated scan
+{'action': 'scan', 'policy': 'NESSUS_POLICY_NETWORK_SCAN.nessus', 'credentials': [{'type': 'windows_password', 'password': 'mypass', 'username': 'nicolas'}, {'type': 'ssh_password', 'password': 'mypass', 'username': 'nicolas'}, {'type': 'ssh_password', 'password': 'mypass2', 'username': 'nicolas2'}]}
+
+- Get report (don't scan)
+{'name': 'Scan Externe - IP Prod', 'action': 'getreports'}
+
 
 http://0.0.0.0:5002/engines/nessus/_get_scanlist
 http://0.0.0.0:5002/engines/nessus/_get_scan_status?scan_id=182

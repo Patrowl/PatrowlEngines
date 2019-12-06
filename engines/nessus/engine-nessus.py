@@ -10,8 +10,6 @@ import sys
 import json
 import requests
 import time
-import hashlib
-import re
 import datetime
 import optparse
 import logging
@@ -59,7 +57,7 @@ def _loadconfig():
         os.environ['NO_PROXY'] = this.scanner["server_host"]
     else:
         app.logger.debug("Error: config file '{}' not found".format(conf_file))
-        return {"status": "error", "reason": "config file not found"}
+        return {"status": "error", "details": {"reason": "config file not found"}}
 
     try:
         # Check authentication methods (login/pass vs. api)
@@ -80,11 +78,13 @@ def _loadconfig():
         else:
             return {
                 "status": "error",
-                "reason": "connection error to Nessus instance (bad credz? not available ?)"}
+                "details": {"reason": "connection error to Nessus instance (bad credz? not available ?)"}
+            }
     except Exception:
         return {
             "status": "error",
-            "reason": "connection error to Nessus instance (bad credz? not available ?)"}
+            "details": {"reason": "connection error to Nessus instance (bad credz? not available ?)"}
+        }
 
 
 @app.route('/engines/nessus/reloadconfig')
@@ -272,7 +272,9 @@ def start_scan():
     if len(this.scans) == APP_MAXSCANS:
         res.update({
             "status": "error",
-            "reason": "Scan refused: max concurrent active scans reached ({})".format(APP_MAXSCANS)
+            "details": {
+                "reason": "Scan refused: max concurrent active scans reached ({})".format(APP_MAXSCANS)
+            }
         })
         return jsonify(res)
 
@@ -306,7 +308,8 @@ def start_scan():
     if 'action' not in post_args['options'].keys():
         res.update({
             "status": "error",
-            "reason": "Missing action ('scan', 'getreports', ...)"})
+            "details": {"reason": "Missing action ('scan', 'getreports', ...)"}
+        })
         return jsonify(res)
 
     if post_args['options']['action'] == 'getreports':
@@ -315,7 +318,8 @@ def start_scan():
         if not this.nessscan.scan_exists(scan_name):
             res.update({
                 "status": "error",
-                "reason": "Scan '{}' does not exist.".format(scan_name)})
+                "details": {"reason": "Scan '{}' does not exist.".format(scan_name)}
+            })
             return jsonify(res)
 
         # Get scan details
@@ -377,19 +381,23 @@ def start_scan():
             return jsonify(res)
 
         this.nessscan.policy_set(name=policy_name)
-        this.nessscan.action(action="policies/" + str(this.nessscan.policy_id), method="put")
+        this.nessscan.action(
+            action="policies/" + str(this.nessscan.policy_id),
+            method="put")
 
         # Add credentials (if any)
         if 'credentials' in post_args['options'].keys():
             credz = _get_credentials(post_args['options']['credentials'])
-            this.nessscan.policy_copy(existing_policy_name=policy_name, new_policy_name=policy_name + "-" + scan_id)
+            this.nessscan.policy_copy(
+                existing_policy_name=policy_name,
+                new_policy_name=policy_name + "-" + scan_id)
             this.nessscan.policy_add_creds(credz)
 
         # Create the scan
         this.nessscan.scan_add(
             targets=assets,
             name="[TO] Nessus Scan - {} ({})".format(scan_id, int(time.time())),
-            )
+        )
 
         nessscan_id = this.nessscan.res["scan"]["id"]
         nessscan_name = this.nessscan.res["scan"]["name"]
@@ -417,7 +425,7 @@ def start_scan():
 
 @app.route('/engines/nessus/stop/<scan_id>', methods=['GET'])
 def stop_scan(scan_id):
-    res = {	"page": "stopscan"}
+    res = {"page": "stopscan"}
     scan_id = str(scan_id)
 
     # todo: use this.scans and nessus_scan_id
@@ -425,7 +433,9 @@ def stop_scan(scan_id):
         res.update({"status": "error", "reason": "scan_id '{}' not found".format(scan_id)})
         return jsonify(res)
 
-    this.nessscan.action(action="scans/"+str(this.scans[scan_id]["nessscan_id"])+"/stop", method="POST")
+    this.nessscan.action(
+        action="scans/"+str(this.scans[scan_id]["nessscan_id"])+"/stop",
+        method="POST")
 
     if this.nessscan.res != {}:
         res.update({"status": "error", "reason": this.nessscan.res['error']})
@@ -442,7 +452,7 @@ def stop_scan(scan_id):
 
 @app.route('/engines/nessus/stopscans', methods=['GET'])
 def stop():
-    res = {	"page": "stopscans"}
+    res = {"page": "stopscans"}
 
     for scan_id in this.scans.keys():
         clean_scan(scan_id)
@@ -491,29 +501,42 @@ def status():
 
     # check if the remote service is available
     try:
-        scan = ness6rest.Scanner(
-            url="https://{}:{}".format(
-                this.scanner['server_host'], this.scanner['server_port']),
-            login=this.scanner['server_username'],
-            password=this.scanner['server_password'],
-            insecure=True)
+        scan = {}
+        # scan = ness6rest.Scanner(
+        #     url="https://{}:{}".format(
+        #         this.scanner['server_host'], this.scanner['server_port']),
+        #     login=this.scanner['server_username'],
+        #     password=this.scanner['server_password'],
+        #     insecure=True)
+        if 'access_key' in this.scanner.keys() and 'secret_key' in this.scanner.keys():
+            scan = ness6rest.Scanner(
+                url="https://{}:{}".format(this.scanner['server_host'], this.scanner['server_port']),
+                api_akey=this.scanner['access_key'],
+                api_skey=this.scanner['secret_key'],
+                insecure=True)
+        elif 'server_username' in this.scanner.keys() and 'server_password' in this.scanner.keys():
+            scan = ness6rest.Scanner(
+                url="https://{}:{}".format(this.scanner['server_host'], this.scanner['server_port']),
+                login=this.scanner['server_username'],
+                password=this.scanner['server_password'],
+                insecure=True)
         if scan.res['scanners'][0]['status'] == "on":
             this.scanner['status'] = "READY"
             res.update({
                 'status': 'READY',
-                'details': {'server_host': this.scanner['server_host'],
-                'server_port': this.scanner['server_port'],
-                'server_username': this.scanner['server_username'],
-                'engine_version': scan.res['scanners'][0]['engine_version'],
-                'engine_build': scan.res['scanners'][0]['engine_build'],
-                'scan_count': scan.res['scanners'][0]['scan_count']
+                'details': {
+                    'server_host': this.scanner['server_host'],
+                    'server_port': this.scanner['server_port'],
+                    'engine_version': scan.res['scanners'][0]['engine_version'],
+                    'engine_build': scan.res['scanners'][0]['engine_build'],
+                    'scan_count': scan.res['scanners'][0]['scan_count']
              }})
         else:
             this.scanner['status'] = "ERROR"
-            res.update({'status': 'ERROR', 'reason': 'Nessus engine not available'})
+            res.update({'status': 'ERROR', 'details': {'reason': 'Nessus engine not available'}})
     except Exception:
         this.scanner['status'] = "ERROR"
-        res.update({'status': 'ERROR', 'reason': 'Nessus engine not available'})
+        res.update({'status': 'ERROR', 'details': {'reason': 'Nessus engine not available'}})
     return jsonify(res)
 
 
@@ -524,7 +547,7 @@ def scan_status(scan_id):
     if scan_id not in this.scans.keys():
         return jsonify({
             "status": "ERROR",
-            "details": "scan_id '{}' not found".format(scan_id)})
+            "details": {"reason": "scan_id '{}' not found".format(scan_id)}})
 
     # @todo: directly access to the right entry
 
@@ -571,7 +594,7 @@ def genreport(scan_id=None, report_format="html"):
     if scan_id not in this.scans.keys():
         return jsonify({
             "status": "ERROR",
-            "details": "scan_id '{}' not found".format(scan_id)})
+            "details": {"reason": "scan_id '{}' not found".format(scan_id)}})
 
     this.nessscan.action(action="scans", method="GET")
     scan_status = None
@@ -579,7 +602,7 @@ def genreport(scan_id=None, report_format="html"):
         if scan['id'] == int(scan_id):
             scan_status = "found"
     if not scan_status:
-        res.update({"status": "error", "reason": "'scan_id={}' not found".format(scan_id)})
+        res.update({"status": "error", "details": {"reason": "'scan_id={}' not found".format(scan_id)}})
         return jsonify(res)
 
     post_data = {"format": report_format}
@@ -613,7 +636,7 @@ def getrawreports(scan_id=None, report_format="html"):
     scan_id = str(scan_id)
 
     if not scan_id and not request.args.get("scan_id"):
-        res.update({"status": "error", "reason": "'scan_id' arg is missing"})
+        res.update({"status": "error", "details": {"reason": "'scan_id' arg is missing"}})
         return jsonify(res)
 
     if not scan_id and request.args.get("scan_id"):
@@ -629,7 +652,7 @@ def getrawreports(scan_id=None, report_format="html"):
             scan_status = "found"
             break
     if not scan_status:
-        res.update({"status": "error", "reason": "'scan_id={}' not found".format(scan_id)})
+        res.update({"status": "error", "details": {"reason": "'scan_id={}' not found".format(scan_id)}})
         return jsonify(res)
 
     post_data = {"format": report_format}
@@ -649,7 +672,7 @@ def getrawreports(scan_id=None, report_format="html"):
         method="GET"
     )
     if hasattr(this.nessscan.res, "status") and not this.nessscan.res['status'] == "ready":
-        res.update({"status": "error", "reason": "report not available"})
+        res.update({"status": "error", "details": {"reason": "report not available"}})
         return jsonify(res)
 
     tmp_filename = "nessus_{}_{}_{}.{}".format(scan_id, report_fileid, int(time.time()), report_format)
@@ -658,7 +681,7 @@ def getrawreports(scan_id=None, report_format="html"):
         response = requests.get(report_url, stream=True, verify=False)
 
         if not response.ok:
-            res.update({"status": "error", "reason": "something got wrong in d/l"})
+            res.update({"status": "error", "details": {"reason": "something got wrong in d/l"}})
             return jsonify(res)
         for block in response.iter_content(1024):
             handle.write(block)
@@ -690,19 +713,6 @@ def test():
         res += urlparse.unquote("{0:50s} {1:20s} <a href='{2}'>{2}</a><br/>".format(rule.endpoint, methods, url))
 
     return res
-
-#
-# @app.route('/coucou', methods=['GET'])
-# def coucou():
-#     if this.nessscan.scan_exists('MODINT2'):
-#         report_content = this.nessscan.download_scan(export_format='nessus')
-#         report_filename = "{}/reports/nessus_{}_{}.nessus".format(
-#             BASE_DIR, 'scanid', int(time.time()))
-#         with open(report_filename, 'wb') as w:
-#             w.write(report_content)
-#
-#         print(parse_report(report_filename))
-#     return jsonify({})
 
 
 @app.errorhandler(404)
