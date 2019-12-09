@@ -140,7 +140,8 @@ def getfindings(scan_id):
     with open(report_filename, 'wb') as w:
         w.write(report_content)
 
-    block_summary, block_issues = parse_report(report_filename)
+    nessus_prefix = "https://{}:{}".format(this.scanner['server_host'], this.scanner['server_port'])
+    block_summary, block_issues = parse_report(report_filename, nessus_prefix)
     ######
 
     # Store the findings in a file

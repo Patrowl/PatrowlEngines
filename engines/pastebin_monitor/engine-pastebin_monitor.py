@@ -226,7 +226,9 @@ class PastebinCrawler:
     '''PastebinCrawler Class'''
     def find_assets(self, link, text):
         '''Find regexes in a pastebin post.'''
+        logging.info("assets:", engine.scanner['assets'])
         for asset, criticity in engine.scanner['assets'].items():
+            logging.info(asset)
             search = re.findall('{}'.format(asset.lower()), text.lower())
             if len(search) > 0:
                 conn = sqlite3.connect(APP_DBNAME)
@@ -350,8 +352,7 @@ def crawl_pastebin_without_api_key(threadname):
                     break
 
                 if not any(link in s for s in SCRAPPED_URLS):
-                    logging.info('[{}] {} ({})'
-                                 .format(res['threadname'], link, res['proxy']))
+                    logging.info('[{}] {} ({})'.format(res['threadname'], link, res['proxy']))
                     data = crawl.do_get_request(res, link)
                     while data is None or 'Pastebin.com has blocked your IP' in data.text:
                         crawl.connect_proxy(res, link)
