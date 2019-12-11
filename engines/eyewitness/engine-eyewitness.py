@@ -52,10 +52,14 @@ def get_criticity(score):
     return criticity
 
 
-def eyewitness_cmd(list_url, asset_id, scan_id):
+def eyewitness_cmd(list_url, asset_id, scan_id, extra_opts=[]):
     """
     Returns the screenshot path
     """
+    if 'extra_opts' in extra_opts:
+        extra_opts = extra_opts['extra_opts'].split(' ')
+    else:
+        extra_opts = []
     result = dict()
     base_path = engine.scanner["options"]["ScreenshotsDirectory"]["value"] + scan_id
     asset_base_path = base_path + "/" + str(asset_id)
@@ -67,14 +71,14 @@ def eyewitness_cmd(list_url, asset_id, scan_id):
     for url in list_url:
         screenshot_base_path = asset_base_path + "/" + str(count)
         try:
-            check_output(["{}/EyeWitness.py".format(engine.scanner["options"]["EyeWitnessDirectory"]["value"]), "--single", url, "--web", "--proxy-ip", "127.0.0.1", "--proxy-port", "9050", "--proxy-type", "socks5", "-d", screenshot_base_path, "--no-prompt"])
+            check_output(["{}/EyeWitness.py".format(engine.scanner["options"]["EyeWitnessDirectory"]["value"]), "--single", url, "--web", "-d", screenshot_base_path, "--no-prompt"] + extra_opts)
         except:
             continue 
         screenshot_files = listdir(screenshot_base_path + "/screens")
         # Retry screenshot capture if previous fail
         if not screenshot_files:
             try:
-                check_output(["{}/EyeWitness.py".format(engine.scanner["options"]["EyeWitnessDirectory"]["value"]), "--single", url, "--web", "--proxy-ip", "127.0.0.1", "--proxy-port", "9050", "--proxy-type", "socks5", "-d", screenshot_base_path, "--no-prompt"])
+                check_output(["{}/EyeWitness.py".format(engine.scanner["options"]["EyeWitnessDirectory"]["value"]), "--single", url, "--web", "-d", screenshot_base_path, "--no-prompt"] + extra_opts)
             except:
                 continue
         if not screenshot_files:
@@ -426,7 +430,7 @@ def _scan_urls(scan_id):
                 urls.append("http://"+asset)
                 urls.append("https://"+asset)
 
-            result = eyewitness_cmd(urls, asset_data["id"], scan_id)
+            result = eyewitness_cmd(urls, asset_data["id"], scan_id, extra_opts=engine.scans[scan_id]['options'])
 
             # Get differences with the last screenshot
             for url in result:
