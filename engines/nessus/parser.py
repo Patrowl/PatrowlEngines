@@ -6,7 +6,7 @@ import re
 import hashlib
 
 
-def parse_report(report_filename, nessus_prefix):
+def parse_report(report_filename, nessus_prefix, resolvefqdn=False):
     """Parse a Nessus report file."""
     summary = {
         "info": 0, "low": 0, "medium": 0, "high": 0, "critical": 0,
@@ -33,6 +33,11 @@ def parse_report(report_filename, nessus_prefix):
                         if report_item.tag == 'HostProperties':
                             for tag in report_item:
                                 asset[tag.attrib['name']] = tag.text
+                        asset_addrs = [asset.get('name')]
+                        if 'host-ip' in asset.keys() and asset['host-ip'] not in asset_addrs:
+                            asset_addrs.append(asset['host-ip'])
+                        if resolvefqdn is True and 'host-fqdn' in asset.keys() and asset['host-fqdn'] not in asset_addrs:
+                            asset_addrs.append(asset['host-fqdn'])
                         if 'pluginName' in report_item.attrib:
                             summary['total'] += 1
                             service = ""
@@ -43,10 +48,7 @@ def parse_report(report_filename, nessus_prefix):
                                 title = report_item.attrib['pluginName']
                             finding = {
                                 "target": {
-                                    "addr": [
-                                        asset.get('host-ip'),
-                                        asset.get('name')
-                                    ],
+                                    "addr": asset_addrs,
                                     "port_type": report_item.attrib['protocol'],
                                     "port_id": report_item.attrib['port']
                                 },

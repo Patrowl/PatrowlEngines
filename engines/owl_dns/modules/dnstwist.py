@@ -8,6 +8,7 @@ import hashlib
 from .common import json_validator
 
 DNSTWIST_TIMEOUT = 600
+DNSTWIST_NB_THREADS = 5
 
 
 class dnstwist:
@@ -26,8 +27,8 @@ class dnstwist:
             print("[+] ERROR - Not able to load dnstwist module.")
             return False
 
-    def search_subdomains(scan_id, domain, tld=False, ssdeep=False, geoip=False, mxcheck=False, whois=False, banners=False, timeout=DNSTWIST_TIMEOUT, nb_threads=10):
-        cmd = "{} -r -f json".format(globals()['dnstwist'].__file__)
+    def search_subdomains(scan_id, domain, tld=False, ssdeep=False, geoip=False, mxcheck=False, whois=False, banners=False, timeout=DNSTWIST_TIMEOUT, nb_threads=DNSTWIST_NB_THREADS):
+        cmd = "{} -r -f json -t {}".format(globals()['dnstwist'].__file__, nb_threads)
         if tld and os.path.exists(tld):
             cmd += " --tld {}".format(tld)
         if ssdeep:
@@ -55,7 +56,6 @@ class dnstwist:
             return domain, {}
 
     def parse_results(ts, asset, domains):
-        # print("parse_results on: {}".format(domains))
         issues = []
         for domain in domains:
             if domain['fuzzer'] == 'original*':
@@ -86,7 +86,7 @@ class dnstwist:
                 "target": {
                     "addr": [asset],
                     "protocol": "domain"
-                    },
+                },
                 "title": "Suspicious domain found: {} (HASH: {})".format(
                     domain['domain-name'], result_hash),
                 "description": "DNS information for '{}':\n\n{}".format(
@@ -95,7 +95,7 @@ class dnstwist:
                     domain['domain-name']
                 ),
                 "metadata": {
-                    "tags": ["domains", "dns", "fraudulent"]
+                    "tags": ["domains", "dns", "fraudulent", "typosquatting"]
                 },
                 "type": "typosquated_domain",
                 "raw": domain,

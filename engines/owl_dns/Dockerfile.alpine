@@ -1,21 +1,12 @@
-FROM ubuntu:18.04
+FROM alpine:latest
 MAINTAINER Patrowl.io "getsupport@patrowl.io"
-LABEL Name="Patrowl\ DNS\ \(Patrowl engine\)" Version="1.0.1"
+LABEL Name="Patrowl\ DNS\ \(Patrowl engine\)" Version="1.0.0"
 
 # Install dependencies
-#RUN apk add --update --no-cache \
-#    python3 python3-dev py3-pip \
-#    git \
-#  && rm -rf /var/cache/apk/*
-
-RUN apt-get update && \
-    apt-get install -y --no-install-recommends python3-dnspython \
-    python3-geoip python3-whois python3-requests python3-ssdeep \
-    python3-pip python3-setuptools python3-dev git locales && \
-    locale-gen en_US.UTF-8
-ENV LC_ALL=en_US.UTF-8
-ENV LANG=en_US.UTF-8
-ENV LANGUAGE=en_US.UTF-8
+RUN apk add --update --no-cache \
+    python3 python3-dev py3-pip \
+    git \
+  && rm -rf /var/cache/apk/*
 
 # Create the target repo
 RUN mkdir -p /opt/patrowl-engines/owl_dns
@@ -37,13 +28,11 @@ WORKDIR /opt/patrowl-engines/owl_dns/external-libs
 RUN git clone https://github.com/aboul3la/Sublist3r
 WORKDIR /opt/patrowl-engines/owl_dns/external-libs/Sublist3r
 RUN git apply /opt/patrowl-engines/owl_dns/etc/sublist3r.patch
-RUN pip3 install --trusted-host pypi.python.org -r requirements.txt
-WORKDIR /opt/patrowl-engines/owl_dns/external-libs
-RUN git clone https://github.com/elceef/dnstwist
 
-# Install python modules for engine
-WORKDIR /opt/patrowl-engines/owl_dns/
+# Install python modules
 RUN pip3 install --upgrade pip
+RUN pip3 install --trusted-host pypi.python.org -r requirements
+WORKDIR /opt/patrowl-engines/owl_dns
 RUN pip3 install --trusted-host pypi.python.org -r requirements.txt
 
 # TCP port exposed by the container (NAT)
