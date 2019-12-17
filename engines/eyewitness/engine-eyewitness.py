@@ -52,10 +52,14 @@ def get_criticity(score):
     return criticity
 
 
-def eyewitness_cmd(list_url, asset_id, scan_id):
+def eyewitness_cmd(list_url, asset_id, scan_id, extra_opts=[]):
     """
     Returns the screenshot path
     """
+    if 'extra_opts' in extra_opts:
+        extra_opts = extra_opts['extra_opts'].split(' ')
+    else:
+        extra_opts = []
     result = dict()
     base_path = engine.scanner["options"]["ScreenshotsDirectory"]["value"] + scan_id
     asset_base_path = base_path + "/" + str(asset_id)
@@ -67,20 +71,24 @@ def eyewitness_cmd(list_url, asset_id, scan_id):
     for url in list_url:
         screenshot_base_path = asset_base_path + "/" + str(count)
         try:
-            check_output(["{}/EyeWitness.py".format(engine.scanner["options"]["EyeWitnessDirectory"]["value"]), "--single", url, "--web", "--proxy-ip", "127.0.0.1", "--proxy-port", "9050", "--proxy-type", "socks5", "-d", screenshot_base_path, "--no-prompt"])
+            check_output(["{}/EyeWitness.py".format(engine.scanner["options"]["EyeWitnessDirectory"]["value"]), "--single", url, "--web", "-d", screenshot_base_path, "--no-prompt"] + extra_opts)
         except:
             continue 
         screenshot_files = listdir(screenshot_base_path + "/screens")
         # Retry screenshot capture if previous fail
         if not screenshot_files:
             try:
-                check_output(["{}/EyeWitness.py".format(engine.scanner["options"]["EyeWitnessDirectory"]["value"]), "--single", url, "--web", "--proxy-ip", "127.0.0.1", "--proxy-port", "9050", "--proxy-type", "socks5", "-d", screenshot_base_path, "--no-prompt"])
+                check_output(["{}/EyeWitness.py".format(engine.scanner["options"]["EyeWitnessDirectory"]["value"]), "--single", url, "--web", "-d", screenshot_base_path, "--no-prompt"] + extra_opts)
             except:
                 continue
         if not screenshot_files:
             continue
         result_url = "{repo_url}/{scan_id}/{asset_id}/{count}/screens/{screenshot}".format(repo_url=engine.scanner["options"]["ScreenshotsURL"]["value"], scan_id=scan_id, asset_id=asset_id, count=count, screenshot=screenshot_files[0])
-        result.update({url: {"path": "{}/screens/{}".format(screenshot_base_path, screenshot_files[0]), "url": result_url}})
+        report_url = "{repo_url}/{scan_id}/{asset_id}/{count}/report.html".format(repo_url=engine.scanner["options"]["ScreenshotsURL"]["value"], scan_id=scan_id, asset_id=asset_id, count=count)
+        result.update({url: {
+            "path": "{}/screens/{}".format(screenshot_base_path, screenshot_files[0]),
+            "url": result_url,
+            "report": report_url}})
         count += 1
     return result
 
@@ -426,7 +434,7 @@ def _scan_urls(scan_id):
                 urls.append("http://"+asset)
                 urls.append("https://"+asset)
 
-            result = eyewitness_cmd(urls, asset_data["id"], scan_id)
+            result = eyewitness_cmd(urls, asset_data["id"], scan_id, extra_opts=engine.scans[scan_id]['options'])
 
             # Get differences with the last screenshot
             for url in result:
@@ -470,12 +478,14 @@ def _parse_results(scan_id):
         if engine.scans[scan_id]["findings"][asset]["issues"]:
             asset_issues = engine.scans[scan_id]["findings"][asset]["issues"]
             screenshot_urls = list()
+            report_urls = list()
             if not asset_issues:
                 screenshot_urls = "No screenshots available"
             for url in asset_issues:
                 if url == "current_diff":
                     continue
                 screenshot_urls.append(asset_issues[url]["url"])
+                report_urls.append(asset_issues[url]["report"])
                 # Create an issue if the screenshot differs from last time
                 previous_diff = asset_issues[url]["previous_diff"]
                 if previous_diff is None:
@@ -515,7 +525,7 @@ def _parse_results(scan_id):
                 "target": {"addr": [asset], "protocol": "http"},
                 "title": "[{}] Some domain has been screenshoted by eyewitness".format(timestamp),
                 "solution": "n/a",
-                "metadata": {"risk": {"cvss_base_score": cvss_max}, "links": screenshot_urls},
+                "metadata": {"risk": {"cvss_base_score": cvss_max}, "links": report_urls},
                 "type": "eyewitness_screenshot",
                 "timestamp": timestamp,
                 "description": "Screenshots: {}, Current Diff: {}".format(screenshot_urls, current_diff)
