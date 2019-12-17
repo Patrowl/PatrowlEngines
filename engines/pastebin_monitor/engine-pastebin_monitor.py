@@ -504,20 +504,18 @@ if __name__ == '__main__':
 
     POOL = Pool()
 
-    '''
     if len(engine.scanner['options']['ApiKey']['value']) > 0:
         POOL.apply_async(crawl_pastebin_com_with_api_key)
     else:
         for i in range(engine.scanner['options']['ThreadsNumber']['value']):
             threadname = 'thread{}'.format(i)
             POOL.apply_async(crawl_pastebin_com_without_api_key, args=(threadname,))
-    '''
 
-    #POOL.apply_async(crawl_pastebin_fr)
-    #POOL.apply_async(crawl_slexy_org)
+    POOL.apply_async(crawl_pastebin_fr)
+    POOL.apply_async(crawl_slexy_org)
     POOL.apply_async(crawl_gists_github_com)
-    #POOL.apply_async(crawl_codepad_org)
-    #POOL.apply_async(crawl_kpaste_net)
-    #POOL.apply_async(crawl_ideone_com)
+    POOL.apply_async(crawl_codepad_org)
+    POOL.apply_async(crawl_kpaste_net)
+    POOL.apply_async(crawl_ideone_com)
 
     engine.run_app(app_debug=APP_DEBUG, app_host=APP_HOST, app_port=APP_PORT)
