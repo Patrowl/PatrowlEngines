@@ -10,3 +10,7 @@ PastebinMonitor PatrOwl engine to crawl pastebin with or without API key with a 
 - Set your proxies list if you want to use them `proxies.txt`
 - Set your user-agents list `useragents.txt`
 - Run the engine: `python3 pastebin_monitor.py`
+
+## License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details
