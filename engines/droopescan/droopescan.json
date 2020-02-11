@@ -1,0 +1,7 @@
+{
+	"name": "droopescan",
+	"version": "1.0",
+	"description": "CMS Scanner",
+		"allowed_asset_types": ["url"],
+	"options": {}
+}
