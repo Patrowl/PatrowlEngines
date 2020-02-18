@@ -287,7 +287,10 @@ def get_last_report(task_id):
     if not task.get("status") == "200":
         return None
 
-    last_report = task.find("task").find("last_report").find("report")
+    try:
+        last_report = task.find("task").find("last_report").find("report")
+    except Exception:
+        return None
     if not is_uuid(last_report.get("id")):
         return None
     return last_report.get("id")
