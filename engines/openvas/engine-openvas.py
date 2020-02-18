@@ -22,7 +22,7 @@ except ImportError:
 from flask import Flask, request, jsonify
 from dns.resolver import query
 from gvm.connections import TLSConnection
-from gvm.protocols.latest import Gmp
+from gvm.protocols.gmpv7 import Gmp
 
 # Own library
 from PatrowlEnginesUtils.PatrowlEngine import _json_serial
