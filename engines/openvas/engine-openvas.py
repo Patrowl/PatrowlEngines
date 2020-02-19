@@ -697,9 +697,10 @@ def _scan_urls(scan_id):
             engine.scans[scan_id]["findings"][asset] = {}
         try:
             engine.scans[scan_id]["findings"][asset]["issues"] = get_report(asset, scan_id)
-        except Exception:
+        except Exception as e:
             # print("_scan_urls: API Connexion error (quota?)")
             # print(e)
+            engine.scans[scan_id]["lock"] = False
             return False
 
     # print("lock off")
