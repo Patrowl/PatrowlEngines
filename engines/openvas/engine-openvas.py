@@ -763,40 +763,51 @@ def _parse_results(scan_id):
     for asset in engine.scans[scan_id]["findings"]:
         if engine.scans[scan_id]["findings"][asset]["issues"]:
             report_id = engine.scans[scan_id]["assets"][asset]["report_id"]
-            description = ""
-            cvss_max = float(0)
-            for eng in engine.scans[scan_id]["findings"][asset]["issues"]:
-                if float(eng[0]) > 0:
-                    cvss_max = max(float(eng[0]), cvss_max)
-                    description = description + "[{threat}] CVSS: {severity} - Associated CVE : {cve}".format(
-                        threat=eng[2],
-                        severity=eng[0],
-                        cve=eng[1]) + "\n"
-            description = description + "For more detail go to 'https://{gmp_host}/omp?cmd=get_report&report_id={report_id}'".format(
-                gmp_host=engine.scanner["options"]["gmp_host"]["value"],
-                report_id=report_id)
+            for result in engine.scans[scan_id]["findings"][asset]["issues"]:
+                severity = float(result.find("severity").text)
+                cve = result.find("nvt").find("cve").text
+                threat = result.find("threat").text
+                cvss_base = result.find("nvt").find("cvss_base").text
+                name = result.find("nvt").find("name").text
+                tags = result.find("nvt").find("tags").text
+                xmlDesc = result.find("description").text
 
-            criticity = "high"
-            if cvss_max == 0:
-                criticity = "info"
-            elif cvss_max < 4.0:
-                criticity = "low"
-            elif cvss_max < 7.0:
-                criticity = "medium"
+                if severity >= 0:
+                    # form criticity
+                    criticity = "high"
+                    if severity == 0:
+                        criticity = "info"
+                    elif severity < 4.0:
+                        criticity = "low"
+                    elif severity < 7.0:
+                        criticity = "medium"
 
-            nb_vulns[criticity] += 1
+                    # update counters
+                    nb_vulns[criticity] += 1
 
-            issues.append({
-                "issue_id": len(issues)+1,
-                "severity": criticity, "confidence": "certain",
-                "target": {"addr": [asset], "protocol": "http"},
-                "title": "'{}' identified in openvas".format(asset),
-                "solution": "n/a",
-                "metadata": {"risk": {"cvss_base_score": cvss_max}},
-                "type": "openvas_report",
-                "timestamp": timestamp,
-                "description": description,
-            })
+                    # form description
+                    description = "[{threat}] CVSS: {severity} - Associated CVE : {cve}".format(
+                        threat=threat,
+                        severity=severity,
+                        cve=cve) + "\n\n"
+                    
+                    if (xmlDesc):
+                        description += xmlDesc + "\n\n"
+                    if (tags):
+                        description += tags + "\n\n"
+
+                    # create issue
+                    issues.append({
+                        "issue_id": len(issues)+1,
+                        "severity": criticity, "confidence": "certain",
+                        "target": {"addr": [asset], "protocol": "http"},
+                        "title": "'{asset}' identified in openvas - '{name}'".format(asset=asset, name=name),
+                        "solution": "n/a",
+                        "metadata": {"risk": {"cvss_base_score": cvss_base}},
+                        "type": "openvas_report",
+                        "timestamp": timestamp,
+                        "description": description,
+                    })
 
     summary = {
         "nb_issues": len(issues),
