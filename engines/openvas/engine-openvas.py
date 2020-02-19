@@ -736,13 +736,10 @@ def get_report(asset, scan_id):
             return issues
 
     report = tree.getroot().find("report")
-    for result in report.find("results").findall("result"):
+    for result in report.findall('.//result'):
         host_ip = result.find("host").text
-        severity = result.find("severity").text
-        cve = result.find("nvt").find("cve").text
-        threat = result.find("threat").text
         if resolved_asset_ip == host_ip:
-            issues.append([severity, cve, threat])
+            issues.append(result)
 
     return issues
 
