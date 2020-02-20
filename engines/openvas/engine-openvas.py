@@ -491,10 +491,10 @@ def _loadconfig():
             hostname=engine.scanner["options"]["gmp_host"]["value"],
             port=engine.scanner["options"]["gmp_port"]["value"]
         )
-        this.gmp = Gmp(connection)
-        this.gmp.authenticate(
-            engine.scanner["options"]["gmp_username"]["value"],
-            engine.scanner["options"]["gmp_password"]["value"])
+        with Gmp(connection) as this.gmp:
+            this.gmp.authenticate(
+                engine.scanner["options"]["gmp_username"]["value"],
+                engine.scanner["options"]["gmp_password"]["value"])
     except Exception:
         engine.scanner["status"] = "ERROR"
         print("Error: authentication failure Openvas instance")
