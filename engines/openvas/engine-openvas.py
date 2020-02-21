@@ -10,13 +10,9 @@ from re import search as re_search
 from subprocess import check_output
 from threading import Thread
 from time import time, sleep
+import urllib.parse as urlparse
 from uuid import UUID
 import xml.etree.ElementTree as ET
-
-try:
-    import urlparse
-except ImportError:
-    import urllib.parse as urlparse
 
 # Third party library imports
 from flask import Flask, request, jsonify
