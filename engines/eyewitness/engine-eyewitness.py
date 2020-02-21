@@ -71,7 +71,7 @@ def eyewitness_cmd(list_url, asset_id, scan_id, extra_opts):
     for url in list_url:
         screenshot_base_path = asset_base_path + "/" + str(count)
         try:
-            check_output(["{}/EyeWitness.py".format(ENGINE.scanner["options"]["EyeWitnessDirectory"]["value"]), "--single", url, "--web", "-d", screenshot_base_path, "--no-prompt"] + extra_opts)
+            check_output(["{}/EyeWitness.py".format(engine.scanner["options"]["EyeWitnessDirectory"]["value"]), "--single", url, "--web", "-d", screenshot_base_path, "--no-prompt"] + extra_opts)
         except:
             continue
         screenshot_files = listdir(screenshot_base_path + "/screens")
