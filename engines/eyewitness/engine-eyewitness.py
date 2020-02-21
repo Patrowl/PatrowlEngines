@@ -199,20 +199,20 @@ def clean_scan(scan_id):
 @app.route("/engines/eyewitness/status")
 def status():
     """Get status on engine and all scans."""
-    EyeWitnessDirectory = engine.scanner["options"]["EyeWitnessDirectory"]["value"]
-    if not exists(EyeWitnessDirectory):
-        LOG.error("Error: EyeWitnessDirectory not found : {}".format(EyeWitnessDirectory))
-        return jsonify({"status": "error", "reason": "EyeWitnessDirectory not found : {}".format(EyeWitnessDirectory)})
+    eyewitness_directory = engine.scanner["options"]["EyeWitnessDirectory"]["value"]
+    if not exists(eyewitness_directory):
+        LOG.error("Error: EyeWitnessDirectory not found : %s", eyewitness_directory)
+        return jsonify({"status": "error", "reason": "EyeWitnessDirectory not found : {}".format(eyewitness_directory)})
 
-    ScreenshotsDirectory = engine.scanner["options"]["ScreenshotsDirectory"]["value"]
-    if not exists(ScreenshotsDirectory):
-        LOG.error("Error: ScreenshotsDirectory not found : {}".format(ScreenshotsDirectory))
-        return {"status": "error", "reason": "ScreenshotsDirectory not found : {}".format(ScreenshotsDirectory)}
+    screenshots_directory = engine.scanner["options"]["ScreenshotsDirectory"]["value"]
+    if not exists(screenshots_directory):
+        LOG.error("Error: ScreenshotsDirectory not found : %s", screenshots_directory)
+        return {"status": "error", "reason": "ScreenshotsDirectory not found : {}".format(screenshots_directory)}
 
-    ImageMagickComparePath = engine.scanner["options"]["ImageMagickComparePath"]["value"]
-    if not exists(ImageMagickComparePath):
-        LOG.error("Error: ImageMagickComparePath not found : {}".format(ImageMagickComparePath))
-        return {"status": "error", "reason": "ImageMagickComparePath not found : {}".format(ImageMagickComparePath)}
+    imagemagick_compare_path = engine.scanner["options"]["ImageMagickComparePath"]["value"]
+    if not exists(imagemagick_compare_path):
+        LOG.error("Error: ImageMagickComparePath not found : %s", imagemagick_compare_path)
+        return {"status": "error", "reason": "ImageMagickComparePath not found : {}".format(imagemagick_compare_path)}
 
     return engine.getstatus()
 
@@ -223,10 +223,12 @@ def status_scan(scan_id):
     res = {"page": "status", "status": "UNKNOWN"}
     if scan_id not in engine.scans.keys():
         res.update({"status": "error", "reason": "scan_id '{}' not found".format(scan_id)})
+        LOG.warning(res)
         return jsonify(res)
 
     if engine.scans[scan_id]["status"] == "ERROR":
         res.update({"status": "error", "reason": "todo"})
+        LOG.warning(res)
         return jsonify(res)
 
     if engine.scans[scan_id]["lock"]:
@@ -236,6 +238,7 @@ def status_scan(scan_id):
         res.update({"status": "FINISHED"})
         engine.scans[scan_id]["status"] = "FINISHED"
 
+    LOG.debug(res)
     return jsonify(res)
 
 
@@ -264,17 +267,17 @@ def _loadconfig():
         engine.scanner = load(json_data)
         engine.scanner["status"] = "READY"
     else:
-        LOG.error("Error: config file '{}' not found".format(conf_file))
+        LOG.error("Error: config file '%s' not found", conf_file)
         return {"status": "error", "reason": "config file not found"}
 
     if "EyeWitnessDirectory" not in engine.scanner["options"]:
         LOG.error("Error: You have to specify EyeWitnessDirectory in options")
         return {"status": "error", "reason": "You have to specify EyeWitnessDirectory in options"}
 
-    EyeWitnessDirectory = engine.scanner["options"]["EyeWitnessDirectory"]["value"]
-    if not exists(EyeWitnessDirectory):
-        LOG.error("Error: EyeWitnessDirectory not found : {}".format(EyeWitnessDirectory))
-        return {"status": "error", "reason": "EyeWitnessDirectory not found : {}".format(EyeWitnessDirectory)}
+    eyewitness_directory = engine.scanner["options"]["EyeWitnessDirectory"]["value"]
+    if not exists(eyewitness_directory):
+        LOG.error("Error: EyeWitnessDirectory not found : %s", eyewitness_directory)
+        return {"status": "error", "reason": "EyeWitnessDirectory not found : {}".format(eyewitness_directory)}
 
     LOG.info("[OK] EyeWitnessDirectory")
 
@@ -286,10 +289,10 @@ def _loadconfig():
         LOG.error("Error: You have to specify ScreenshotsDirectory in options")
         return {"status": "error", "reason": "You have to specify ScreenshotsDirectory in options"}
 
-    ScreenshotsDirectory = engine.scanner["options"]["ScreenshotsDirectory"]["value"]
-    if not exists(ScreenshotsDirectory):
-        LOG.error("Error: ScreenshotsDirectory not found : {}".format(ScreenshotsDirectory))
-        return {"status": "error", "reason": "ScreenshotsDirectory not found : {}".format(ScreenshotsDirectory)}
+    screenshots_directory = engine.scanner["options"]["ScreenshotsDirectory"]["value"]
+    if not exists(screenshots_directory):
+        LOG.error("Error: ScreenshotsDirectory not found : %s", screenshots_directory)
+        return {"status": "error", "reason": "ScreenshotsDirectory not found : {}".format(screenshots_directory)}
 
     LOG.info("[OK] ScreenshotsDirectory")
 
@@ -297,10 +300,10 @@ def _loadconfig():
     if "ImageMagickComparePath" not in engine.scanner["options"]:
         LOG.error("Error: You have to specify ImageMagickComparePath in options")
         return {"status": "error", "reason": "You have to specify ImageMagickComparePath in options"}
-    ImageMagickComparePath = engine.scanner["options"]["ImageMagickComparePath"]["value"]
-    if not exists(ImageMagickComparePath):
-        LOG.error("Error: ImageMagickComparePath not found : {}".format(ImageMagickComparePath))
-        return {"status": "error", "reason": "ImageMagickComparePath not found : {}".format(ImageMagickComparePath)}
+    imagemagick_compare_path = engine.scanner["options"]["ImageMagickComparePath"]["value"]
+    if not exists(imagemagick_compare_path):
+        LOG.error("Error: ImageMagickComparePath not found : %s", imagemagick_compare_path)
+        return {"status": "error", "reason": "ImageMagickComparePath not found : {}".format(imagemagick_compare_path)}
 
     LOG.info("[OK] ImageMagickComparePath")
 
@@ -310,6 +313,7 @@ def reloadconfig():
     res = {"page": "reloadconfig"}
     _loadconfig()
     res.update({"config": engine.scanner})
+    LOG.debug(res)
     return jsonify(res)
 
 
@@ -323,6 +327,7 @@ def start_scan():
             "status": "error",
             "reason": "Scan refused: max concurrent active scans reached ({})".format(APP_MAXSCANS)
         })
+        LOG.warning(res)
         return jsonify(res)
 
     status()
@@ -333,6 +338,7 @@ def start_scan():
                 "reason": "scanner not ready",
                 "status": engine.scanner["status"]
             }})
+        LOG.warning(res)
         return jsonify(res)
 
     data = loads(request.data.decode("utf-8"))
@@ -342,6 +348,7 @@ def start_scan():
             "details": {
                 "reason": "arg error, something is missing ('assets' ?)"
             }})
+        LOG.warning(res)
         return jsonify(res)
 
     assets = []
@@ -352,6 +359,7 @@ def start_scan():
                 "status": "error",
                 "reason": "arg error, something is missing ('asset.value')"
             })
+            LOG.warning(res)
             return jsonify(res)
 
         # Supported datatypes
@@ -360,6 +368,7 @@ def start_scan():
                 "status": "error",
                 "reason": "arg error, bad value for '{}' datatype (not supported)".format(asset["value"])
             })
+            LOG.warning(res)
             return jsonify(res)
 
         if asset["datatype"] == "url":
@@ -377,6 +386,7 @@ def start_scan():
                 "reason": "scan '{}' is probably already launched".format(data["scan_id"]),
             }
         })
+        LOG.warning(res)
         return jsonify(res)
 
     scan = {
@@ -403,6 +413,7 @@ def start_scan():
         }
     })
 
+    LOG.debug(res)
     return jsonify(res)
 
 
@@ -449,7 +460,7 @@ def _scan_urls(scan_id):
 
             engine.scans[scan_id]["findings"][asset]["issues"] = result
         except Exception as e:
-            LOG.error("_scan_urls: API Connexion error for asset {}: {}".format(asset, e))
+            LOG.error("_scan_urls: API Connexion error for asset %s: %s", asset, e)
             return False
 
     LOG.debug("lock off")
@@ -551,12 +562,14 @@ def getfindings(scan_id):
     # check if the scan_id exists
     if scan_id not in engine.scans.keys():
         res.update({"status": "error", "reason": "scan_id '{}' not found".format(scan_id)})
+        LOG.warning(res)
         return jsonify(res)
 
     # check if the scan is finished
     status()
     if engine.scans[scan_id]["status"] != "FINISHED":
         res.update({"status": "error", "reason": "scan_id '{}' not finished (status={})".format(scan_id, engine.scans[scan_id]["status"])})
+        LOG.warning(res)
         return jsonify(res)
 
     issues, summary = _parse_results(scan_id)
@@ -582,6 +595,7 @@ def getfindings(scan_id):
     clean_scan(scan_id)
 
     res.update({"scan": scan, "summary": summary, "issues": issues, "status": "success"})
+    LOG.debug(res)
     return jsonify(res)
 
 
