@@ -121,6 +121,8 @@ def get_credentials(name=None):
             return credentials_id
     return None
 
+def get_scan_config_name():
+    return engine.scanner["options"]["default_scan_config_name"]["value"]
 
 def get_scan_config(name=None):
     """
@@ -135,7 +137,7 @@ def get_scan_config(name=None):
     scan_config_name = name
     if name is None:
         # Set the default value set in engine config
-        scan_config_name = engine.scanner["options"]["default_scan_config_name"]["value"]
+        scan_config_name = get_scan_config_name()
 
     for config in configs.findall("config"):
         tmp_config_name = config.find("name").text
@@ -192,8 +194,10 @@ def get_task_by_target_name(target_name):
     if not tasks.get("status") == "200":
         return None
 
+    scan_config_id = get_scan_config()
+
     for task in tasks.findall("task"):
-        if task.find('target').get("id") == target_id:
+        if task.find('target').get("id") == target_id and task.find('config').get('id') == scan_config_id:
             task_id = task.get("id")
             if not is_uuid(task_id):
                 return None
@@ -235,7 +239,7 @@ def create_task(target_name, target_id, scan_config_id=None, scanner_id=None):
         scanner_id = get_scanners()[1]  # Set the default value
 
     new_task_xml = this.gmp.create_task(
-        name=target_name,
+        name=target_name + " - {}".format(get_scan_config_name()),
         config_id=scan_config_id,
         target_id=target_id,
         scanner_id=scanner_id
