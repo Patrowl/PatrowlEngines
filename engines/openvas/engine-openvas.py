@@ -740,7 +740,7 @@ def get_report(asset, scan_id):
         except Exception as e:
             # probably unknown issue's host, skip it
             print("Warning: failed to process issue: {}".format(ET.tostring(result, encoding='utf8', method='xml')))
-            pass
+            print(e)
 
     return issues
 
@@ -765,50 +765,56 @@ def _parse_results(scan_id):
         if engine.scans[scan_id]["findings"][asset]["issues"]:
             report_id = engine.scans[scan_id]["assets"][asset]["report_id"]
             for result in engine.scans[scan_id]["findings"][asset]["issues"]:
-                severity = float(result.find("severity").text)
-                cve = result.find("nvt").find("cve").text
-                threat = result.find("threat").text
-                cvss_base = result.find("nvt").find("cvss_base").text
-                name = result.find("nvt").find("name").text
-                tags = result.find("nvt").find("tags").text
-                xmlDesc = result.find("description").text
+                try:
+                    severity = float(result.find("severity").text)
+                    cve = result.find("nvt").find("cve").text
+                    threat = result.find("threat").text
+                    cvss_base = result.find("nvt").find("cvss_base").text
+                    name = result.find("nvt").find("name").text
+                    tags = result.find("nvt").find("tags").text
+                    xmlDesc = result.find("description").text
 
-                if severity >= 0:
-                    # form criticity
-                    criticity = "high"
-                    if severity == 0:
-                        criticity = "info"
-                    elif severity < 4.0:
-                        criticity = "low"
-                    elif severity < 7.0:
-                        criticity = "medium"
+                    if severity >= 0:
+                        # form criticity
+                        criticity = "high"
+                        if severity == 0:
+                            criticity = "info"
+                        elif severity < 4.0:
+                            criticity = "low"
+                        elif severity < 7.0:
+                            criticity = "medium"
 
-                    # update counters
-                    nb_vulns[criticity] += 1
+                        # update counters
+                        nb_vulns[criticity] += 1
 
-                    # form description
-                    description = "[{threat}] CVSS: {severity} - Associated CVE : {cve}".format(
-                        threat=threat,
-                        severity=severity,
-                        cve=cve) + "\n\n"
+                        # form description
+                        description = "[{threat}] CVSS: {severity} - Associated CVE : {cve}".format(
+                            threat=threat,
+                            severity=severity,
+                            cve=cve) + "\n\n"
 
-                    if (xmlDesc):
-                        description += xmlDesc + "\n\n"
-                    if (tags):
-                        description += tags + "\n\n"
+                        if (xmlDesc):
+                            description += xmlDesc + "\n\n"
+                        if (tags):
+                            description += tags + "\n\n"
 
-                    # create issue
-                    issues.append({
-                        "issue_id": len(issues)+1,
-                        "severity": criticity, "confidence": "certain",
-                        "target": {"addr": [asset], "protocol": "http"},
-                        "title": "'{asset}' identified in openvas - '{name}'".format(asset=asset, name=name),
-                        "solution": "n/a",
-                        "metadata": {"risk": {"cvss_base_score": cvss_base}},
-                        "type": "openvas_report",
-                        "timestamp": timestamp,
-                        "description": description,
-                    })
+                        # create issue
+                        issues.append({
+                            "issue_id": len(issues)+1,
+                            "severity": criticity, "confidence": "certain",
+                            "target": {"addr": [asset], "protocol": "http"},
+                            "title": "'{asset}' identified in openvas - '{name}'".format(asset=asset, name=name),
+                            "solution": "n/a",
+                            "metadata": {"risk": {"cvss_base_score": cvss_base}},
+                            "type": "openvas_report",
+                            "timestamp": timestamp,
+                            "description": description,
+                        })
+                except Exception as e:
+                    # probably unknown issue's host, skip it
+                    print("Warning: failed to process issue: {}".format(ET.tostring(result, encoding='utf8', method='xml')))
+                    print(e)
+
 
     summary = {
         "nb_issues": len(issues),
