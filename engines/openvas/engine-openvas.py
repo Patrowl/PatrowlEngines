@@ -737,9 +737,14 @@ def get_report(asset, scan_id):
 
     report = tree.getroot().find("report")
     for result in report.findall('.//result'):
-        host_ip = result.find("host").text
-        if resolved_asset_ip == host_ip:
-            issues.append(result)
+        try:
+            host_ip = result.find("host").text
+            if resolved_asset_ip == host_ip:
+                issues.append(result)
+        except Exception as e:
+            # probably unknown issue's host, skip it
+            print("Warning: failed to process issue: {}".format(ET.tostring(result, encoding='utf8', method='xml')))
+            pass
 
     return issues
 
@@ -790,7 +795,7 @@ def _parse_results(scan_id):
                         threat=threat,
                         severity=severity,
                         cve=cve) + "\n\n"
-                    
+
                     if (xmlDesc):
                         description += xmlDesc + "\n\n"
                     if (tags):
