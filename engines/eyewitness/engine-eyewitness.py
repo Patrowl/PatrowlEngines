@@ -32,7 +32,7 @@ APP_ENGINE_NAME = "eyewitness"
 APP_BASE_DIR = dirname(realpath(__file__))
 LOG = getLogger("werkzeug")
 
-engine = PatrowlEngine(
+ENGINE = PatrowlEngine(
     app=app,
     base_dir=APP_BASE_DIR,
     name=APP_ENGINE_NAME,
@@ -52,7 +52,7 @@ def get_criticity(score):
     return criticity
 
 
-def eyewitness_cmd(list_url, asset_id, scan_id, extra_opts=[]):
+def eyewitness_cmd(list_url, asset_id, scan_id, extra_opts):
     """
     Returns the screenshot path
     """
@@ -61,7 +61,7 @@ def eyewitness_cmd(list_url, asset_id, scan_id, extra_opts=[]):
     else:
         extra_opts = []
     result = dict()
-    base_path = engine.scanner["options"]["ScreenshotsDirectory"]["value"] + scan_id
+    base_path = ENGINE.scanner["options"]["ScreenshotsDirectory"]["value"] + scan_id
     asset_base_path = base_path + "/" + str(asset_id)
     if not exists(base_path):
         makedirs(base_path, mode=0o755)
@@ -71,20 +71,20 @@ def eyewitness_cmd(list_url, asset_id, scan_id, extra_opts=[]):
     for url in list_url:
         screenshot_base_path = asset_base_path + "/" + str(count)
         try:
-            check_output(["{}/EyeWitness.py".format(engine.scanner["options"]["EyeWitnessDirectory"]["value"]), "--single", url, "--web", "-d", screenshot_base_path, "--no-prompt"] + extra_opts)
+            check_output(["{}/EyeWitness.py".format(ENGINE.scanner["options"]["EyeWitnessDirectory"]["value"]), "--single", url, "--web", "-d", screenshot_base_path, "--no-prompt"] + extra_opts)
         except:
-            continue 
+            continue
         screenshot_files = listdir(screenshot_base_path + "/screens")
         # Retry screenshot capture if previous fail
         if not screenshot_files:
             try:
-                check_output(["{}/EyeWitness.py".format(engine.scanner["options"]["EyeWitnessDirectory"]["value"]), "--single", url, "--web", "-d", screenshot_base_path, "--no-prompt"] + extra_opts)
+                check_output(["{}/EyeWitness.py".format(ENGINE.scanner["options"]["EyeWitnessDirectory"]["value"]), "--single", url, "--web", "-d", screenshot_base_path, "--no-prompt"] + extra_opts)
             except:
                 continue
         if not screenshot_files:
             continue
-        result_url = "{repo_url}/{scan_id}/{asset_id}/{count}/screens/{screenshot}".format(repo_url=engine.scanner["options"]["ScreenshotsURL"]["value"], scan_id=scan_id, asset_id=asset_id, count=count, screenshot=screenshot_files[0])
-        report_url = "{repo_url}/{scan_id}/{asset_id}/{count}/report.html".format(repo_url=engine.scanner["options"]["ScreenshotsURL"]["value"], scan_id=scan_id, asset_id=asset_id, count=count)
+        result_url = "{repo_url}/{scan_id}/{asset_id}/{count}/screens/{screenshot}".format(repo_url=ENGINE.scanner["options"]["ScreenshotsURL"]["value"], scan_id=scan_id, asset_id=asset_id, count=count, screenshot=screenshot_files[0])
+        report_url = "{repo_url}/{scan_id}/{asset_id}/{count}/report.html".format(repo_url=ENGINE.scanner["options"]["ScreenshotsURL"]["value"], scan_id=scan_id, asset_id=asset_id, count=count)
         result.update({url: {
             "path": "{}/screens/{}".format(screenshot_base_path, screenshot_files[0]),
             "url": result_url,
@@ -100,15 +100,15 @@ def get_last_screenshot(current_path, asset_id, scan_id):
     last_scan_id = 0
     last_scan_path = current_path
     last_scan_url = ''
-    for root, dirs, files in walk(engine.scanner["options"]["ScreenshotsDirectory"]["value"]):
+    for root, _, files in walk(ENGINE.scanner["options"]["ScreenshotsDirectory"]["value"]):
         if current_path.split("/")[-1] in files:
             _scan_id = int(root.split("/")[4])
             # Get the latest scan_id valid
-            if _scan_id < int(scan_id) and _scan_id >= last_scan_id:
+            if int(scan_id) > _scan_id >= last_scan_id:
                 last_scan_id = _scan_id
                 last_scan_path = "{}/{}".format(root, current_path.split("/")[-1])
 
-    last_scan_url = "{repo_url}/{scan_id}/{asset_id}/{count}/screens/{screenshot}".format(repo_url=engine.scanner["options"]["ScreenshotsURL"]["value"], scan_id=last_scan_id, asset_id=asset_id, count=last_scan_path.split("/")[6], screenshot=last_scan_path.split("/")[-1])
+    last_scan_url = "{repo_url}/{scan_id}/{asset_id}/{count}/screens/{screenshot}".format(repo_url=ENGINE.scanner["options"]["ScreenshotsURL"]["value"], scan_id=last_scan_id, asset_id=asset_id, count=last_scan_path.split("/")[6], screenshot=last_scan_path.split("/")[-1])
 
     return last_scan_path, last_scan_url
 
@@ -117,13 +117,13 @@ def diff_screenshot(screenshot1, screenshot2):
     Returns the percentage of differences between screenshot & screenshot2
     """
     try:
-        output = check_output([engine.scanner["options"]["ImageMagickComparePath"]["value"], "-metric", "RMSE", screenshot1, screenshot2, "NULL:"], stderr=STDOUT)
-    except CalledProcessError as e:
-        output = e.output
-        returncode = e.returncode
+        output = check_output([ENGINE.scanner["options"]["ImageMagickComparePath"]["value"], "-metric", "RMSE", screenshot1, screenshot2, "NULL:"], stderr=STDOUT)
+    except CalledProcessError as err_msg:
+        output = err_msg.output
     except ValueError:
         return None
 
+    # pylint: disable=W1401
     try:
         diff = search("(\((.*?)\))", str(output))
         percent_diff = int(float(diff.group(2)) * 100)
@@ -134,10 +134,9 @@ def diff_screenshot(screenshot1, screenshot2):
 
 
 @app.errorhandler(404)
-def page_not_found(e):
+def page_not_found(error):
     """Page not found."""
-    LOG.debug(e)
-    return engine.page_not_found()
+    return ENGINE.page_not_found()
 
 
 @app.errorhandler(PatrowlEngineExceptions)
@@ -151,178 +150,180 @@ def handle_invalid_usage(error):
 @app.route("/")
 def default():
     """Route by default."""
-    return engine.default()
+    return ENGINE.default()
 
 
 @app.route("/engines/eyewitness/")
 def index():
     """Return index page."""
-    return engine.index()
+    return ENGINE.index()
 
 
 @app.route("/engines/eyewitness/liveness")
 def liveness():
     """Return liveness page."""
-    return engine.liveness()
+    return ENGINE.liveness()
 
 
 @app.route("/engines/eyewitness/readiness")
 def readiness():
     """Return readiness page."""
-    return engine.readiness()
+    return ENGINE.readiness()
 
 
 @app.route("/engines/eyewitness/test")
 def test():
     """Return test page."""
-    return engine.test()
+    return ENGINE.test()
 
 
 @app.route("/engines/eyewitness/info")
 def info():
-    """Get info on running engine."""
-    return engine.info()
+    """Get info on running ENGINE."""
+    return ENGINE.info()
 
 
 @app.route("/engines/eyewitness/clean")
 def clean():
     """Clean all scans."""
-    return engine.clean()
+    return ENGINE.clean()
 
 
 @app.route("/engines/eyewitness/clean/<scan_id>")
 def clean_scan(scan_id):
     """Clean scan identified by id."""
-    return engine.clean_scan(scan_id)
+    return ENGINE.clean_scan(scan_id)
 
 
 @app.route("/engines/eyewitness/status")
 def status():
     """Get status on engine and all scans."""
-    eyewitness_directory = engine.scanner["options"]["EyeWitnessDirectory"]["value"]
+    eyewitness_directory = ENGINE.scanner["options"]["EyeWitnessDirectory"]["value"]
     if not exists(eyewitness_directory):
         LOG.error("Error: EyeWitnessDirectory not found : %s", eyewitness_directory)
         return jsonify({"status": "error", "reason": "EyeWitnessDirectory not found : {}".format(eyewitness_directory)})
 
-    screenshots_directory = engine.scanner["options"]["ScreenshotsDirectory"]["value"]
+    screenshots_directory = ENGINE.scanner["options"]["ScreenshotsDirectory"]["value"]
     if not exists(screenshots_directory):
         LOG.error("Error: ScreenshotsDirectory not found : %s", screenshots_directory)
         return {"status": "error", "reason": "ScreenshotsDirectory not found : {}".format(screenshots_directory)}
 
-    imagemagick_compare_path = engine.scanner["options"]["ImageMagickComparePath"]["value"]
+    imagemagick_compare_path = ENGINE.scanner["options"]["ImageMagickComparePath"]["value"]
     if not exists(imagemagick_compare_path):
         LOG.error("Error: ImageMagickComparePath not found : %s", imagemagick_compare_path)
         return {"status": "error", "reason": "ImageMagickComparePath not found : {}".format(imagemagick_compare_path)}
 
-    return engine.getstatus()
+    return ENGINE.getstatus()
 
 
 @app.route("/engines/eyewitness/status/<scan_id>")
 def status_scan(scan_id):
     """Get status on scan identified by id."""
     res = {"page": "status", "status": "UNKNOWN"}
-    if scan_id not in engine.scans.keys():
+    if scan_id not in ENGINE.scans.keys():
         res.update({"status": "error", "reason": "scan_id '{}' not found".format(scan_id)})
         LOG.warning(res)
         return jsonify(res)
 
-    if engine.scans[scan_id]["status"] == "ERROR":
+    if ENGINE.scans[scan_id]["status"] == "ERROR":
         res.update({"status": "error", "reason": "todo"})
         LOG.warning(res)
         return jsonify(res)
 
-    if engine.scans[scan_id]["lock"]:
+    if ENGINE.scans[scan_id]["lock"]:
         res.update({"status": "SCANNING"})
-        engine.scans[scan_id]["status"] = "SCANNING"
+        ENGINE.scans[scan_id]["status"] = "SCANNING"
     else:
         res.update({"status": "FINISHED"})
-        engine.scans[scan_id]["status"] = "FINISHED"
+        ENGINE.scans[scan_id]["status"] = "FINISHED"
 
-    LOG.debug(res)
     return jsonify(res)
 
 
 @app.route("/engines/eyewitness/stopscans")
 def stop():
     """Stop all scans."""
-    return engine.stop()
+    return ENGINE.stop()
 
 
 @app.route("/engines/eyewitness/stop/<scan_id>")
 def stop_scan(scan_id):
     """Stop scan identified by id."""
-    return engine.stop_scan(scan_id)
+    return ENGINE.stop_scan(scan_id)
 
 
 @app.route("/engines/eyewitness/getreport/<scan_id>")
 def getreport(scan_id):
     """Get report on finished scans."""
-    return engine.getreport(scan_id)
+    return ENGINE.getreport(scan_id)
 
 
 def _loadconfig():
+    """ Load config during startup """
     conf_file = APP_BASE_DIR+"/eyewitness.json"
     if exists(conf_file):
         json_data = open(conf_file)
-        engine.scanner = load(json_data)
-        engine.scanner["status"] = "READY"
+        ENGINE.scanner = load(json_data)
+        ENGINE.scanner["status"] = "READY"
     else:
         LOG.error("Error: config file '%s' not found", conf_file)
         return {"status": "error", "reason": "config file not found"}
 
-    if "EyeWitnessDirectory" not in engine.scanner["options"]:
+    if "EyeWitnessDirectory" not in ENGINE.scanner["options"]:
         LOG.error("Error: You have to specify EyeWitnessDirectory in options")
         return {"status": "error", "reason": "You have to specify EyeWitnessDirectory in options"}
 
-    eyewitness_directory = engine.scanner["options"]["EyeWitnessDirectory"]["value"]
+    eyewitness_directory = ENGINE.scanner["options"]["EyeWitnessDirectory"]["value"]
     if not exists(eyewitness_directory):
         LOG.error("Error: EyeWitnessDirectory not found : %s", eyewitness_directory)
         return {"status": "error", "reason": "EyeWitnessDirectory not found : {}".format(eyewitness_directory)}
 
-    LOG.info("[OK] EyeWitnessDirectory")
+    LOG.warning("[OK] EyeWitnessDirectory")
 
-    if "ScreenshotsURL" not in engine.scanner["options"]:
+    if "ScreenshotsURL" not in ENGINE.scanner["options"]:
         LOG.error("Error: You have to specify ScreenshotsURL in options")
         return {"status": "error", "reason": "You have to specify ScreenshotsURL in options"}
 
-    if "ScreenshotsDirectory" not in engine.scanner["options"]:
+    if "ScreenshotsDirectory" not in ENGINE.scanner["options"]:
         LOG.error("Error: You have to specify ScreenshotsDirectory in options")
         return {"status": "error", "reason": "You have to specify ScreenshotsDirectory in options"}
 
-    screenshots_directory = engine.scanner["options"]["ScreenshotsDirectory"]["value"]
+    screenshots_directory = ENGINE.scanner["options"]["ScreenshotsDirectory"]["value"]
     if not exists(screenshots_directory):
         LOG.error("Error: ScreenshotsDirectory not found : %s", screenshots_directory)
         return {"status": "error", "reason": "ScreenshotsDirectory not found : {}".format(screenshots_directory)}
 
-    LOG.info("[OK] ScreenshotsDirectory")
+    LOG.warning("[OK] ScreenshotsDirectory")
 
 
-    if "ImageMagickComparePath" not in engine.scanner["options"]:
+    if "ImageMagickComparePath" not in ENGINE.scanner["options"]:
         LOG.error("Error: You have to specify ImageMagickComparePath in options")
         return {"status": "error", "reason": "You have to specify ImageMagickComparePath in options"}
-    imagemagick_compare_path = engine.scanner["options"]["ImageMagickComparePath"]["value"]
+    imagemagick_compare_path = ENGINE.scanner["options"]["ImageMagickComparePath"]["value"]
     if not exists(imagemagick_compare_path):
         LOG.error("Error: ImageMagickComparePath not found : %s", imagemagick_compare_path)
         return {"status": "error", "reason": "ImageMagickComparePath not found : {}".format(imagemagick_compare_path)}
 
-    LOG.info("[OK] ImageMagickComparePath")
+    LOG.warning("[OK] ImageMagickComparePath")
 
 
 @app.route("/engines/eyewitness/reloadconfig", methods=["GET"])
 def reloadconfig():
+    """ Reload config """
     res = {"page": "reloadconfig"}
     _loadconfig()
-    res.update({"config": engine.scanner})
-    LOG.debug(res)
+    res.update({"config": ENGINE.scanner})
+    LOG.warning(res)
     return jsonify(res)
 
 
 @app.route("/engines/eyewitness/startscan", methods=["POST"])
 def start_scan():
+    """ Start scan function """
     res = {"page": "startscan"}
 
     # Check the scanner is ready to start a new scan
-    if len(engine.scans) == APP_MAXSCANS:
+    if len(ENGINE.scans) == APP_MAXSCANS:
         res.update({
             "status": "error",
             "reason": "Scan refused: max concurrent active scans reached ({})".format(APP_MAXSCANS)
@@ -331,12 +332,12 @@ def start_scan():
         return jsonify(res)
 
     status()
-    if engine.scanner["status"] != "READY":
+    if ENGINE.scanner["status"] != "READY":
         res.update({
             "status": "refused",
             "details": {
                 "reason": "scanner not ready",
-                "status": engine.scanner["status"]
+                "status": ENGINE.scanner["status"]
             }})
         LOG.warning(res)
         return jsonify(res)
@@ -363,7 +364,7 @@ def start_scan():
             return jsonify(res)
 
         # Supported datatypes
-        if asset["datatype"] not in engine.scanner["allowed_asset_types"]:
+        if asset["datatype"] not in ENGINE.scanner["allowed_asset_types"]:
             res.update({
                 "status": "error",
                 "reason": "arg error, bad value for '{}' datatype (not supported)".format(asset["value"])
@@ -379,7 +380,7 @@ def start_scan():
 
     scan_id = str(data["scan_id"])
 
-    if data["scan_id"] in engine.scans.keys():
+    if data["scan_id"] in ENGINE.scans.keys():
         res.update({
             "status": "refused",
             "details": {
@@ -401,10 +402,10 @@ def start_scan():
         "findings":     {}
     }
 
-    engine.scans.update({scan_id: scan})
+    ENGINE.scans.update({scan_id: scan})
     thread = Thread(target=_scan_urls, args=(scan_id,))
     thread.start()
-    engine.scans[scan_id]["threads"].append(thread)
+    ENGINE.scans[scan_id]["threads"].append(thread)
 
     res.update({
         "status": "accepted",
@@ -413,28 +414,28 @@ def start_scan():
         }
     })
 
-    LOG.debug(res)
+    LOG.warning(res)
     return jsonify(res)
 
 
 def _scan_urls(scan_id):
     # Is it locked ?
-    if engine.scans[scan_id]["lock"]:
-        LOG.debug("locked")
+    if ENGINE.scans[scan_id]["lock"]:
+        LOG.warning("locked")
         return True
 
-    engine.scans[scan_id]["lock"] = True
-    LOG.debug("lock on")
+    ENGINE.scans[scan_id]["lock"] = True
+    LOG.warning("lock on")
 
     assets = []
-    for asset in engine.scans[scan_id]["assets"]:
+    for asset in ENGINE.scans[scan_id]["assets"]:
         assets.append(asset)
 
-    for asset in assets:
-        if asset not in engine.scans[scan_id]["findings"]:
-            engine.scans[scan_id]["findings"][asset] = {}
+    for i, asset in enumerate(assets):
+        if asset not in ENGINE.scans[scan_id]["findings"]:
+            ENGINE.scans[scan_id]["findings"][asset] = {}
         try:
-            asset_data = next((x for x in engine.scans[scan_id]["assets_data"] if x["value"] == asset), None)
+            asset_data = next((x for x in ENGINE.scans[scan_id]["assets_data"] if x["value"] == asset), None)
             urls = list()
             if asset.startswith("http://"):
                 urls.append("http://"+asset)
@@ -445,7 +446,8 @@ def _scan_urls(scan_id):
                 urls.append("http://"+asset)
                 urls.append("https://"+asset)
 
-            result = eyewitness_cmd(urls, asset_data["id"], scan_id, extra_opts=engine.scans[scan_id]['options'])
+            LOG.warning("[%s/%s] Screeshoting %s...", i+1, len(assets), asset)
+            result = eyewitness_cmd(urls, asset_data["id"], scan_id, ENGINE.scans[scan_id]['options'])
 
             # Get differences with the last screenshot
             for url in result:
@@ -458,19 +460,19 @@ def _scan_urls(scan_id):
                 current_diff = diff_screenshot(result[urls[0]]["path"], result[urls[1]]["path"])
             result["current_diff"] = current_diff
 
-            engine.scans[scan_id]["findings"][asset]["issues"] = result
-        except Exception as e:
-            LOG.error("_scan_urls: API Connexion error for asset %s: %s", asset, e)
+            ENGINE.scans[scan_id]["findings"][asset]["issues"] = result
+        except Exception as err_msg:
+            LOG.error("_scan_urls: API Connexion error for asset %s: %s", asset, err_msg)
             return False
 
-    LOG.debug("lock off")
-    engine.scans[scan_id]["lock"] = False
+    LOG.warning("lock off")
+    ENGINE.scans[scan_id]["lock"] = False
     return True
 
 
 def _parse_results(scan_id):
-    while engine.scans[scan_id]["lock"]:
-        LOG.debug("report is not terminated yet, going to sleep")
+    while ENGINE.scans[scan_id]["lock"]:
+        LOG.warning("report is not terminated yet, going to sleep")
         sleep(10)
 
     issues = []
@@ -484,10 +486,10 @@ def _parse_results(scan_id):
     }
     timestamp = int(time() * 1000)
 
-    for asset in engine.scans[scan_id]["findings"]:
+    for asset in ENGINE.scans[scan_id]["findings"]:
         cvss_max = float(0)
-        if engine.scans[scan_id]["findings"][asset]["issues"]:
-            asset_issues = engine.scans[scan_id]["findings"][asset]["issues"]
+        if ENGINE.scans[scan_id]["findings"][asset]["issues"]:
+            asset_issues = ENGINE.scans[scan_id]["findings"][asset]["issues"]
             screenshot_urls = list()
             report_urls = list()
             if not asset_issues:
@@ -549,7 +551,7 @@ def _parse_results(scan_id):
         "nb_medium": nb_vulns["medium"],
         "nb_high": nb_vulns["high"],
         "engine_name": "eyewitness",
-        "engine_version": engine.scanner["version"]
+        "engine_version": ENGINE.scanner["version"]
     }
 
     return issues, summary
@@ -557,18 +559,19 @@ def _parse_results(scan_id):
 
 @app.route("/engines/eyewitness/getfindings/<scan_id>", methods=["GET"])
 def getfindings(scan_id):
+    """ Function returning all findings """
     res = {"page": "getfindings", "scan_id": scan_id}
 
     # check if the scan_id exists
-    if scan_id not in engine.scans.keys():
+    if scan_id not in ENGINE.scans.keys():
         res.update({"status": "error", "reason": "scan_id '{}' not found".format(scan_id)})
         LOG.warning(res)
         return jsonify(res)
 
     # check if the scan is finished
     status()
-    if engine.scans[scan_id]["status"] != "FINISHED":
-        res.update({"status": "error", "reason": "scan_id '{}' not finished (status={})".format(scan_id, engine.scans[scan_id]["status"])})
+    if ENGINE.scans[scan_id]["status"] != "FINISHED":
+        res.update({"status": "error", "reason": "scan_id '{}' not finished (status={})".format(scan_id, ENGINE.scans[scan_id]["status"])})
         LOG.warning(res)
         return jsonify(res)
 
@@ -576,11 +579,11 @@ def getfindings(scan_id):
 
     scan = {
         "scan_id": scan_id,
-        "assets": engine.scans[scan_id]["assets"],
-        "options": engine.scans[scan_id]["options"],
-        "status": engine.scans[scan_id]["status"],
-        "started_at": engine.scans[scan_id]["started_at"],
-        "finished_at": engine.scans[scan_id]["finished_at"]
+        "assets": ENGINE.scans[scan_id]["assets"],
+        "options": ENGINE.scans[scan_id]["options"],
+        "status": ENGINE.scans[scan_id]["status"],
+        "started_at": ENGINE.scans[scan_id]["started_at"],
+        "finished_at": ENGINE.scans[scan_id]["finished_at"]
     }
 
     # Store the findings in a file
@@ -595,7 +598,6 @@ def getfindings(scan_id):
     clean_scan(scan_id)
 
     res.update({"scan": scan, "summary": summary, "issues": issues, "status": "success"})
-    LOG.debug(res)
     return jsonify(res)
 
 
@@ -605,8 +607,8 @@ def main():
     if not exists(APP_BASE_DIR+"/results"):
         makedirs(APP_BASE_DIR+"/results")
     _loadconfig()
-    LOG.debug("Run engine")
+    LOG.warning("Run engine")
 
 
 if __name__ == "__main__":
-    engine.run_app(app_debug=APP_DEBUG, app_host=APP_HOST, app_port=APP_PORT)
+    ENGINE.run_app(app_debug=APP_DEBUG, app_host=APP_HOST, app_port=APP_PORT)
