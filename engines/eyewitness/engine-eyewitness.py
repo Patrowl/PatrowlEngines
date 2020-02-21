@@ -505,7 +505,7 @@ def _parse_results(scan_id):
                     nb_vulns[get_criticity(cvss_max)] += 1
                     issues.append({
                         "issue_id": len(issues)+1,
-                        "severity": get_criticity(0), "confidence": "certain",
+                        "severity": "medium", "confidence": "certain",
                         "target": {"addr": [asset], "protocol": "http"},
                         "title": "[{}] Screenshot differs from last time".format(timestamp),
                         "solution": "n/a",
@@ -514,11 +514,11 @@ def _parse_results(scan_id):
                         "timestamp": timestamp,
                         "description": "Too much differences"
                     })
-                elif previous_diff >= 20:
+                elif previous_diff >= 25:
                     nb_vulns[get_criticity(cvss_max)] += 1
                     issues.append({
                         "issue_id": len(issues)+1,
-                        "severity": get_criticity(0), "confidence": "certain",
+                        "severity": "medium", "confidence": "certain",
                         "target": {"addr": [asset], "protocol": "http"},
                         "title": "[{}] Screenshot differs from last time".format(timestamp),
                         "solution": "n/a",
