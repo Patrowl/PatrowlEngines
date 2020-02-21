@@ -72,14 +72,16 @@ def eyewitness_cmd(list_url, asset_id, scan_id, extra_opts):
         screenshot_base_path = asset_base_path + "/" + str(count)
         try:
             check_output(["{}/EyeWitness.py".format(ENGINE.scanner["options"]["EyeWitnessDirectory"]["value"]), "--single", url, "--web", "-d", screenshot_base_path, "--no-prompt"] + extra_opts)
-        except:
+        except Exception as err_msg:
+            LOG.warning(err_msg)
             continue
         screenshot_files = listdir(screenshot_base_path + "/screens")
         # Retry screenshot capture if previous fail
         if not screenshot_files:
             try:
                 check_output(["{}/EyeWitness.py".format(ENGINE.scanner["options"]["EyeWitnessDirectory"]["value"]), "--single", url, "--web", "-d", screenshot_base_path, "--no-prompt"] + extra_opts)
-            except:
+            except Exception as err_msg:
+                LOG.warning(err_msg)
                 continue
         if not screenshot_files:
             continue
@@ -376,7 +378,8 @@ def start_scan():
             parsed_uri = urlparse(asset["value"])
             asset["value"] = parsed_uri.netloc
 
-        assets.append(asset["value"])
+        if asset["value"] not in assets:
+            assets.append(asset["value"])
 
     scan_id = str(data["scan_id"])
 
@@ -427,7 +430,7 @@ def _scan_urls(scan_id):
     ENGINE.scans[scan_id]["lock"] = True
     LOG.warning("lock on")
 
-    assets = []
+    assets = list()
     for asset in ENGINE.scans[scan_id]["assets"]:
         assets.append(asset)
 
@@ -448,11 +451,17 @@ def _scan_urls(scan_id):
 
             LOG.warning("[%s/%s] Screeshoting %s...", i+1, len(assets), asset)
             result = eyewitness_cmd(urls, asset_data["id"], scan_id, ENGINE.scans[scan_id]['options'])
+            LOG.warning("[%s/%s] Screeshot result: %s", i+1, len(assets), result)
 
             # Get differences with the last screenshot
             for url in result:
                 last_screenshot_path, last_screenshot_url = get_last_screenshot(result[url]["path"], asset_data["id"], scan_id)
-                result[url].update({"previous_diff": diff_screenshot(result[url]["path"], last_screenshot_path), "last_screenshot_path": last_screenshot_path, "last_screenshot_url": last_screenshot_url})
+                diff = diff_screenshot(result[url]["path"], last_screenshot_path)
+                LOG.warning("[%s/%s] Screenshot diff: %s percent", i+1, len(assets), diff)
+                result[url].update({
+                    "previous_diff": diff,
+                    "last_screenshot_path": last_screenshot_path,
+                    "last_screenshot_url": last_screenshot_url})
 
             # Get the difference between the current screenshots
             current_diff = None
