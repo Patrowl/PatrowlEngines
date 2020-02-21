@@ -722,12 +722,15 @@ def get_report(asset, scan_id):
         return {"status": "ERROR", "reason": "no issues found"}
 
     if is_ip(asset):
-        resolved_asset_ip = asset
+        resolved_asset_ips = [asset]
     else:
         # Let's suppose it's a fqdn then...
         try:
-            resolved_asset_ip = query(asset).response.answer[0].to_text().split(" ")[-1]
-        except Exception:
+            resolved_asset_ips = []
+            records = query(asset).response.answer[0].items
+            for record in records:
+                resolved_asset_ips.append(record.address)
+        except Exception as e:
             # What is that thing ?
             return issues
 
@@ -735,7 +738,7 @@ def get_report(asset, scan_id):
     for result in report.findall('.//result'):
         try:
             host_ip = result.find("host").text
-            if resolved_asset_ip == host_ip:
+            if host_ip in resolved_asset_ips:
                 issues.append(result)
         except Exception as e:
             # probably unknown issue's host, skip it
