@@ -233,6 +233,7 @@ class PastebinCrawler:
     '''PastebinCrawler Class'''
     def find_assets(self, link, text):
         '''Find regexes in a pastebin post.'''
+
         if len(SCRAPPED_URLS) > 5000:
             SCRAPPED_URLS.clear()
 

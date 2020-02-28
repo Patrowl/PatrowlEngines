@@ -29,6 +29,7 @@ engines/certstream/certstream*.json
 engines/certstream/CertStreamMonitor
 engines/certstream/whitelist.txt
 engines/eyewitness/eyewitness.json
+engines/eyewitness/*.log
 engines/eyewitness/libs/*
 engines/owl_request/owl_request.json
 engines/pastebin_monitor/pastebin_monitor.json

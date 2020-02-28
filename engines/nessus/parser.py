@@ -6,7 +6,7 @@ import re
 import hashlib
 
 
-def parse_report(report_filename):
+def parse_report(report_filename, nessus_prefix, resolvefqdn=False):
     """Parse a Nessus report file."""
     summary = {
         "info": 0, "low": 0, "medium": 0, "high": 0, "critical": 0,
@@ -33,14 +33,22 @@ def parse_report(report_filename):
                         if report_item.tag == 'HostProperties':
                             for tag in report_item:
                                 asset[tag.attrib['name']] = tag.text
+                        asset_addrs = [asset.get('name')]
+                        if 'host-ip' in asset.keys() and asset['host-ip'] not in asset_addrs:
+                            asset_addrs.append(asset['host-ip'])
+                        if resolvefqdn is True and 'host-fqdn' in asset.keys() and asset['host-fqdn'] not in asset_addrs:
+                            asset_addrs.append(asset['host-fqdn'])
                         if 'pluginName' in report_item.attrib:
                             summary['total'] += 1
+                            service = ""
+                            if report_item.attrib['port'] != "0":
+                                service = "{}/{}".format(report_item.attrib['protocol'], report_item.attrib['port'])
+                                title = "{}: {}".format(service, report_item.attrib['pluginName'])
+                            else:
+                                title = report_item.attrib['pluginName']
                             finding = {
                                 "target": {
-                                    "addr": [
-                                        asset.get('host-ip'),
-                                        asset.get('name')
-                                    ],
+                                    "addr": asset_addrs,
                                     "port_type": report_item.attrib['protocol'],
                                     "port_id": report_item.attrib['port']
                                 },
@@ -57,7 +65,7 @@ def parse_report(report_filename):
                                         "pluginid_"+str(report_item.attrib['pluginID']),
                                     ]
                                 },
-                                "title": report_item.attrib['pluginName'],
+                                "title": title,
                                 "type": report_item.attrib['pluginFamily'].lower().replace(" ", "_"),
                                 "confidence": "certain",
                                 "severity": "info",
@@ -74,11 +82,11 @@ def parse_report(report_filename):
                                     finding['metadata']['vuln_publication_date'] = param.text
 
                                 if param.tag == 'solution':
-                                    finding['solution'] = param.text
+                                    finding['solution'] = "{}: {}".format(service, param.text)
                                 if param.tag == 'description':
-                                    finding['description'] = param.text
-                                if param.tag == 'synopsis':
-                                    finding['title'] = param.text
+                                    finding['description'] = "Service: {}\n{}".format(service, param.text)
+                                # if param.tag == 'synopsis':
+                                #     finding['title'] = "{}: {}".format(service, param.text)
 
                                 if param.tag == 'cvss_vector':
                                     finding['metadata']['risk']['cvss_vector'] = param.text

@@ -124,23 +124,31 @@ def getfindings(scan_id):
         res.update({"status": "error", "reason": "scan_id '{}' not found".format(scan_id)})
         return jsonify(res)
 
-    # check the scan status
+    # Check the scan status
     scan_status(scan_id)
     if this.scans[scan_id]['status'] not in ['FINISHED', 'STOPPED']:
         res.update({"status": "error", "reason": "scan_id '{}' not finished".format(scan_id)})
         return jsonify(res)
 
     nessscan_id = str(this.scans[scan_id]["nessscan_id"])
-    this.nessscan.action(action="scans/"+nessscan_id, method="GET")
+    if this.scans[scan_id]['nessus_scan_hid'] is not None:
+        this.nessscan.action(action="scans/"+nessscan_id+"?history_id="+this.scans[scan_id]['nessus_scan_hid'], method="GET")
+    else:
+        this.nessscan.action(action="scans/"+nessscan_id, method="GET")
 
     ######
-    report_content = this.nessscan.download_scan(export_format='nessus')
+    report_content = this.nessscan.download_scan(export_format='nessus', history_id=this.scans[scan_id]['nessus_scan_hid'])
     report_filename = "{}/reports/nessus_{}_{}.nessus".format(
         BASE_DIR, scan_id, int(time.time()))
     with open(report_filename, 'wb') as w:
         w.write(report_content)
 
-    block_summary, block_issues = parse_report(report_filename)
+    nessus_prefix = "https://{}:{}".format(this.scanner['server_host'], this.scanner['server_port'])
+    # Check if FQDN shoud be resolved (default=false)
+    resolve_fqdn = False
+    if 'identifybyfqdn' in this.scans[scan_id]['options'].keys() and this.scans[scan_id]['options']['identifybyfqdn'] is True:
+        resolve_fqdn = True
+    block_summary, block_issues = parse_report(report_filename, nessus_prefix, resolve_fqdn)
     ######
 
     # Store the findings in a file
@@ -304,6 +312,9 @@ def start_scan():
             allowed_assets.append(asset["value"].strip())
     assets = ",".join(allowed_assets)
 
+    # Initialize history_id
+    nessus_scan_hid = None
+
     # Check action
     if 'action' not in post_args['options'].keys():
         res.update({
@@ -325,13 +336,22 @@ def start_scan():
         # Get scan details
         this.nessscan.scan_details(scan_name)
 
+        nessus_scan_uuid = this.nessscan.res['info']['uuid']
+        if 'getlastcompletereport' not in post_args['options'].keys() or post_args['options']['getlastcompletereport'] is True:
+            for nessus_scan in this.nessscan.res['history'][::-1]:
+                if nessus_scan['status'] == 'completed':
+                    nessus_scan_hid = str(nessus_scan['history_id'])
+                    nessus_scan_uuid = nessus_scan['uuid']
+                    break
+
         # Update the scan info
         this.scans.update({
             scan_id: {
                 "scan_id": scan_id,
                 "scan_name": scan_name,
                 "nessscan_id": this.nessscan.res["info"]["object_id"],
-                "nessscan_uuid": this.nessscan.res['info']['uuid'],
+                "nessus_scan_hid": nessus_scan_hid,
+                "nessscan_uuid": nessus_scan_uuid,
                 "options": post_args['options'],
                 "policy_name": this.nessscan.res['info']['policy'],
                 "assets": post_args['assets'],
@@ -340,7 +360,6 @@ def start_scan():
                 "findings": {}
             }
         })
-        pass
 
     if post_args['options']['action'] == 'scan':
         # Check scan policy
@@ -409,6 +428,7 @@ def start_scan():
                 "scan_id": scan_id,
                 "scan_name": nessscan_name,
                 "nessscan_id": nessscan_id,
+                "nessus_scan_hid": nessus_scan_hid,
                 "nessscan_uuid": this.nessscan.res['scan_uuid'],
                 "options": post_args['options'],
                 "policy_name": policy_name,
@@ -433,9 +453,10 @@ def stop_scan(scan_id):
         res.update({"status": "error", "reason": "scan_id '{}' not found".format(scan_id)})
         return jsonify(res)
 
-    this.nessscan.action(
-        action="scans/"+str(this.scans[scan_id]["nessscan_id"])+"/stop",
-        method="POST")
+    if this.scans[scan_id]['options']['action'] == 'scan':
+        this.nessscan.action(
+            action="scans/"+str(this.scans[scan_id]["nessscan_id"])+"/stop",
+            method="POST")
 
     if this.nessscan.res != {}:
         res.update({"status": "error", "reason": this.nessscan.res['error']})
@@ -557,10 +578,12 @@ def scan_status(scan_id):
             method="GET")
         nessus_scan_status = this.nessscan.res['info']['status']
 
-        if nessus_scan_status == 'running':
-            this.scans[scan_id]['status'] = "SCANNING"
+        if this.scans[scan_id]['nessus_scan_hid'] is not None:
+            this.scans[scan_id]['status'] = "FINISHED"
         elif nessus_scan_status == 'completed':
             this.scans[scan_id]['status'] = "FINISHED"
+        elif nessus_scan_status == 'running':
+            this.scans[scan_id]['status'] = "SCANNING"
         elif nessus_scan_status == 'canceled':
             this.scans[scan_id]['status'] = "STOPPED"
         else:
@@ -609,11 +632,10 @@ def genreport(scan_id=None, report_format="html"):
     if report_format == "html":
         post_data.update({"chapters": "vuln_by_host"})
 
-    this.nessscan.action(
-        action="scans/{}/export".format(scan_id),
-        method="POST",
-        extra=post_data
-    )
+    ness_export_url = "scans/{}/export".format(scan_id)
+    if this.scans[scan_id]['nessus_scan_hid'] is not None:
+        ness_export_url += "?history_id=" + this.scans[scan_id]['nessus_scan_hid']
+    this.nessscan.action(action=ness_export_url, method="POST", extra=post_data)
 
     res.update({"status": "success", "details": {
         "timestamp": int(time.time()),
@@ -658,11 +680,11 @@ def getrawreports(scan_id=None, report_format="html"):
     post_data = {"format": report_format}
     if report_format == "html":
         post_data.update({"chapters": "vuln_by_host"})
-    this.nessscan.action(
-        action="scans/{}/export".format(scan_id),
-        method="POST",
-        extra=post_data
-    )
+
+    ness_export_url = "scans/{}/export".format(scan_id)
+    if this.scans[scan_id]['nessus_scan_hid'] is not None:
+        ness_export_url += "?history_id=" + this.scans[scan_id]['nessus_scan_hid']
+    this.nessscan.action(action=ness_export_url, method="POST", extra=post_data)
 
     report_fileid = str(this.nessscan.res['file'])
     report_token = str(this.nessscan.res['token'])

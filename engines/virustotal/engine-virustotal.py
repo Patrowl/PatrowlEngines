@@ -261,9 +261,14 @@ def start_scan():
     while not isinstance(user_opts, dict):
         user_opts = json.loads(user_opts)
 
+    assets = list()
+    for asset in data['assets']:
+        if asset not in assets:
+            assets.append(asset)
+
     scan_id = str(data['scan_id'])
     scan = {
-        'assets':       data['assets'],
+        'assets':       assets,
         'threads':      [],
         'options':      user_opts,
         'scan_id':      scan_id,

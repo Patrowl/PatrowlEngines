@@ -26,6 +26,7 @@ this.resolver.lifetime = this.resolver.timeout = 5.0
 
 this.pool = ThreadPoolExecutor(4)
 
+
 @app.route('/')
 def default():
     return redirect(url_for('index'))
@@ -483,6 +484,7 @@ def scan_status(scan_id):
         if not f.done():
             this.scans[scan_id]['status'] = "SCANNING"
             all_threads_finished = False
+            # print(f._result)
             break
         else:
             dnstwist_asset, dnstwist_results = f.result()
@@ -491,6 +493,8 @@ def scan_status(scan_id):
 
             #all_threads_finished = True
 
+    # if 'futures' in this.scans[scan_id].keys():
+        # print ("status/len(futures):", len(this.scans[scan_id]['futures']))
     #print "status/len(threads):", len(this.scans[scan_id]['threads'])
     #print "status/all_threads_finished:", all_threads_finished, ", ", len(this.scans[scan_id]['threads'])
     # if all_threads_finished and len(this.scans[scan_id]['threads']) >=1:
@@ -1024,7 +1028,7 @@ def test():
 
         methods = ','.join(rule.methods)
         url = url_for(rule.endpoint, **options)
-        res += urllib.url2pathname("{0:50s} {1:20s} <a href='{2}'>{2}</a><br/>".format(rule.endpoint, methods, url))
+        res += urllib.request.url2pathname("{0:50s} {1:20s} <a href='{2}'>{2}</a><br/>".format(rule.endpoint, methods, url))
 
     return res
 
