@@ -1,5 +1,6 @@
 FROM alpine:latest
 MAINTAINER Patrowl.io "getsupport@patrowl.io"
+
 LABEL Name="PastebinMonitor\ \(Patrowl engine\)" Version="1.0.1"
 
 # Install dependencies

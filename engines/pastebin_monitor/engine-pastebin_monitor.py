@@ -45,13 +45,35 @@ engine = PatrowlEngine(
 
 SCRAPPED_URLS = []
 
+def sql_exec(req, args=None):
+    '''Execute a sql request'''
+    conn = sqlite3.connect(APP_DBNAME)
+    sql = conn.cursor()
+    if args is None:
+        sql.execute(req)
+    else:
+        sql.execute(req, args)
+    conn.commit()
+    conn.close()
+
+def sql_fetchall(req, args=None):
+    '''Execute a sql request and fetchall'''
+    conn = sqlite3.connect(APP_DBNAME)
+    sql = conn.cursor()
+    if args is None:
+        sql.execute(req)
+    else:
+        sql.execute(req, args)
+    conn.commit()
+    data = sql.fetchall()
+    conn.close()
+    return data
 
 @app.errorhandler(404)
 def page_not_found(error):
     '''Page not found.'''
     logging.debug(error)
     return engine.page_not_found()
-
 
 @app.errorhandler(PatrowlEngineExceptions)
 def handle_invalid_usage(error):
@@ -60,16 +82,13 @@ def handle_invalid_usage(error):
     response.status_code = 404
     return response
 
-
 @app.route('/')
 def default():
     return redirect(url_for('index'))
 
-
 @app.route('/engines/pastebin_monitor/')
 def index():
     return jsonify({"page": "index"})
-
 
 @app.route('/engines/pastebin_monitor/status')
 def status():
@@ -96,7 +115,6 @@ def status():
         "scans": scans})
     return jsonify(res)
 
-
 @app.route('/engines/pastebin_monitor/status/<scan_id>')
 def status_scan(scan_id):
     '''Get status on scan identified by id.'''
@@ -111,7 +129,6 @@ def status_scan(scan_id):
 
     return jsonify(res)
 
-
 @app.route('/engines/pastebin_monitor/getreport/<scan_id>')
 def getreport(scan_id):
     '''Get report on finished scans.'''
@@ -125,17 +142,12 @@ def getreport(scan_id):
         return jsonify(result)
     return jsonify(res)
 
-
 @app.route('/engines/pastebin_monitor/getfindings/<scan_id>')
 def getfindings(scan_id):
     '''Get findings on finished scans.'''
     res = {'page': 'getfindings', 'scan_id': scan_id}
 
-    conn = sqlite3.connect(APP_DBNAME)
-    sql = conn.cursor()
-    sql.execute('SELECT id, asset, link, content, criticity FROM findings')
-    data = sql.fetchall()
-    conn.close()
+    data = sql_fetchall('SELECT id, asset, link, content, criticity FROM findings')
 
     issues = []
 
@@ -186,14 +198,9 @@ def getfindings(scan_id):
 
     res.update({'scan': scan, 'summary': summary, 'issues': issues, 'status': 'success'})
 
-    conn = sqlite3.connect(APP_DBNAME)
-    sql = conn.cursor()
-    sql.execute('DELETE FROM findings;')
-    conn.commit()
-    conn.close()
+    sql_exec('DELETE FROM findings;')
 
     return jsonify(res)
-
 
 @app.route('/engines/pastebin_monitor/startscan', methods=['POST'])
 def start_scan():
@@ -205,6 +212,7 @@ def start_scan():
             return jsonify(res)
 
         scan_id = res['details']['scan_id']
+
         engine.scans[scan_id]['status'] = 'SCANNING'
 
         for asset in engine.scans[scan_id]['assets']:
@@ -221,60 +229,62 @@ def start_scan():
     except(KeyboardInterrupt, SystemExit):
         sys.exit(0)
 
-
 class PastebinCrawler:
     '''PastebinCrawler Class'''
     def find_assets(self, link, text):
         '''Find regexes in a pastebin post.'''
-        logging.info("assets:", engine.scanner['assets'])
+
+        if len(SCRAPPED_URLS) > 5000:
+            SCRAPPED_URLS.clear()
+
         for asset, criticity in engine.scanner['assets'].items():
-            logging.info(asset)
-            search = re.findall('{}'.format(asset.lower()), text.lower())
-            if len(search) > 0:
-                conn = sqlite3.connect(APP_DBNAME)
-                sql = conn.cursor()
-                sql.execute('SELECT id from findings WHERE link = ?', (link,))
-                data = sql.fetchall()
-                conn.close()
-                if not data:
-                    logging.info('ALERT FOUND ON: {} / Criticity: {}'.format(link, criticity))
-                    logging.info('=== Content: ===\r\n{}'.format(text))
-                    conn = sqlite3.connect(APP_DBNAME)
-                    sql = conn.cursor()
-                    sql.execute('INSERT INTO findings(asset, link, content, criticity) \
-                                 VALUES (?, ?, ?, ?);', (asset, link, text, criticity))
-                    conn.commit()
-                    conn.close()
+            if text is not None:
+                parse = text.encode('utf-8').decode('utf-8')
+                search = re.findall("{}".format(asset.lower()), parse.lower())
+                if len(search) > 0:
+                    data = sql_fetchall('SELECT id from findings WHERE link = ?', (link,))
+
+                    if not data:
+                        logging.info('ALERT FOUND ON: {} / Criticity: {}'.format(link, criticity))
+                        logging.info('=== Content: ===\r\n{}'.format(text))
+
+                        sql_exec('INSERT INTO findings(asset, link, content, criticity) \
+                                     VALUES (?, ?, ?, ?);', (asset, link, text, criticity))
         SCRAPPED_URLS.append(link)
 
-    def do_get_request(self, res, url):
+    def do_get_request(self, res):
         '''Perform GET request.'''
         try:
+            logging.info('url: {}'.format(res['url']))
             with open('useragents.txt') as file:
                 lines = file.readlines()
                 line = random.choice(lines)
                 line = line.replace('\r', '').replace('\n', '')
-                return SESSION.get(url,
+                data = SESSION.get(res['url'],
                                    headers={'user-agent': '{}'.format(line)},
                                    proxies=res['proxy'],
                                    verify=False,
                                    timeout=res['timeout'], allow_redirects=False)
+                logging.debug(data)
+                return data
         except requests.exceptions.ConnectTimeout:
             if res['proxy'] is not None:
                 logging.debug("[{}] Failed to connect on: '{}' with {}"
-                              .format(res['threadname'], url, res['proxy']['http'].replace('http://', '')))
+                              .format(res['threadname'], res['url'], res['proxy']['http']
+                                      .replace('http://', '')))
                 self.get_random_proxy()
             else:
                 logging.debug("[{}] Failed to connect on: '{}'"
-                              .format(res['threadname'], url))
+                              .format(res['threadname'], res['url']))
         except requests.exceptions.ReadTimeout:
             if res['proxy'] is not None:
                 logging.debug("[{}] Failed to connect on: '{}' with {}"
-                              .format(res['threadname'], url, res['proxy']['http'].replace('http://', '')))
+                              .format(res['threadname'], res['url'], res['proxy']['http']
+                                      .replace('http://', '')))
                 self.get_random_proxy()
             else:
                 logging.debug("[{}] Failed to connect on: '{}'"
-                              .format(res['threadname'], url))
+                              .format(res['threadname'], res['url']))
         except requests.exceptions.ProxyError:
             pass
         except requests.exceptions.ConnectionError:
@@ -291,47 +301,144 @@ class PastebinCrawler:
             proxy = {'http': proxy, 'https': proxy_https}
             return proxy
 
-    def connect_proxy(self, res, url):
+    def connect_proxy(self, res):
         '''Use a proxy for pastebin.'''
         data = requests.Response()
         while data is None or data.status_code != 200:
             proxy = self.get_random_proxy()
             res.update({'proxy': proxy})
-            data = self.do_get_request(res, url)
+            data = self.do_get_request(res)
         return data
 
+CRAWL = PastebinCrawler()
 
-def crawl_pastebin_with_api_key():
+def get_source(url):
+    '''Get soup object from a resource'''
+    logging.debug('Checking {}'.format(url))
+    res = {'threadname': 'MainThread', 'url': url, 'proxy': None,
+           'timeout': 3, 'last_index': None}
+    data = CRAWL.do_get_request(res)
+    return {'res': res, 'soup': BeautifulSoup(data.text, 'html.parser')}
+
+def crawl_pastebin_com_with_api_key():
     '''Crawl pastebin.com with an API key.'''
     while True:
-        res = {'threadname': 'MainThread', 'url': None, 'proxy': None,
-               'timeout': 3, 'last_index': None}
-        crawl = PastebinCrawler()
-        res['url'] = 'https://scrape.pastebin.com/api_scraping.php'
-        data = crawl.do_get_request(res, res['url'])
+        res = {'threadname': 'MainThread', 'url': 'https://scrape.pastebin.com/api_scraping.php',
+               'proxy': None, 'timeout': 3, 'last_index': None}
+
+        data = CRAWL.do_get_request(res)
         for item in json.loads(data.text):
-            res['url'] = item['scrape_url']
-            data = crawl.do_get_request(res, res['url'])
-            if data is not None:
-                crawl.find_assets(item['full_url'], data.text)
-            time.sleep(1)
+            res.update({'url': item['scrape_url']})
+            if not any(res['url'] in s for s in SCRAPPED_URLS):
+                data = CRAWL.do_get_request(res)
+                if data is not None:
+                    CRAWL.find_assets(item['full_url'], data.text)
+                time.sleep(2)
         time.sleep(2)
 
-
-def crawl_pastebin_without_api_key(threadname):
-    '''Crawl pastebin.com without an API key.'''
+def crawl_pastebin_fr():
+    '''Crawl pastebin.fr'''
     while True:
-        res = {'threadname': threadname, 'url': None, 'proxy': None,
-               'timeout': 3, 'last_index': None}
-        crawl = PastebinCrawler()
+        src = get_source('http://pastebin.fr/')
+        data = src['soup'].find('ol').findAll('a')
 
-        res['url'] = 'https://pastebin.com/'
+        for link in data:
+            download_url = 'http://pastebin.fr/pastebin.php?dl={}' \
+                            .format(link['href']
+                                    .replace('http://pastebin.fr/', ''))
+            src['res'].update({'url': download_url})
+            if not any(link['href'] in s for s in SCRAPPED_URLS):
+                data = CRAWL.do_get_request(src['res'])
+                CRAWL.find_assets(download_url, data.text)
+                time.sleep(2)
+        time.sleep(20)
+
+def crawl_slexy_org():
+    '''Crawl slexy.org'''
+    while True:
+        src = get_source('https://slexy.org/recent')
+        data = src['soup'].find('table').findAll('a')
+        for link in data:
+            if link['href'] != '/recent':
+                link = 'https://slexy.org' + link['href']
+
+                if not any(link in s for s in SCRAPPED_URLS):
+                    src = get_source(link)
+                    data = src['soup'].find('div', attrs={'class': 'text'})
+                    CRAWL.find_assets(link, data)
+                    time.sleep(2)
+        time.sleep(20)
+
+def crawl_gists_github_com():
+    '''Crawl gist.github.com'''
+    while True:
+        src = get_source('https://gist.github.com/discover')
+        data = src['soup'].findAll('a', attrs={'class': 'link-overlay'})
+        for link in data:
+            link = link['href']
+            if not any(link in s for s in SCRAPPED_URLS):
+                src['res'].update({'url': link})
+                data = CRAWL.do_get_request(src['res'])
+                CRAWL.find_assets(link, data.text)
+                time.sleep(2)
+        time.sleep(20)
+
+def crawl_codepad_org():
+    '''Crawl codepad.org'''
+    while True:
+        src = get_source('http://codepad.org/recent')
+        sections = src['soup'].findAll('div', attrs={'class': 'section'})
+        for section in sections:
+            link = section.findAll('table')[1].find('a')['href']
+            if not any(link in s for s in SCRAPPED_URLS):
+                src['res'].update({'url': link})
+                data = CRAWL.do_get_request(src['res'])
+                CRAWL.find_assets(link, data.text)
+                time.sleep(2)
+        time.sleep(20)
+
+def crawl_kpaste_net():
+    '''Crawl kpaste.net'''
+    while True:
+        src = get_source('https://kpaste.net/')
+        data = src['soup'].find('div', attrs={'class': 'p'}).findAll('a')
+        for link in data:
+            link = link['href']
+            if link != '/':
+                link = 'https://kpaste.net' + link
+                if not any(link in s for s in SCRAPPED_URLS):
+                    src['res'].update({'url': link})
+                    data = CRAWL.do_get_request(src['res'])
+                    CRAWL.find_assets(link, data.text)
+                    time.sleep(2)
+        time.sleep(20)
+
+def crawl_ideone_com():
+    '''Crawl ideone.com'''
+    while True:
+        src = get_source('https://ideone.com/recent')
+        data = src['soup'].find('div', attrs={'class': 'span8'}).findAll('a')
+        for link in data:
+            link = 'https://ideone.com/plain' + link['href']
+            if '/recent/' not in link:
+                if not any(link in s for s in SCRAPPED_URLS):
+                    src['res'].update({'url': link})
+                    data = CRAWL.do_get_request(src['res'])
+                    CRAWL.find_assets(link, data.text)
+                    time.sleep(2)
+        time.sleep(20)
+
+def crawl_pastebin_com_without_api_key(threadname):
+    '''Crawl pastebin.com without an API key.'''
+    res = {'threadname': threadname, 'url': 'https://pastebin.com/', 'proxy': None,
+           'timeout': 3, 'last_index': None}
+    while True:
         logging.info('[{}] Starting a scan on: ({})'.format(res['threadname'], res['url']))
 
         if res['proxy'] is None:
-            data = crawl.connect_proxy(res, res['url'])
+            data = CRAWL.connect_proxy(res)
         else:
-            data = crawl.do_get_request(res, res['url'])
+            data = CRAWL.do_get_request(res)
 
         if data is None:
             return
@@ -352,20 +459,20 @@ def crawl_pastebin_without_api_key(threadname):
                     break
 
                 if not any(link in s for s in SCRAPPED_URLS):
-                    logging.info('[{}] {} ({})'.format(res['threadname'], link, res['proxy']))
-                    data = crawl.do_get_request(res, link)
+                    res.update({'url': link})
+                    logging.info('[{}] {} ({})'
+                                 .format(res['threadname'], link, res['proxy']))
+                    data = CRAWL.do_get_request(res)
                     while data is None or 'Pastebin.com has blocked your IP' in data.text:
-                        crawl.connect_proxy(res, link)
-                        data = crawl.do_get_request(res, link)
-                    crawl.find_assets(link, data.text)
+                        CRAWL.connect_proxy(res)
+                        data = CRAWL.do_get_request(res)
+                    CRAWL.find_assets(link, data.text)
                     time.sleep(1)
-
 
 @app.route('/engines/pastebin_monitor/info')
 def info():
     status()
     return jsonify({"page": "info", "engine_config": engine.scanner})
-
 
 def _loadconfig():
     '''Load the Engine configuration.'''
@@ -379,7 +486,6 @@ def _loadconfig():
         return {"status": "success"}
     return {"status": "error", "reason": "config file not found"}
 
-
 @app.route('/engines/pastebin_monitor/reloadconfig')
 def reloadconfig():
     res = {"page": "reloadconfig"}
@@ -387,28 +493,30 @@ def reloadconfig():
     res.update({"config": engine.scanner})
     return jsonify(res)
 
-
 if __name__ == '__main__':
     if not os.path.exists(APP_BASE_DIR+'/results'):
         os.makedirs(APP_BASE_DIR+'/results')
     _loadconfig()
 
-    conn = sqlite3.connect(APP_DBNAME)
-    sql = conn.cursor()
-    sql.execute('CREATE TABLE IF NOT EXISTS findings \
+    sql_exec('CREATE TABLE IF NOT EXISTS findings \
                 (id INTEGER PRIMARY KEY, asset TEXT NOT NULL, \
                 link TEXT NOT NULL, content TEXT NOT NULL, \
                 criticity TEXT NOT NULL);')
-    conn.commit()
-    conn.close()
 
     POOL = Pool()
 
     if len(engine.scanner['options']['ApiKey']['value']) > 0:
-        POOL.apply_async(crawl_pastebin_with_api_key)
+        POOL.apply_async(crawl_pastebin_com_with_api_key)
     else:
         for i in range(engine.scanner['options']['ThreadsNumber']['value']):
             threadname = 'thread{}'.format(i)
-            POOL.apply_async(crawl_pastebin_without_api_key, args=(threadname,))
+            POOL.apply_async(crawl_pastebin_com_without_api_key, args=(threadname,))
+
+    POOL.apply_async(crawl_pastebin_fr)
+    POOL.apply_async(crawl_slexy_org)
+    POOL.apply_async(crawl_gists_github_com)
+    POOL.apply_async(crawl_codepad_org)
+    POOL.apply_async(crawl_kpaste_net)
+    POOL.apply_async(crawl_ideone_com)
 
     engine.run_app(app_debug=APP_DEBUG, app_host=APP_HOST, app_port=APP_PORT)
