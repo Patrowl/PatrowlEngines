@@ -1028,7 +1028,7 @@ def test():
 
         methods = ','.join(rule.methods)
         url = url_for(rule.endpoint, **options)
-        res += urllib.url2pathname("{0:50s} {1:20s} <a href='{2}'>{2}</a><br/>".format(rule.endpoint, methods, url))
+        res += urllib.request.url2pathname("{0:50s} {1:20s} <a href='{2}'>{2}</a><br/>".format(rule.endpoint, methods, url))
 
     return res
 
