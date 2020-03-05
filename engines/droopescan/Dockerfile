@@ -6,6 +6,7 @@ LABEL Name="droopescan\ \(Patrowl engine\)" Version="1.0.0"
 RUN mkdir -p /opt/patrowl-engines/droopescan
 RUN mkdir -p /opt/patrowl-engines/droopescan/results
 RUN mkdir -p /opt/patrowl-engines/droopescan/logs
+RUN mkdir -p /opt/patrowl-engines/droopescan/tmp
 
 # Set the working directory to /opt/patrowl-engines/<engine_name>
 WORKDIR /opt/patrowl-engines/droopescan
@@ -22,11 +23,11 @@ COPY README.md .
 RUN mkdir -p results
 RUN apk add --update --no-cache \
     python3 python3-dev py3-pip \
-    git \
+    git gcc musl-dev linux-headers \
   && rm -rf /var/cache/apk/*
 RUN pip3 install --upgrade pip
 RUN pip3 install --trusted-host pypi.python.org -r requirements.txt
-RUN pip install droopescan
+#RUN pip3 install psutil droopescan
 
 
 # TCP port exposed by the container (NAT)
