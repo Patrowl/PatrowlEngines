@@ -412,9 +412,12 @@ def _scan_thread(scan_id):
             # extract the net location from urls if needed
             if asset["datatype"] == 'url':
                 hosts.append("{uri.netloc}".format(uri=urlparse(asset["value"])).strip())
+                app.logger.debug('Adding URL {} to hosts'.format(asset["value"]))
             else:
                 hosts.append(asset["value"].strip())
+                app.logger.debug('Adding asset {} to hosts'.format(asset["value"]))
 
+    app.logger.debug('Hosts set : %s', hosts)
     # ensure no duplicates
     hosts = list(set(hosts))
 
@@ -423,45 +426,37 @@ def _scan_thread(scan_id):
     with open(hosts_filename, 'w') as hosts_file:
         for item in hosts:
             hosts_file.write("%s\n" % item)
-            app.logger.debug('asset: %s', item)
 
     # Sanitize args :
-    # del this.scans[scan_id]['options']['ports']
     options = this.scans[scan_id]['options']
     app.logger.debug('options: %s', options)
 
-    log_path = BASE_DIR+"/logs/" + scan_id + ".error"
+    log_path = BASE_DIR+"/results/droopescan-" + scan_id + ".json"
 
-    cmd = this.scanner['path'] + " scan "
+    error_log_path = BASE_DIR+"/logs/droopescan-error-" + scan_id + ".log"
 
-''' NO OPTIONS FOR THIS SCAN
+    # FIXME Set binary path here
+    cmd = BASE_DIR + "/vdrp/bin/droopescan "
+    
     # Check options
-    for opt_key in options.keys():
-        if opt_key in this.scanner['options'] and options.get(opt_key) and opt_key not in ["ports", "script", "top_ports", "script_args", "script_output_fields", "host_file_path"]:
+    for opt_key in options.keys():  
+        if opt_key in this.scanner['options'] and options.get(opt_key):
+            # FIXME Security : Is it secure to let any options in ? No escaping ?
             cmd += " {}".format(this.scanner['options'][opt_key]['value'])
-        if opt_key == "ports" and ports is not None:  # /!\ @todo / Security issue: Sanitize parameters here
-            cmd += " -p{}".format(ports)
-        if opt_key == "top_ports": # /!\ @todo / Security issue: Sanitize parameters here
-            cmd += " --top-ports {}".format(options.get(opt_key))
-        if opt_key == "script" and options.get(opt_key).endswith('.nse'):  # /!\ @todo / Security issue: Sanitize parameters here
-            cmd += " --script {}".format(options.get(opt_key))
-        if opt_key == "script_args":  # /!\ @todo / Security issue: Sanitize parameters here
-            cmd += " --script-args {}".format(options.get(opt_key))
-        if opt_key == "host_file_path":  # /!\ @todo / Security issue: Sanitize parameters here
+        if opt_key ==  "host_file_path":
             if os.path.isfile(options.get(opt_key)):
-                with open(options.get(opt_key), 'r') as f:
+                with open(options.get(opt_key), 'r') as fh:
                     with open(hosts_filename, 'a') as hosts_file:
-                        for line in f:
+                        for line in fh:
                             hosts_file.write(line)
-'''
 
     cmd += " -U " + hosts_filename
-    cmd += " > " +BASE_DIR+"/results/droopescanOut_" + scan_id + ".json"
+    cmd += " --output json "
     app.logger.debug('cmd: %s', cmd)
 
     this.scans[scan_id]["proc_cmd"] = "not set!!"
-    with open(log_path, "w") as stderr:
-        this.scans[scan_id]["proc"] = subprocess.Popen(cmd, shell=True, stdout=open("/dev/null", "w"), stderr=stderr)
+    with open(error_log_path, "w") as stderr:
+        this.scans[scan_id]["proc"] = subprocess.Popen(cmd, shell=True, stdout=open(log_path, "w"), stderr=stderr)
     this.scans[scan_id]["proc_cmd"] = cmd
 
     return True
