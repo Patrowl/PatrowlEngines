@@ -411,10 +411,10 @@ def _scan_thread(scan_id):
         else:
             # extract the net location from urls if needed
             if asset["datatype"] == 'url':
-                hosts.append("{uri.netloc}".format(uri=urlparse(asset["value"])).strip())
+                hosts.append("{uri.netloc}".format(uri=urlparse(quote(asset["value"]))).strip())
                 app.logger.debug('Adding URL {} to hosts'.format(asset["value"]))
             else:
-                hosts.append(asset["value"].strip())
+                hosts.append(quote(asset["value"]).strip())
                 app.logger.debug('Adding asset {} to hosts'.format(asset["value"]))
 
     app.logger.debug('Hosts set : %s', hosts)
@@ -425,7 +425,7 @@ def _scan_thread(scan_id):
     hosts_filename = BASE_DIR+"/tmp/engine_droopescan_hosts_file_scan_id_{}.tmp".format(scan_id)
     with open(hosts_filename, 'w') as hosts_file:
         for item in hosts:
-            hosts_file.write("%s\n" % item)
+            hosts_file.write("{}\n".format(quote(item)))
 
     # Sanitize args :
     options = this.scans[scan_id]['options']
