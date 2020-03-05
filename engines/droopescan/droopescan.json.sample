@@ -4,11 +4,11 @@
 	"description": "CMS Scanner",
 	"allowed_asset_types": ["url"],
 	"options": {
-		"hosts": 				{ "type": "required", "value": "-u" },
+		"hosts": 				{ "type": "required" },
 		"scan_drupal": 				{ "type": "optional", "value": "scan drupal" },
 		"scan_joomla": 				{ "type": "optional", "value": "scan joomla" },
-		"scan_moodle": 			{ "type": "optional", "value": "scan moodle"},
+		"scan_moodle": 				{ "type": "optional", "value": "scan moodle"},
 		"scan_silverstripe": 			{ "type": "optional", "value": "scan silverstripe"},
-		"scan_wordpress": 		{ "type": "optional", "value": "scan wordpress"}
+		"scan_wordpress": 			{ "type": "optional", "value": "scan wordpress"}
 	}
 }
