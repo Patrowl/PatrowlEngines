@@ -119,7 +119,16 @@ def clean():
 @app.route('/engines/droopescan/clean/<scan_id>')
 def clean_scan(scan_id):
     """Clean scan identified by id."""
-    return engine.clean_scan(scan_id)
+    res = {"page": "clean_scan"}
+    res.update({"scan_id": scan_id})
+
+    if scan_id not in this.scans.keys():
+        res.update({"status": "error", "reason": "scan_id '{}' not found".format(scan_id)})
+        return jsonify(res)
+
+    this.scans.pop(scan_id)
+    res.update({"status": "removed"})
+    return jsonify(res)
 
 
 
@@ -134,8 +143,8 @@ def status():
 
     if not os.path.exists(BASE_DIR+'/droopescan.json'):
         this.scanner['status'] = "ERROR"
-    if not os.path.isfile(this.scanner['path']):
-        this.scanner['status'] = "ERROR"
+#    if not os.path.isfile(this.scanner['path']):
+#        this.scanner['status'] = "ERROR"
 
     res.update({"status": this.scanner['status']})
 
