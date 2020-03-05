@@ -435,8 +435,7 @@ def _scan_thread(scan_id):
 
     error_log_path = BASE_DIR+"/logs/droopescan-error-" + scan_id + ".log"
 
-    # FIXME Set binary path here
-    cmd = BASE_DIR + "/vdrp/bin/droopescan "
+    cmd = "droopescan "
     
     # Check options
     for opt_key in options.keys():  
