@@ -12,3 +12,5 @@ urllib3>=1.25
 werkzeug>=0.15.6
 netaddr==0.7.19
 PatrowlEnginesUtils>=0.0.12
+psutil>=5.4.7
+droopescan==1.41.3
