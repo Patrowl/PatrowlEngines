@@ -194,25 +194,10 @@ def loadconfig():
         this.scanner['status'] = "ERROR"
         # print ("Error: config file '{}' not found".format(conf_file))
         return {"status": "ERROR", "reason": "config file not found."}
-    if not os.path.isfile(this.scanner['path']):
-        this.scanner['status'] = "ERROR"
-        # print ("Error: path to Droopescan '{}' not found".format(this.scanner['path']))
-        return {"status": "ERROR", "reason": "path to droopescan binary not found."}
-
-def loadconfig():
-    conf_file = BASE_DIR+'/droopescan.json'
-    if os.path.exists(conf_file):
-        json_data = open(conf_file)
-        this.scanner = json.load(json_data)
-        this.scanner['status'] = "READY"
-    else:
-        this.scanner['status'] = "ERROR"
-        # print ("Error: config file '{}' not found".format(conf_file))
-        return {"status": "ERROR", "reason": "config file not found."}
-    if not os.path.isfile(this.scanner['path']):
-        this.scanner['status'] = "ERROR"
-        # print ("Error: path to Droopescan '{}' not found".format(this.scanner['path']))
-        return {"status": "ERROR", "reason": "path to Droopescan binary not found."}
+#    if not os.path.isfile(this.scanner['path']):
+#        this.scanner['status'] = "ERROR"
+#        # print ("Error: path to Droopescan '{}' not found".format(this.scanner['path']))
+#        return {"status": "ERROR", "reason": "path to Droopescan binary not found."}
 
 
 @app.route('/engines/droopescan/reloadconfig')
