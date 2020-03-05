@@ -167,14 +167,14 @@ def getreport(scan_id):
     # remove the scan from the active scan list
     clean_scan(scan_id)
 
-    filepath = BASE_DIR+"/results/droopescan_"+scan_id+".json"
+    filepath = BASE_DIR+"/results/droopescan-"+scan_id+".json"
     if not os.path.exists(filepath):
         return jsonify({"status": "ERROR", "reason": "report file for scan_id '{}' not found".format(scan_id)})
 
     return send_file(
         filepath,
         mimetype='application/json',
-        attachment_filename='droopescan_'+str(scan_id)+".json",
+        attachment_filename='droopescan-'+str(scan_id)+".json",
         as_attachment=True
     )
 
@@ -496,13 +496,13 @@ def getfindings(scan_id):
 
     # check if the scan is finished
     status()
+
     if hasattr(proc, 'pid') and psutil.pid_exists(proc.pid) and psutil.Process(proc.pid).status() in ["sleeping", "running"]:
-        # print "scan not finished"
         res.update({"status": "error", "reason": "Scan in progress"})
         return jsonify(res)
 
     # check if the report is available (exists && scan finished)
-    report_filename = BASE_DIR + "/results/droopescanOut_{}.json".format(scan_id)
+    report_filename = BASE_DIR + "/results/droopescan-{}.json".format(scan_id)
     if not os.path.exists(report_filename):
         res.update({"status": "error", "reason": "Report file not available"})
         return jsonify(res)
@@ -542,6 +542,7 @@ def getfindings(scan_id):
         "issues": issues,
         "status": "success"
         })
+
     return jsonify(res)
 
 
