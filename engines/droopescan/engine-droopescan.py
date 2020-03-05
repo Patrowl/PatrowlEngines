@@ -14,7 +14,7 @@ import datetime
 from urllib.parse import urlparse
 from copy import deepcopy
 from flask import Flask, request, jsonify, redirect, url_for, send_file
-#import xml.etree.ElementTree as EltTree
+from shlex import quote
 import json
 
 # Own library imports
@@ -447,7 +447,7 @@ def _scan_thread(scan_id):
                 with open(options.get(opt_key), 'r') as fh:
                     with open(hosts_filename, 'a') as hosts_file:
                         for line in fh:
-                            hosts_file.write(line)
+                            hosts_file.write(quote(line))
 
     cmd += " -U " + hosts_filename
     cmd += " --output json "
@@ -455,7 +455,7 @@ def _scan_thread(scan_id):
 
     this.scans[scan_id]["proc_cmd"] = "not set!!"
     with open(error_log_path, "w") as stderr:
-        this.scans[scan_id]["proc"] = subprocess.Popen(cmd, shell=True, stdout=open(log_path, "w"), stderr=stderr)
+        this.scans[scan_id]["proc"] = subprocess.Popen([cmd], shell=True, stdout=open(log_path, "w"), stderr=stderr)
     this.scans[scan_id]["proc_cmd"] = cmd
 
     return True
