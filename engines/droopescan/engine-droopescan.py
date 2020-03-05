@@ -469,19 +469,88 @@ def _scan_thread(scan_id):
 def _parse_report(filename, scan_id):
     """Parse the Droopescan report."""
     res = []
-    target = {'https://testsite.com'}
-    ts = tree.find("taskbegin").get("time")
+    target = {}
+    app.logger.debug('Opening results file for scan %s', str(scan_id) + " : " + str(filename))
+    if os.path.isfile(filename):
+        # TODO Catch Exception for open() function
+        with open(filename, 'r') as fp:
+            app.logger.debug('Opened file named {} in mode {}'.format(fp.name, fp.mode))
+            try:
+                json_data = json.load(fp)
+            except ValueError:
+                app.logger.debug('Error happened - DecodeJSONError : {}'.format(sys.exc_info()[0]))
+                return {"status" : "error", "reason": "Decoding JSON failed"}
+            except NameError:
+                app.logger.debug('Error happened - NameError while loading JSON : {}'.format(sys.exc_info()[0]))
+                return {"status" : "error", "reason": "NameError"}
+            except Exception:
+                app.logger.debug('Error happened - {}'.format(sys.exc_info()[0]))
+                return {"status" : "error", "reason": "An error occurred"}
 
+            ts = 0 # FIXME tree.find("taskbegin").get("time")
+            url_asset = this.scans[scan_id]["assets"]
 
+            addr_list = []
+            addr_list.append(str(json_data["host"]))
+            addr_type = "url"
+            #addr_list.append("https://"+str(json_data["host"]))
 
-    if True:
-    	res.append(deepcopy(_add_issue(scan_id, target, ts,
-    	"Host is up",
-    	"The scan detected that the host was up",
-    	type="host_availability")))
+                
+            target = {
+                "addr": addr_list,
+                "addr_type" : "url",
+            }
+    
+            has_plugins = False
+            if json_data["plugins"]["is_empty"] is False: 
+                has_plugins = True
+                for fd in json_data["plugins"]["finds"]:
+                    plg_name=fd["name"]
+                    app.logger.debug('Plugin {} is installed'.format(plg_name))
+                    if hasattr(fd,'imu'):
+                        desc='The scan detected that the plugin {} is installed on this CMS ({}).'.format(plg_name,fd["imu"]["description"]),
+                    else:
+                        desc='The scan detected that the plugin {} is installed on this CMS.'.format(plg_name),
+                    # Add plugin found to findings
+                    res.append(deepcopy(_add_issue(scan_id, target, ts, 
+                        'Plugin {} is installed'.format(plg_name), 
+                        desc, type='intalled_plugin')))  
 
-    return res
+            has_themes = False
+            if json_data["themes"]["is_empty"] is False:
+                has_themes = True
+                for fd in json_data["themes"]["finds"]:
+                    thm_name=fd["name"]
+                    thm_url=fd["url"]
+                    app.logger.debug('Theme {} is installed'.format(thm_name))
+                    # Add theme found to findings
+                    res.append(deepcopy(_add_issue(scan_id, target, ts, 
+                        'Theme {} is installed'.format(thm_name), 
+                        'The scan detected that the theme {} is installed on {}.'.format(thm_name, thm_url), 
+                        type='intalled_theme')))
 
+            # TODO Check host availability
+            #if False:
+            #   res.append(deepcopy(_add_issue(scan_id, target, ts, 
+            #        "Host is up", 
+            #        "The scan detected that the host was up", 
+            #        type="host_availability"))) 
+
+            has_version = False
+            if json_data["version"]["is_empty"] is False:
+                has_version = True
+                version_list = json_data["version"]["finds"]
+                for ver in version_list:
+                    app.logger.debug('Version {} is possibly installed'.format(ver))
+                    # Add version found to findings
+                    res.append(deepcopy(_add_issue(scan_id, target, ts, 
+                        'Version {} is possibly installed'.format(ver), 
+                        'The scan detected that the version {} is possibly installed.'.format(ver), 
+                        type='intalled_version', confidence='low')))
+
+        return res
+    else:
+        return {"status" : "error", "reason": "An error happened while handling file"}
 
 ###########################
 
