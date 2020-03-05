@@ -85,12 +85,6 @@ def readiness():
     return engine.readiness()
 
 
-@app.route('/engines/droopescan/test')
-def test():
-    """Return test page."""
-    return engine.test()
-
-
 @app.route('/engines/droopescan/info')
 def info():
     scans = {}
@@ -231,20 +225,44 @@ def test():
 
 @app.route('/engines/droopescan/status/<scan_id>', methods=['GET'])
 def scan_status(scan_id):
-    res = {"page": "scan_status"}
+    res = {"page": "scan_status", "status": "UNKNOWN"}
 
-    if scan_id not in engine.scans.keys():
+    if scan_id not in this.scans.keys():
         res.update({"status": "error", "reason": "scan_id '{}' not found".format(scan_id)})
         return jsonify(res)
 
-    # check id the scan is finished or not
-    _is_scan_finished(scan_id)
+    proc = this.scans[scan_id]["proc"]
+
+    if this.scans[scan_id]["status"] == "ERROR":
+        res.update({"status": "error", "reason": "todo"})
+        return jsonify(res)
+
+    if not hasattr(proc, "pid"):
+        res.update({"status": "ERROR", "reason": "No PID found"})
+        return jsonify(res)
+
+    if not psutil.pid_exists(proc.pid):
+        res.update({"status": "FINISHED"})
+        this.scans[scan_id]["status"] = "FINISHED"
+
+    elif psutil.pid_exists(proc.pid) and psutil.Process(proc.pid).status() in ["sleeping", "running"]:
+        res.update({
+            "status": "SCANNING",
+            "info": {
+                "pid": proc.pid,
+                "cmd": this.scans[scan_id]["proc_cmd"]}
+        })
+
+    elif psutil.pid_exists(proc.pid) and psutil.Process(proc.pid).status() == "zombie":
+        res.update({"status": "FINISHED"})
+        this.scans[scan_id]["status"] = "FINISHED"
+        psutil.Process(proc.pid).terminate()
 
     # return the scan parameters and the status
-    res.update({
-        # "scan": engine.scans[scan_id],
-        "status": engine.scans[scan_id]["status"]
-    })
+    #res.update({
+    #    "scan": this.scans[scan_id],
+    #    #"status": this.scans[scan_id]["status"]
+    #})
 
     return jsonify(res)
 
