@@ -14,7 +14,8 @@ import datetime
 from urllib.parse import urlparse
 from copy import deepcopy
 from flask import Flask, request, jsonify, redirect, url_for, send_file
-import xml.etree.ElementTree as ET
+#import xml.etree.ElementTree as EltTree
+import json
 
 # Own library imports
 from PatrowlEnginesUtils.PatrowlEngine import _json_serial
@@ -26,6 +27,7 @@ APP_DEBUG = False
 APP_HOST = "0.0.0.0"
 APP_PORT = 5021
 APP_MAXSCANS = 20
+APP_ENGINE_NAME = "patrowl-droopescan"
 
 BASE_DIR = os.path.dirname(os.path.realpath(__file__))
 this = sys.modules[__name__]
@@ -37,12 +39,12 @@ this.scans = {}
 
 engine = PatrowlEngine(
     app=app,
-    base_dir=APP_BASE_DIR,
+    base_dir=BASE_DIR,
     name=APP_ENGINE_NAME,
     max_scans=APP_MAXSCANS
 )
 
-requests.packages.urllib3.disable_warnings()
+#request.packages.urllib3.disable_warnings()
 
 
 
