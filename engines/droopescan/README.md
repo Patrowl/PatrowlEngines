@@ -49,3 +49,8 @@ r = requests.post(url='http://0.0.0.0:5021/engines/droopscan/startscan',
            data=json.dumps(post_data),
            headers = {'Content-type': 'application/json', 'Accept': 'application/json'})
 ```
+
+## Pro functionnalities
+- Support for multiple hosts
+- Vulnerability finding and processing
+
