@@ -461,10 +461,8 @@ def _scan_thread(scan_id):
     return True
 
 
-###########################
-
 #Parse Droopescan report
-###########################
+# FIXME This function is too long
 def _parse_report(filename, scan_id):
     """Parse the Droopescan report."""
     res = []
@@ -486,7 +484,7 @@ def _parse_report(filename, scan_id):
                 app.logger.debug('Error happened - {}'.format(sys.exc_info()[0]))
                 return {"status" : "error", "reason": "An error occurred"}
 
-            ts = 0 # FIXME tree.find("taskbegin").get("time")
+            ts = this.scans[scan_id]["started_at"]
             url_asset = this.scans[scan_id]["assets"]
 
             addr_list = []
@@ -499,7 +497,7 @@ def _parse_report(filename, scan_id):
                 "addr": addr_list,
                 "addr_type" : "url",
             }
-    
+            # Check for plugins
             has_plugins = False
             if json_data["plugins"]["is_empty"] is False: 
                 has_plugins = True
@@ -514,7 +512,7 @@ def _parse_report(filename, scan_id):
                     res.append(deepcopy(_add_issue(scan_id, target, ts, 
                         'Plugin {} is installed'.format(plg_name), 
                         desc, type='intalled_plugin')))  
-
+            # Check for themes
             has_themes = False
             if json_data["themes"]["is_empty"] is False:
                 has_themes = True
@@ -527,7 +525,19 @@ def _parse_report(filename, scan_id):
                         'Theme {} is installed'.format(thm_name), 
                         'The scan detected that the theme {} is installed on {}.'.format(thm_name, thm_url), 
                         type='intalled_theme')))
-
+            # Check for interesting URLs
+            has_urls = False
+            if json_data["interesting urls"]["is_empty"] is False:
+                has_urls = True
+                for fd in json_data["interesting urls"]["finds"]:
+                    url_name=fd["url"]
+                    url_desc=fd["description"]
+                    app.logger.debug('Found interesting url : {}'.format(url_name))
+                    # Add intesresting url found to findings
+                    res.append(deepcopy(_add_issue(scan_id, target, ts, 
+                        'Interesting url {} found'.format(url_name), 
+                        'An interesting URL was found: {} - "{}"'.format(url_name, url_desc), 
+                        type='interesting_url')))
             # TODO Check host availability
             #if False:
             #   res.append(deepcopy(_add_issue(scan_id, target, ts, 
