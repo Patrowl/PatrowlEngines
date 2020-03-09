@@ -18,17 +18,14 @@ COPY droopescan.json.sample droopescan.json
 COPY requirements.txt .
 COPY README.md .
 
-
 # Install any needed packages specified in requirements.txt
 RUN mkdir -p results
 RUN apk add --update --no-cache \
     python3 python3-dev py3-pip \
     git gcc musl-dev linux-headers \
   && rm -rf /var/cache/apk/*
-RUN pip3 install --upgrade pip
-RUN pip3 install --trusted-host pypi.python.org -r requirements.txt
-#RUN pip3 install psutil droopescan
-
+RUN python3 -m pip install --upgrade pip
+RUN python3 -m pip install --trusted-host pypi.python.org -r requirements.txt
 
 # TCP port exposed by the container (NAT)
 EXPOSE 5021
