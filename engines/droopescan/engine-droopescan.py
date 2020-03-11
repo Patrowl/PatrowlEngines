@@ -1,21 +1,22 @@
 #!/usr/bin/python3
 # -*- coding: utf-8 -*-
+""" Droopescan Patrowl engine application """
+
 import os
 import subprocess
 import sys
-import psutil
 import json
 import optparse
 import threading
 import urllib
 import time
-import hashlib
-import datetime
-from urllib.parse import urlparse
+#import hashlib
+#import datetime
+#from urllib.parse import urlparse
 from copy import deepcopy
-from flask import Flask, request, jsonify, redirect, url_for, send_file
 from shlex import quote
-import json
+from flask import Flask, request, jsonify, url_for, send_file #, redirect
+import psutil
 
 # Own library imports
 from PatrowlEnginesUtils.PatrowlEngine import _json_serial
@@ -87,6 +88,7 @@ def readiness():
 
 @app.route('/engines/droopescan/info')
 def info():
+    """Get info on running engine."""
     scans = {}
     for scan in this.scans.keys():
         scan_status(scan)
@@ -128,6 +130,7 @@ def clean_scan(scan_id):
 
 @app.route('/engines/droopescan/status')
 def status():
+    """Get status on engine and all scans."""
     res = {"page": "status"}
 
     if len(this.scans) == APP_MAXSCANS:
@@ -161,6 +164,7 @@ def status():
 
 @app.route('/engines/droopescan/getreport/<scan_id>')
 def getreport(scan_id):
+    """Get report on finished scans."""
     if scan_id not in this.scans.keys():
         return jsonify({"status": "ERROR", "reason": "scan_id '{}' not found".format(scan_id)})
 
@@ -169,7 +173,8 @@ def getreport(scan_id):
 
     filepath = BASE_DIR+"/results/droopescan-"+scan_id+".json"
     if not os.path.exists(filepath):
-        return jsonify({"status": "ERROR", "reason": "report file for scan_id '{}' not found".format(scan_id)})
+        return jsonify({"status": "ERROR",
+                        "reason": "report file for scan_id '{}' not found".format(scan_id)})
 
     return send_file(
         filepath,
@@ -179,23 +184,20 @@ def getreport(scan_id):
     )
 
 def loadconfig():
+    """ Load engine configuration """
     conf_file = BASE_DIR+'/droopescan.json'
     if os.path.exists(conf_file):
         json_data = open(conf_file)
         this.scanner = json.load(json_data)
         this.scanner['status'] = "READY"
+        return {"status": "OK", "reason": "config file loaded."}
     else:
         this.scanner['status'] = "ERROR"
-        # print ("Error: config file '{}' not found".format(conf_file))
         return {"status": "ERROR", "reason": "config file not found."}
-#    if not os.path.isfile(this.scanner['path']):
-#        this.scanner['status'] = "ERROR"
-#        # print ("Error: path to Droopescan '{}' not found".format(this.scanner['path']))
-#        return {"status": "ERROR", "reason": "path to Droopescan binary not found."}
-
 
 @app.route('/engines/droopescan/reloadconfig')
 def reloadconfig():
+    """ Reload engine configuration """
     res = {"page": "reloadconfig"}
     loadconfig()
     res.update({"config": this.scanner})
@@ -204,11 +206,13 @@ def reloadconfig():
 
 @app.errorhandler(404)
 def page_not_found(e):
+    """Page not found."""
     return jsonify({"page": "not found"})
 
 
 @app.route('/engines/droopescan/test')
 def test():
+    """Return test page."""
     res = "<h2>Test Page (DEBUG):</h2>"
     for rule in app.url_map.iter_rules():
         options = {}
@@ -217,7 +221,8 @@ def test():
 
         methods = ','.join(rule.methods)
         url = url_for(rule.endpoint, **options)
-        res += urllib.url2pathname("{0:50s} {1:20s} <a href='{2}'>{2}</a><br/>".format(rule.endpoint, methods, url))
+        res += urllib.url2pathname("{0:50s} {1:20s} <a href='{2}'>{2}</a><br/>".format(
+            rule.endpoint, methods, url))
 
     return res
 
@@ -225,6 +230,7 @@ def test():
 
 @app.route('/engines/droopescan/status/<scan_id>', methods=['GET'])
 def scan_status(scan_id):
+    """Get status on scan identified by id."""
     res = {"page": "scan_status", "status": "UNKNOWN"}
 
     if scan_id not in this.scans.keys():
@@ -245,7 +251,8 @@ def scan_status(scan_id):
         res.update({"status": "FINISHED"})
         this.scans[scan_id]["status"] = "FINISHED"
 
-    elif psutil.pid_exists(proc.pid) and psutil.Process(proc.pid).status() in ["sleeping", "running"]:
+    elif psutil.pid_exists(proc.pid)  and \
+            psutil.Process(proc.pid).status() in ["sleeping", "running"]:
         res.update({
             "status": "SCANNING",
             "info": {
@@ -267,7 +274,10 @@ def scan_status(scan_id):
     return jsonify(res)
 
 
-def _add_issue(scan_id, target, ts, title, desc, type, severity="info", confidence="certain", vuln_refs={}, links=[], tags=[], risk={}):
+def _add_issue(scan_id, target, timestamp, title, desc, type,
+               severity="info", confidence="certain",
+               vuln_refs={"None"}, links=["None"], tags=["None"], risk={"None"}):
+    """ Add findings to results """
     this.scans[scan_id]["nb_findings"] = this.scans[scan_id]["nb_findings"] + 1
     issue = {
         "issue_id": this.scans[scan_id]["nb_findings"],
@@ -278,7 +288,7 @@ def _add_issue(scan_id, target, ts, title, desc, type, severity="info", confiden
         "description": desc,
         "solution": "n/a",
         "type": type,
-        "timestamp": ts,
+        "timestamp": timestamp,
         "metadata": {
             "vuln_refs": vuln_refs,
             "risk": risk,
@@ -292,6 +302,7 @@ def _add_issue(scan_id, target, ts, title, desc, type, severity="info", confiden
 # Stop all scans
 @app.route('/engines/droopescan/stopscans')
 def stop():
+    """Stop all scans."""
     res = {"page": "stopscans"}
 
     for scan_id in this.scans.keys():
@@ -304,6 +315,7 @@ def stop():
 
 @app.route('/engines/droopescan/stop/<scan_id>')
 def stop_scan(scan_id):
+    """Stop scan identified by id."""
     res = {"page": "stopscan"}
 
     if scan_id not in this.scans.keys():
@@ -318,11 +330,11 @@ def stop_scan(scan_id):
         if psutil.pid_exists(proc.pid):
             psutil.Process(proc.pid).terminate()
         res.update({"status": "TERMINATED",
-            "details": {
-                "pid": proc.pid,
-                "cmd": this.scans[scan_id]["proc_cmd"],
-                "scan_id": scan_id}
-        })
+                    "details": {
+                        "pid": proc.pid,
+                        "cmd": this.scans[scan_id]["proc_cmd"],
+                        "scan_id": scan_id}
+                   })
     return jsonify(res)
 
 
@@ -331,6 +343,7 @@ def stop_scan(scan_id):
 ##########################
 @app.route('/engines/droopescan/startscan', methods=['POST'])
 def start():
+    """ Start scan. """
     res = {"page": "startscan"}
 
     # check the scanner is ready to start a new scan
@@ -349,8 +362,7 @@ def start():
             "status": "refused",
             "details": {
                 "reason": "scanner not ready",
-                "status": this.scanner['status']
-        }})
+                "status": this.scanner['status']}})
         return jsonify(res)
 
     # Load scan parameters
@@ -359,8 +371,7 @@ def start():
         res.update({
             "status": "refused",
             "details": {
-                "reason": "arg error, something is missing ('assets' ?)"
-        }})
+                "reason": "arg error, something is missing ('assets' ?)"}})
         return jsonify(res)
 
     scan_id = str(data['scan_id'])
@@ -368,8 +379,7 @@ def start():
         res.update({
             "status": "refused",
             "details": {
-                "reason": "scan '{}' already launched".format(data['scan_id']),
-        }})
+                "reason": "scan '{}' already launched".format(data['scan_id'])}})
         return jsonify(res)
 
     scan = {
@@ -384,9 +394,9 @@ def start():
     }
 
     this.scans.update({scan_id: scan})
-    th = threading.Thread(target=_scan_thread, args=(scan_id,))
-    th.start()
-    this.scans[scan_id]['threads'].append(th)
+    thread = threading.Thread(target=_scan_thread, args=(scan_id,))
+    thread.start()
+    this.scans[scan_id]['threads'].append(thread)
 
     res.update({
         "status": "accepted",
@@ -398,6 +408,7 @@ def start():
 
 
 def _scan_thread(scan_id):
+    """ Attribute scan to a thread and launch it. """
     hosts = []
 
     for asset in this.scans[scan_id]['assets']:
@@ -405,13 +416,15 @@ def _scan_thread(scan_id):
             return jsonify({
                 "status": "refused",
                 "details": {
-                    "reason": "datatype '{}' not supported for the asset {}.".format(asset["datatype"], asset["value"])
-            }})
-	#commentaire = ''' To delete, somtimes we scan app like https://example.com/app1name/ only and nor https://example.com'''
+                    "reason": "datatype '{}' not supported for the asset {}.".format(
+                        asset["datatype"], asset["value"])}})
+	# commentaire = ''' To delete, somtimes we scan app
+        # like https://example.com/app1name/ only and nor https://example.com'''
         else:
             # extract the net location from urls if needed
             if asset["datatype"] == 'url':
-                hosts.append("{uri.netloc}".format(uri=urlparse(quote(asset["value"]))).strip())
+                hosts.append("{uri.netloc}".format(
+                    uri=urllib.parse.urlparse(quote(asset["value"]))).strip())
                 app.logger.debug('Adding URL {} to hosts'.format(asset["value"]))
             else:
                 hosts.append(quote(asset["value"]).strip())
@@ -421,32 +434,32 @@ def _scan_thread(scan_id):
     # ensure no duplicates
     hosts = list(set(hosts))
 
-    # write hosts in a file (cleaner and doesn't break with shell arguments limit (for thousands of hosts)
+    # write hosts in a file (cleaner,doesn't break with shell arguments limit (1000+ hosts))
     hosts_filename = BASE_DIR+"/tmp/engine_droopescan_hosts_file_scan_id_{}.tmp".format(scan_id)
     with open(hosts_filename, 'w') as hosts_file:
         for item in hosts:
             hosts_file.write("{}\n".format(quote(item)))
 
     # Sanitize args :
-    options = this.scans[scan_id]['options']
-    app.logger.debug('options: %s', options)
+    th_options = this.scans[scan_id]['options']
+    app.logger.debug('options: %s', th_options)
 
     log_path = BASE_DIR+"/results/droopescan-" + scan_id + ".json"
 
     error_log_path = BASE_DIR+"/logs/droopescan-error-" + scan_id + ".log"
 
     cmd = "droopescan "
-    
+
     # Check options
-    for opt_key in options.keys():  
-        if opt_key in this.scanner['options'] and options.get(opt_key):
+    for opt_key in th_options.keys():
+        if opt_key in this.scanner['options'] and th_options.get(opt_key):
             # FIXME Security : Is it secure to let any options in ? No escaping ?
             cmd += " {}".format(this.scanner['options'][opt_key]['value'])
-        if opt_key ==  "host_file_path":
-            if os.path.isfile(options.get(opt_key)):
-                with open(options.get(opt_key), 'r') as fh:
+        if opt_key == "host_file_path":
+            if os.path.isfile(th_options.get(opt_key)):
+                with open(th_options.get(opt_key), 'r') as file_host:
                     with open(hosts_filename, 'a') as hosts_file:
-                        for line in fh:
+                        for line in file_host:
                             hosts_file.write(quote(line))
 
     cmd += " -U " + hosts_filename
@@ -470,21 +483,18 @@ def _parse_report(filename, scan_id):
     app.logger.debug('Opening results file for scan %s', str(scan_id) + " : " + str(filename))
     if os.path.isfile(filename):
         # TODO Catch Exception for open() function
-        with open(filename, 'r') as fp:
-            app.logger.debug('Opened file named {} in mode {}'.format(fp.name, fp.mode))
+        with open(filename, 'r') as file_desc:
+            app.logger.debug('Opened file named {} in mode {}'.format(file_desc.name, file_desc.mode))
             try:
-                json_data = json.load(fp)
+                json_data = json.load(file_desc)
             except ValueError:
                 app.logger.debug('Error happened - DecodeJSONError : {}'.format(sys.exc_info()[0]))
                 return {"status" : "error", "reason": "Decoding JSON failed"}
-            except NameError:
-                app.logger.debug('Error happened - NameError while loading JSON : {}'.format(sys.exc_info()[0]))
-                return {"status" : "error", "reason": "NameError"}
             except Exception:
                 app.logger.debug('Error happened - {}'.format(sys.exc_info()[0]))
                 return {"status" : "error", "reason": "An error occurred"}
 
-            ts = this.scans[scan_id]["started_at"]
+            timestamp = this.scans[scan_id]["started_at"]
             url_asset = this.scans[scan_id]["assets"]
 
             addr_list = []
@@ -492,70 +502,75 @@ def _parse_report(filename, scan_id):
             addr_type = "url"
             #addr_list.append("https://"+str(json_data["host"]))
 
-                
             target = {
                 "addr": addr_list,
                 "addr_type" : "url",
             }
             # Check for plugins
-            has_plugins = False
-            if json_data["plugins"]["is_empty"] is False: 
-                has_plugins = True
-                for fd in json_data["plugins"]["finds"]:
-                    plg_name=fd["name"]
+            #has_plugins = False
+            if json_data["plugins"]["is_empty"] is False:
+                #has_plugins = True
+                for fd_elt in json_data["plugins"]["finds"]:
+                    plg_name = fd_elt["name"]
                     app.logger.debug('Plugin {} is installed'.format(plg_name))
-                    if hasattr(fd,'imu'):
-                        desc='The scan detected that the plugin {} is installed on this CMS ({}).'.format(plg_name,fd["imu"]["description"]),
+                    if hasattr(fd_elt, 'imu'):
+                        desc = 'The scan detected that the plugin {} is installed on this CMS ({}).'.format(
+                            plg_name, fd_elt["imu"]["description"]),
                     else:
-                        desc='The scan detected that the plugin {} is installed on this CMS.'.format(plg_name),
+                        desc = 'The scan detected that the plugin {} is installed on this CMS.'.format(plg_name),
                     # Add plugin found to findings
-                    res.append(deepcopy(_add_issue(scan_id, target, ts, 
-                        'Plugin {} is installed'.format(plg_name), 
-                        desc, type='intalled_plugin')))  
+                    res.append(deepcopy(_add_issue(scan_id, target, timestamp,
+                                                   'Plugin {} is installed'.format(plg_name),
+                                                   desc, type='intalled_plugin')))
             # Check for themes
-            has_themes = False
+            #has_themes = False
             if json_data["themes"]["is_empty"] is False:
-                has_themes = True
-                for fd in json_data["themes"]["finds"]:
-                    thm_name=fd["name"]
-                    thm_url=fd["url"]
+                #has_themes = True
+                for fd_elt in json_data["themes"]["finds"]:
+                    thm_name = fd_elt["name"]
+                    thm_url = fd_elt["url"]
                     app.logger.debug('Theme {} is installed'.format(thm_name))
                     # Add theme found to findings
-                    res.append(deepcopy(_add_issue(scan_id, target, ts, 
-                        'Theme {} is installed'.format(thm_name), 
-                        'The scan detected that the theme {} is installed on {}.'.format(thm_name, thm_url), 
-                        type='intalled_theme')))
+                    res.append(deepcopy(
+                        _add_issue(scan_id, target, timestamp,
+                                   'Theme {} is installed'.format(thm_name),
+                                   'The scan detected that the theme {} is \
+                                   installed on {}.'.format(thm_name, thm_url),
+                                   type='intalled_theme')))
             # Check for interesting URLs
-            has_urls = False
+            #has_urls = False
             if json_data["interesting urls"]["is_empty"] is False:
-                has_urls = True
-                for fd in json_data["interesting urls"]["finds"]:
-                    url_name=fd["url"]
-                    url_desc=fd["description"]
+                #has_urls = True
+                for fd_elt in json_data["interesting urls"]["finds"]:
+                    url_name = fd_elt["url"]
+                    url_desc = fd_elt["description"]
                     app.logger.debug('Found interesting url : {}'.format(url_name))
                     # Add intesresting url found to findings
-                    res.append(deepcopy(_add_issue(scan_id, target, ts, 
-                        'Interesting url {} found'.format(url_name), 
-                        'An interesting URL was found: {} - "{}"'.format(url_name, url_desc), 
-                        type='interesting_url')))
+                    res.append(deepcopy(
+                        _add_issue(scan_id, target, timestamp,
+                                   'Interesting url {} found'.format(url_name),
+                                   'An interesting URL was found: {} - \
+                                   "{}"'.format(url_name, url_desc),
+                                   type='interesting_url')))
             # TODO Check host availability
             #if False:
-            #   res.append(deepcopy(_add_issue(scan_id, target, ts, 
-            #        "Host is up", 
-            #        "The scan detected that the host was up", 
-            #        type="host_availability"))) 
+            #   res.append(deepcopy(_add_issue(scan_id, target, ts,
+            #        "Host is up",
+            #        "The scan detected that the host was up",
+            #        type="host_availability")))
 
-            has_version = False
+            #has_version = False
             if json_data["version"]["is_empty"] is False:
-                has_version = True
+                #has_version = True
                 version_list = json_data["version"]["finds"]
                 for ver in version_list:
                     app.logger.debug('Version {} is possibly installed'.format(ver))
                     # Add version found to findings
-                    res.append(deepcopy(_add_issue(scan_id, target, ts, 
-                        'Version {} is possibly installed'.format(ver), 
-                        'The scan detected that the version {} is possibly installed.'.format(ver), 
-                        type='intalled_version', confidence='low')))
+                    res.append(deepcopy(
+                        _add_issue(scan_id, target, timestamp,
+                                   'Version {} is possibly installed'.format(ver),
+                                   'The scan detected that the version {} is possibly installed.'.format(ver),
+                                   type='intalled_version', confidence='low')))
 
         return res
     else:
@@ -565,6 +580,7 @@ def _parse_report(filename, scan_id):
 
 @app.route('/engines/droopescan/getfindings/<scan_id>')
 def getfindings(scan_id):
+    """ Retrieve findings from scan results.  """
     res = {"page": "getfindings", "scan_id": scan_id}
     if scan_id not in this.scans.keys():
         res.update({"status": "error", "reason": "scan_id '{}' not found".format(scan_id)})
@@ -626,6 +642,7 @@ def getfindings(scan_id):
 
 @app.before_first_request
 def main():
+    """First function called."""
     if not os.path.exists(BASE_DIR+"/results"):
         os.makedirs(BASE_DIR+"/results")
     if not os.path.exists(BASE_DIR+"/tmp"):
@@ -641,4 +658,3 @@ if __name__ == '__main__':
 
     options, _ = parser.parse_args()
     app.run(debug=options.debug, host=options.host, port=int(options.port))
-
