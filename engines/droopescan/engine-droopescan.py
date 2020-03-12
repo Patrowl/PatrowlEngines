@@ -276,7 +276,7 @@ def scan_status(scan_id):
 
 def _add_issue(scan_id, target, timestamp, title, desc, type,
                severity="info", confidence="certain",
-               vuln_refs={"None"}, links=["None"], tags=["None"], risk={"None"}):
+               vuln_refs=None, links=None, tags=None, risk=None):
     """ Add findings to results """
     this.scans[scan_id]["nb_findings"] = this.scans[scan_id]["nb_findings"] + 1
     issue = {
@@ -534,8 +534,8 @@ def _parse_report(filename, scan_id):
                     res.append(deepcopy(
                         _add_issue(scan_id, target, timestamp,
                                    'Theme {} is installed'.format(thm_name),
-                                   'The scan detected that the theme {} is \
-                                   installed on {}.'.format(thm_name, thm_url),
+                                   'The scan detected that the theme {} is installed on {}.'.format(
+                                       thm_name, thm_url),
                                    type='intalled_theme')))
             # Check for interesting URLs
             #has_urls = False
@@ -549,8 +549,8 @@ def _parse_report(filename, scan_id):
                     res.append(deepcopy(
                         _add_issue(scan_id, target, timestamp,
                                    'Interesting url {} found'.format(url_name),
-                                   'An interesting URL was found: {} - \
-                                   "{}"'.format(url_name, url_desc),
+                                   'An interesting URL was found: {} - "{}"'.format(
+                                       url_name, url_desc),
                                    type='interesting_url')))
             # TODO Check host availability
             #if False:
@@ -617,11 +617,8 @@ def getfindings(scan_id):
 
     # Store the findings in a file
     with open(BASE_DIR+"/results/droopescan_"+scan_id+".json", 'w') as report_file:
-        json.dump({
-            "scan": scan,
-            "summary": summary,
-            "issues": issues
-        }, report_file, default=_json_serial)
+        json.dump({"scan": scan, "summary": summary, "issues": issues}, 
+                  report_file, default=_json_serial)
 
 
     # Delete the tmp hosts file (used with -iL argument upon launching Droopescan)
