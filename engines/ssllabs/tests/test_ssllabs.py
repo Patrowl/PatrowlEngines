@@ -19,10 +19,10 @@ def test_generic_features():
 def test_ssllabs_check_google():
     """ custom tests """
     PET.custom_test(
-        test_name="ssllabs_check_google",
+        test_name="ssllabs_check_patrowl",
         assets=[{
             "id": "1",
-            "value": "https://www.google.com",
+            "value": "https://www.patrowl.io",
             "criticity": "high",
             "datatype": "url"
         }],
