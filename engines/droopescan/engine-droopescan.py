@@ -10,9 +10,6 @@ import optparse
 import threading
 import urllib
 import time
-#import hashlib
-#import datetime
-#from urllib.parse import urlparse
 from copy import deepcopy
 from shlex import quote
 from flask import Flask, request, jsonify, url_for, send_file #, redirect
@@ -44,15 +41,6 @@ engine = PatrowlEngine(
     name=APP_ENGINE_NAME,
     max_scans=APP_MAXSCANS
 )
-
-#request.packages.urllib3.disable_warnings()
-
-
-
-@app.errorhandler(404)
-def page_not_found(e):
-    """Page not found."""
-    return engine.page_not_found()
 
 
 @app.errorhandler(PatrowlEngineExceptions)
