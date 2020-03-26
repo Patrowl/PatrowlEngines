@@ -16,13 +16,13 @@ def test_generic_features():
     """Generic tests."""
     PET.do_generic_tests()
 
-def test_droopescan_check_website(website,fqdn):
+def test_droopescan_check_wordpress():
     """ custom tests """
     PET.custom_test(
-        test_name="ssllabs_check_"+website,
+        test_name="droopescan_check_wordpress_novepha",
         assets=[{
             "id": "1",
-            "value": "https://"+fqdn,
+            "value": "https://www.novepha.fr",
             "criticity": "low",
             "datatype": "url"
         }],
@@ -32,4 +32,4 @@ def test_droopescan_check_website(website,fqdn):
 
 if __name__ == "__main__":
     test_generic_features()
-    test_droopescan_check_website("novepha", "www.novepha.fr")
+    test_droopescan_check_wordpress()
