@@ -191,9 +191,9 @@ def loadconfig():
         this.scanner = json.load(json_data)
         this.scanner['status'] = "READY"
         return {"status": "OK", "reason": "config file loaded."}
-    else:
-        this.scanner['status'] = "ERROR"
-        return {"status": "ERROR", "reason": "config file not found."}
+    # else:
+    this.scanner['status'] = "ERROR"
+    return {"status": "ERROR", "reason": "config file not found."}
 
 @app.route('/engines/droopescan/reloadconfig')
 def reloadconfig():
@@ -279,24 +279,36 @@ def _add_issue(scan_id, target, timestamp, title, desc, type,
                vuln_refs=None, links=None, tags=None, risk=None):
     """ Add findings to results """
     this.scans[scan_id]["nb_findings"] = this.scans[scan_id]["nb_findings"] + 1
-    issue = {
-        "issue_id": this.scans[scan_id]["nb_findings"],
-        "severity": severity,
-        "confidence": confidence,
-        "target": target,
-        "title": title,
-        "description": desc,
-        "solution": "n/a",
-        "type": type,
-        "timestamp": timestamp,
-        "metadata": {
-            "vuln_refs": vuln_refs,
-            "risk": risk,
-            "links": links,
-            "tags": tags
+    if (vuln_refs is None and links is None and tags is None and risk is None):
+        issue = {
+            "issue_id": this.scans[scan_id]["nb_findings"],
+            "severity": severity,
+            "confidence": confidence,
+            "target": target,
+            "title": title,
+            "description": desc,
+            "solution": "n/a",
+            "type": type,
+            "timestamp": timestamp
         }
-    }
-
+    else:
+        issue = {
+            "issue_id": this.scans[scan_id]["nb_findings"],
+            "severity": severity,
+            "confidence": confidence,
+            "target": target,
+            "title": title,
+            "description": desc,
+            "solution": "n/a",
+            "type": type,
+            "timestamp": timestamp,
+            "metadata": {
+                "vuln_refs": vuln_refs,
+                "risk": risk,
+                "links": links,
+                "tags": tags
+            }
+        }
     return issue
 
 # Stop all scans
@@ -591,7 +603,9 @@ def getfindings(scan_id):
     # check if the scan is finished
     status()
 
-    if hasattr(proc, 'pid') and psutil.pid_exists(proc.pid) and psutil.Process(proc.pid).status() in ["sleeping", "running"]:
+    if (hasattr(proc, 'pid') and
+            psutil.pid_exists(proc.pid) and
+            psutil.Process(proc.pid).status() in ["sleeping", "running"]):
         res.update({"status": "error", "reason": "Scan in progress"})
         return jsonify(res)
 
@@ -617,7 +631,7 @@ def getfindings(scan_id):
 
     # Store the findings in a file
     with open(BASE_DIR+"/results/droopescan_"+scan_id+".json", 'w') as report_file:
-        json.dump({"scan": scan, "summary": summary, "issues": issues}, 
+        json.dump({"scan": scan, "summary": summary, "issues": issues},
                   report_file, default=_json_serial)
 
 
