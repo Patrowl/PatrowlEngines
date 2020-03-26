@@ -16,13 +16,13 @@ def test_generic_features():
     """ generic tests """
     PET.do_generic_tests()
 
-def test_ssllabs_check_website(website,fqdn):
+def test_ssllabs_check_website():
     """ custom tests """
     PET.custom_test(
-        test_name="ssllabs_check_"+website,
+        test_name="ssllabs_check_gnu",
         assets=[{
             "id": "2",
-            "value": "https://"+fqdn,
+            "value": "https://www.gnu.org",
             "criticity": "high",
             "datatype": "url"
         }],
@@ -32,4 +32,4 @@ def test_ssllabs_check_website(website,fqdn):
 
 if __name__ == "__main__":
     test_generic_features()
-    test_ssllabs_check_website("gnu", "www.gnu.org")
+    test_ssllabs_check_website()
