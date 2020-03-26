@@ -26,7 +26,7 @@ def test_ssllabs_check_website(website,fqdn):
             "criticity": "high",
             "datatype": "url"
         }],
-        scan_policy={},
+        scan_policy={}
     )
 
 
