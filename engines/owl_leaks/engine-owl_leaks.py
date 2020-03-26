@@ -223,7 +223,7 @@ def _search_github_thread(scan_id, asset_kw):
 
         new_finding = PatrowlEngineFinding(
             issue_id=issue_id, type="github_leak_code", title=ititle,
-            description=idescription, solution=isolution, severity="info",
+            description=idescription, solution=isolution, severity="high",
             confidence="firm", raw=git_code.raw_data, target_addrs=asset_values,
             meta_links=[git_code.html_url])
         findings.append(new_finding)
@@ -253,6 +253,7 @@ def _search_github_thread(scan_id, asset_kw):
             confidence="firm", raw=git_issue.raw_data, target_addrs=asset_values,
             meta_links=[git_issue.html_url])
         findings.append(new_finding)
+
 
     for git_repo in g.search_repositories("\'"+asset_kw+"\'", sort="updated", order="desc"):
         ititle = "Matching public Github repo: {} (HASH: {})".format(
@@ -319,6 +320,7 @@ def _search_twitter_thread(scan_id, asset_kw):
         ),
         retry=True
     )
+
 
     # Set the Max count
     max_count = APP_SEARCH_TWITTER_MAX_COUNT_DEFAULT
