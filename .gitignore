@@ -34,6 +34,9 @@ engines/eyewitness/libs/*
 engines/owl_request/owl_request.json
 engines/pastebin_monitor/pastebin_monitor.json
 engines/pastebin_monitor/database.db
+engines/droopescan/droopescan.json
+engines/droopescan/logs/*
+engines/droopescan/tmp/*
 env
 env3
 results

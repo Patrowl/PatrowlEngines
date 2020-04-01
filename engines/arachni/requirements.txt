@@ -11,7 +11,7 @@ gunicorn==19.9.0
 idna==2.5
 itsdangerous==0.24
 Jinja2>=2.10.1
-MarkupSafe==1.0
+MarkupSafe==1.1.1
 more-itertools==4.3.0
 pathlib2==2.3.2
 PatrowlEnginesUtils>=0.0.12

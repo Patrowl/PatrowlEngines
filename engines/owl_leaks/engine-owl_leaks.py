@@ -203,16 +203,12 @@ def _search_github_thread(scan_id, asset_kw):
     # g = Github(engine.options["github_api_token"])
 
     for git_code in g.search_code("\'"+asset_kw+"\'", sort="indexed", order="desc"):
-        ititle = "Match in Github (code): {}/{} (HASH: {})".format(
-            git_code.repository.name, git_code.name, git_code.sha[:6])
+        ititle = "File found in Github public repo (code): {}/{} (HASH: {})".format(
+            git_code.name,
+            git_code.repository.name, git_code.sha[:6])
         iemail = ""
         if git_code.repository.owner.email is not None:
             git_code.repository.owner.email.encode("ascii", "ignore")
-        decoded_content = ""
-        try:
-            decoded_content = git_code.decoded_content
-        except Exception:
-            pass
         idescription = "File found in Github public repo (code):\n\n" + \
             "URL: {}\n\n".format(git_code.html_url) + \
             "Repo: {}: \n\n".format(git_code.repository.name, git_code.repository.url) + \
@@ -220,14 +216,14 @@ def _search_github_thread(scan_id, asset_kw):
                 git_code.repository.owner.login,
                 git_code.repository.owner.name,
                 iemail) + \
-            "Content ({} bits):{}".format(git_code.size, decoded_content)
+            "Content ({} bits):{}".format(git_code.size, git_code.decoded_content)
         isolution = "Check if the snippet is legit or not. " + \
             "If not, see internal procedures for incident reaction."
         issue_id += 1
 
         new_finding = PatrowlEngineFinding(
             issue_id=issue_id, type="github_leak_code", title=ititle,
-            description=idescription, solution=isolution, severity="info",
+            description=idescription, solution=isolution, severity="high",
             confidence="firm", raw=git_code.raw_data, target_addrs=asset_values,
             meta_links=[git_code.html_url])
         findings.append(new_finding)
@@ -236,7 +232,7 @@ def _search_github_thread(scan_id, asset_kw):
     #     print dir(git_commit)
 
     for git_issue in g.search_issues("\'"+asset_kw+"\'", sort="updated", order="desc"):
-        ititle = "Match in Github (issue):  {}... (HASH: {})".format(
+        ititle = "Matching issue found in Github public repo: {}... (HASH: {})".format(
             git_issue.title[:16],
             hashlib.sha1(str(git_issue.body).encode('utf-8')).hexdigest()[:6])
         idescription = "Matching issue found in Github public repo:\n\n" + \
@@ -253,13 +249,14 @@ def _search_github_thread(scan_id, asset_kw):
 
         new_finding = PatrowlEngineFinding(
             issue_id=issue_id, type="github_leak_issue", title=ititle,
-            description=idescription, solution=isolution, severity="info",
+            description=idescription, solution=isolution, severity="high",
             confidence="firm", raw=git_issue.raw_data, target_addrs=asset_values,
             meta_links=[git_issue.html_url])
         findings.append(new_finding)
 
+
     for git_repo in g.search_repositories("\'"+asset_kw+"\'", sort="updated", order="desc"):
-        ititle = "Match in Github (repository):  {} (HASH: {})".format(
+        ititle = "Matching public Github repo: {} (HASH: {})".format(
             git_repo.name,
             hashlib.sha1(git_repo.description.encode('ascii', 'ignore')).hexdigest()[:6])
         idescription = "Matching public Github repo:\n\n" + \
@@ -276,13 +273,13 @@ def _search_github_thread(scan_id, asset_kw):
 
         new_finding = PatrowlEngineFinding(
             issue_id=issue_id, type="github_leak_repo", title=ititle,
-            description=idescription, solution=isolution, severity="info",
+            description=idescription, solution=isolution, severity="high",
             confidence="firm", raw=git_repo.raw_data, target_addrs=asset_values,
             meta_links=[git_repo.html_url])
         findings.append(new_finding)
 
     for git_user in g.search_users(asset_kw, sort="joined", order="desc"):
-        ititle = "Match in Github (user): {} (HASH: {})".format(
+        ititle = "Matching Github user: {} (HASH: {})".format(
             git_user.login,
             hashlib.sha1(str(git_user.login).encode('utf-8')).hexdigest()[:6])
         ibio = ""
@@ -301,7 +298,7 @@ def _search_github_thread(scan_id, asset_kw):
 
         new_finding = PatrowlEngineFinding(
             issue_id=issue_id, type="github_leak_user", title=ititle,
-            description=idescription, solution=isolution, severity="info",
+            description=idescription, solution=isolution, severity="high",
             confidence="firm", raw=git_user.raw_data, target_addrs=asset_values,
             meta_links=[git_user.html_url])
         findings.append(new_finding)
@@ -318,13 +315,12 @@ def _search_twitter_thread(scan_id, asset_kw):
     findings = []
     twitter = Twitter(
         auth=OAuth(
-            engine.options["twitter_oauth_token"],
-            engine.options["twitter_oauth_secret"],
-            engine.options["twitter_consumer_key"],
-            engine.options["twitter_consumer_secret"]
+            engine.options["twitter_oauth_token"], engine.options["twitter_oauth_secret"],
+            engine.options["twitter_consumer_key"], engine.options["twitter_consumer_secret"]
         ),
         retry=True
     )
+
 
     # Set the Max count
     max_count = APP_SEARCH_TWITTER_MAX_COUNT_DEFAULT
@@ -377,7 +373,7 @@ def _search_twitter_thread(scan_id, asset_kw):
                     "Extra key words: {}\n".format(extra_kw) + \
                     "URL: {}\n".format(metalink),
                 solution="Evaluate criticity. See internal procedures for incident reaction.",
-                severity="info", confidence="firm",
+                severity="high", confidence="firm",
                 raw=tweet,
                 target_addrs=[asset_kw],
                 meta_links=[metalink])
