@@ -612,6 +612,7 @@ def getfindings(scan_id):
         "nb_low": 0,
         "nb_medium": 0,
         "nb_high": 0,
+        "nb_critical": 0,
         "engine_name": "droopescan",
         "engine_version": this.scanner['version']
     }
