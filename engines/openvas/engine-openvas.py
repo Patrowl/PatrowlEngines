@@ -158,7 +158,7 @@ def create_target(
     """
     new_target_xml = this.gmp.create_target(
         target_name,
-        hosts=target_name,
+        hosts=[target_name],
         ssh_credential_id=ssh_credential_id,
         ssh_credential_port=ssh_credential_port,
         smb_credential_id=smb_credential_id,
