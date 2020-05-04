@@ -244,12 +244,13 @@ def _parse_xml_results(scan_id, asset, asset_port):
             findings.append(ciphersuites_issue)
 
         # Finding: Certificate
-        issue_id += 1
-        certificate_pem_issue = _get_certificate_blob(
-            cert_blob=scan_results.find("certificate").find("certificate-blob"),
-            issue_id=issue_id, asset=asset, asset_port=asset_port)
-        if certificate_pem_issue:
-            findings.append(certificate_pem_issue)
+        if scan_results.find("certificate") is not None:
+            issue_id += 1
+            certificate_pem_issue = _get_certificate_blob(
+                cert_blob=scan_results.find("certificate").find("certificate-blob"),
+                issue_id=issue_id, asset=asset, asset_port=asset_port)
+            if certificate_pem_issue:
+                findings.append(certificate_pem_issue)
 
         # Finding: Certificate is expired ?
         issue_id += 1
