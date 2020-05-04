@@ -30,6 +30,7 @@ APP_PORT = 5018
 APP_MAXSCANS = 5
 APP_ENGINE_NAME = "eyewitness"
 APP_BASE_DIR = dirname(realpath(__file__))
+COMPARE_CEIL = 25
 LOG = getLogger("werkzeug")
 
 ENGINE = PatrowlEngine(
@@ -87,10 +88,12 @@ def eyewitness_cmd(list_url, asset_id, scan_id, extra_opts):
             continue
         result_url = "{repo_url}/{scan_id}/{asset_id}/{count}/screens/{screenshot}".format(repo_url=ENGINE.scanner["options"]["ScreenshotsURL"]["value"], scan_id=scan_id, asset_id=asset_id, count=count, screenshot=screenshot_files[0])
         report_url = "{repo_url}/{scan_id}/{asset_id}/{count}/report.html".format(repo_url=ENGINE.scanner["options"]["ScreenshotsURL"]["value"], scan_id=scan_id, asset_id=asset_id, count=count)
+        report_sources_path = "{base_path}/{asset_id}/{count}/source/".format(base_path=base_path, scan_id=scan_id, asset_id=asset_id, count=count)
         result.update({url: {
             "path": "{}/screens/{}".format(screenshot_base_path, screenshot_files[0]),
             "url": result_url,
-            "report": report_url}})
+            "report": report_url,
+            "report_sources_path": report_sources_path}})
         count += 1
     return result
 
@@ -134,6 +137,24 @@ def diff_screenshot(screenshot1, screenshot2):
 
     return percent_diff
 
+def is_forsale(report_sources_path):
+    """
+    Returns True if domain is for sale
+    """
+    if not exists(report_sources_path) or \
+        not listdir(report_sources_path) or \
+        "RulesForSale" not in ENGINE.scanner["options"]:
+        return False
+    report_file_path = report_sources_path + listdir(report_sources_path)[0]
+    report_file = open(report_file_path, 'r')
+    report_content = report_file.read()
+    report_file.close()
+    for rule_name in ENGINE.scanner["options"]["RulesForSale"]:
+        for rule_value in ENGINE.scanner["options"]["RulesForSale"][rule_name]:
+            if rule_value in report_content:
+                LOG.warning("Match: %s rule", rule_name)
+                return True
+    return False
 
 @app.errorhandler(404)
 def page_not_found(error):
@@ -308,6 +329,12 @@ def _loadconfig():
 
     LOG.warning("[OK] ImageMagickComparePath")
 
+    if "RulesForSale" not in ENGINE.scanner["options"]:
+        LOG.warning("Warning: You have to specify RulesForSale in options")
+    else:
+        ENGINE.scanner["options"]["RulesForSale"]
+        LOG.warning("[OK] RulesForSale")
+
 
 @app.route("/engines/eyewitness/reloadconfig", methods=["GET"])
 def reloadconfig():
@@ -451,7 +478,7 @@ def _scan_urls(scan_id):
 
             LOG.warning("[%s/%s] Screeshoting %s...", i+1, len(assets), asset)
             result = eyewitness_cmd(urls, asset_data["id"], scan_id, ENGINE.scans[scan_id]['options'])
-            LOG.warning("[%s/%s] Screeshot result: %s", i+1, len(assets), result)
+            LOG.warning("[%s/%s] Screenshot result: %s", i+1, len(assets), result)
 
             # Get differences with the last screenshot
             for url in result:
@@ -501,6 +528,7 @@ def _parse_results(scan_id):
             asset_issues = ENGINE.scans[scan_id]["findings"][asset]["issues"]
             screenshot_urls = list()
             report_urls = list()
+            is_for_sale = False
             if not asset_issues:
                 screenshot_urls = "No screenshots available"
             for url in asset_issues:
@@ -510,6 +538,7 @@ def _parse_results(scan_id):
                 report_urls.append(asset_issues[url]["report"])
                 # Create an issue if the screenshot differs from last time
                 previous_diff = asset_issues[url]["previous_diff"]
+                is_for_sale = is_forsale(asset_issues[url]["report_sources_path"]) or is_for_sale
                 if previous_diff is None:
                     nb_vulns[get_criticity(cvss_max)] += 1
                     issues.append({
@@ -521,9 +550,9 @@ def _parse_results(scan_id):
                         "metadata": {"risk": {"cvss_base_score": 0}, "links": [asset_issues[url]["url"], asset_issues[url]["last_screenshot_url"]]},
                         "type": "eyewitness_screenshot_diff",
                         "timestamp": timestamp,
-                        "description": "Too much differences"
+                        "description": "Too much differences, Domain for sale: {}.".format(is_for_sale)
                     })
-                elif previous_diff >= 25:
+                elif previous_diff >= COMPARE_CEIL:
                     nb_vulns[get_criticity(cvss_max)] += 1
                     issues.append({
                         "issue_id": len(issues)+1,
@@ -534,7 +563,7 @@ def _parse_results(scan_id):
                         "metadata": {"risk": {"cvss_base_score": 0}, "links": [asset_issues[url]["url"], asset_issues[url]["last_screenshot_url"]]},
                         "type": "eyewitness_screenshot_diff",
                         "timestamp": timestamp,
-                        "description": "The difference is about {}%".format(previous_diff)
+                        "description": "The difference is about {}%, Domain for sale: {}.".format(previous_diff, is_for_sale)
                     })
 
             current_diff = "These screeshots are different"
@@ -550,7 +579,7 @@ def _parse_results(scan_id):
                 "metadata": {"risk": {"cvss_base_score": cvss_max}, "links": report_urls},
                 "type": "eyewitness_screenshot",
                 "timestamp": timestamp,
-                "description": "Screenshots: {}, Current Diff: {}".format(screenshot_urls, current_diff)
+                "description": "Screenshots: {}, Current Diff: {}, Domain for sale: {}".format(screenshot_urls, current_diff, is_for_sale)
             })
 
     summary = {

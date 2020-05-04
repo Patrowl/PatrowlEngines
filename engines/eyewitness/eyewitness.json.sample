@@ -1,10 +1,10 @@
 {
   "name": "EyeWitness API",
-  "version": "1.0.1",
+  "version": "1.1.0",
   "description": "EyeWitness API",
   "allowed_asset_types": ["fqdn", "ip", "domain"],
   "options": {
-     "EyeWitnessDirectory":      { "type": "mandatory", "value": "libs/EyeWitness/"},
+     "EyeWitnessDirectory":      { "type": "mandatory", "value": "libs/EyeWitness/Python/"},
      "ScreenshotsDirectory":     { "type": "mandatory", "value": "/var/www/html/"},
      "ScreenshotsURL":           { "type": "mandatory", "value": "http://eyewitness.domain.net:80"},
      "ImageMagickComparePath":   { "type": "mandatory", "value": "/usr/bin/compare"}
