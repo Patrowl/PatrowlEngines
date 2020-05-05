@@ -40,6 +40,18 @@ ENGINE = PatrowlEngine(
     max_scans=APP_MAXSCANS
 )
 
+def get_options(payload):
+    """
+    Extracts formatted options from the payload
+    """
+
+    options = dict()
+    user_opts = payload["options"]
+    if isinstance(user_opts, str):
+        user_opts = loads(user_opts)
+    if "extra_opts" in user_opts:
+        options["extra_opts"] = user_opts["extra_opts"]
+    return options
 
 def get_criticity(score):
     """Return the level of criicity."""
@@ -424,7 +436,7 @@ def start_scan():
         "assets":       assets,
         "assets_data":  data["assets"],
         "threads":      [],
-        "options":      data["options"],
+        "options":      get_options(data),
         "scan_id":      scan_id,
         "status":       "STARTED",
         "lock":         False,
