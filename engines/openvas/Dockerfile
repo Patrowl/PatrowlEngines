@@ -12,7 +12,7 @@ WORKDIR /opt/patrowl-engines/openvas
 
 # Copy the current directory contents into the container at /
 COPY __init__.py .
-COPY engine-openvas.py .
+COPY engine-openvas-noexe.py .
 COPY openvas.json.sample openvas.json
 COPY requirements.txt .
 COPY README.md .

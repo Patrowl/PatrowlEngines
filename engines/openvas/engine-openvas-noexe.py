@@ -7,7 +7,7 @@ import sys
 import json
 import time
 import threading
-import urlparse
+from urllib.parse import urlparse
 # import random
 # import string
 from datetime import date, datetime
@@ -302,7 +302,7 @@ def start_scan():
             return jsonify(res)
 
         if asset["datatype"] == "url":
-            parsed_uri = urlparse.urlparse(asset["value"])
+            parsed_uri = urlparse(asset["value"])
             asset["value"] = parsed_uri.netloc
 
         assets.append(asset["value"])
@@ -391,7 +391,8 @@ def _scan(scan_id):
     ov_results_xml = this.openvas_cli.get_report_xml(ov_report_id)
     report_filename = "{}/results/{}.xml".format(APP_BASE_DIR, scan_id)
     with open(report_filename, 'w') as report_file:
-        report_file.write(ET.tostring(ov_results_xml))
+        print(ET.tostring(ov_results_xml))
+        report_file.write(ET.tostring(ov_results_xml).decode())
 
     issues, summary = _parse_results(scan_id)
 

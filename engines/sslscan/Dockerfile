@@ -19,6 +19,7 @@ COPY README.md .
 WORKDIR /opt/patrowl-engines/sslscan/libs
 RUN apk add --update --no-cache \
       build-base \
+      linux-headers \
       git \
       perl \
       zlib-dev \
