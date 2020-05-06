@@ -1,5 +1,5 @@
 diff --git a/sublist3r.py b/sublist3r.py
-index 4d716dd..ec810e8 100755
+index fab7381..208929f 100755
 --- a/sublist3r.py
 +++ b/sublist3r.py
 @@ -267,8 +267,9 @@ class enumratorBaseThreaded(multiprocessing.Process, enumratorBase):
@@ -14,17 +14,20 @@ index 4d716dd..ec810e8 100755
  
  
  class GoogleEnum(enumratorBaseThreaded):
-@@ -301,7 +302,8 @@ class GoogleEnum(enumratorBaseThreaded):
-         return links_list
+@@ -538,10 +539,10 @@ class NetcraftEnum(enumratorBaseThreaded):
+             self.print_(e)
+             resp = None
+         return resp
+-    
++
+     def should_sleep(self):
+         time.sleep(random.randint(1, 2))
+-        return    
++        return
  
-     def check_response_errors(self, resp):
--        if (type(resp) is str or type(resp) is unicode) and 'Our systems have detected unusual traffic' in resp:
-+        # if (type(resp) is str or type(resp) is unicode) and 'Our systems have detected unusual traffic' in resp:
-+        if (type(resp) is str or type(resp) is bytes) and 'Our systems have detected unusual traffic' in resp:
-             self.print_(R + "[!] Error: Google probably now is blocking our requests" + W)
-             self.print_(R + "[~] Finished now the Google Enumeration ..." + W)
-             return False
-@@ -564,15 +566,16 @@ class NetcraftEnum(enumratorBaseThreaded):
+     def get_next(self, resp):
+         link_regx = re.compile('<a.*?href="(.*?)">Next Page')
+@@ -567,16 +568,17 @@ class NetcraftEnum(enumratorBaseThreaded):
      def enumerate(self):
          start_url = self.base_url.format(domain='example.com')
          resp = self.req(start_url)
@@ -33,24 +36,26 @@ index 4d716dd..ec810e8 100755
 -        while True:
 -            resp = self.get_response(self.req(url, cookies))
 -            self.extract_domains(resp)
--            if 'Next page' not in resp:
+-            if 'Next Page' not in resp:
 -                return self.subdomains
 -                break
 -            url = self.get_next(resp)
+-            self.should_sleep()
 +        if 'headers' in dir(resp):
 +            cookies = self.get_cookies(resp.headers)
 +            url = self.base_url.format(domain=self.domain)
 +            while True:
 +                resp = self.get_response(self.req(url, cookies))
 +                self.extract_domains(resp)
-+                if not isinstance(resp, int) and 'Next page' not in resp:
++                if 'Next Page' not in resp:
 +                    return self.subdomains
 +                    break
 +                url = self.get_next(resp)
++                self.should_sleep()
  
      def extract_domains(self, resp):
          links_list = list()
-@@ -642,14 +645,15 @@ class DNSdumpster(enumratorBaseThreaded):
+@@ -646,14 +648,15 @@ class DNSdumpster(enumratorBaseThreaded):
  
      def enumerate(self):
          resp = self.req('GET', self.base_url)
@@ -74,7 +79,7 @@ index 4d716dd..ec810e8 100755
          return self.live_subdomains
  
      def extract_domains(self, resp):
-@@ -696,7 +700,11 @@ class Virustotal(enumratorBaseThreaded):
+@@ -700,7 +703,11 @@ class Virustotal(enumratorBaseThreaded):
      def enumerate(self):
          while self.url != '':
              resp = self.send_req(self.url)

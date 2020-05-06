@@ -335,7 +335,7 @@ def get_multiple_report_status(assets):
 
 
 def is_ip(string):
-    """ This dummy function returns True is the string is probably an IP """
+    """ This dummy function returns True is the string is probably an IP."""
     return re_search("[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+", string) is not None
 
 
