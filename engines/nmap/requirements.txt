@@ -8,3 +8,4 @@ PatrowlEnginesUtils>=0.0.12
 psutil==5.2.2
 urllib3>=1.25
 werkzeug>=0.15.6
+requests>=2.23.0
