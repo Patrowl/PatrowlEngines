@@ -172,11 +172,13 @@ def _scan_thread(scan_id):
             app.logger.debug('asset: %s', item)
 
     # Sanitize args :
+    options = json.loads(this.scans[scan_id]['options'])
+
     ports = None
-    if "ports" in this.scans[scan_id]['options'].keys():
-        ports = ",".join(this.scans[scan_id]['options']['ports'])
+    if "ports" in options:
+        ports = ",".join(options['ports'])
     # del this.scans[scan_id]['options']['ports']
-    options = this.scans[scan_id]['options']
+
     app.logger.debug('options: %s', options)
 
     log_path = BASE_DIR+"/logs/" + scan_id + ".error"
