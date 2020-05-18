@@ -336,9 +336,13 @@ def status():
         this.scanner['status'] = "READY"
 
     if not os.path.exists(BASE_DIR+'/nmap.json'):
+        app.logger.critical("nmap.json config file not found")
         this.scanner['status'] = "ERROR"
-    if not os.path.isfile(this.scanner['path']):
-        this.scanner['status'] = "ERROR"
+
+    if 'path' in this.scanner:
+        if not os.path.isfile(this.scanner['path']):
+            app.logger.critical("nmapart the NMAP engine using  not found at %s",this.scanner['path'])
+            this.scanner['status'] = "ERROR"
 
     res.update({"status": this.scanner['status']})
 
@@ -719,7 +723,7 @@ def page_not_found(e):
 @app.before_first_request
 def main():
     if os.getuid() != 0:
-        print ("Error: Start the NMAP engine using root privileges !")
+        app.logger.error("Start the NMAP engine using root privileges !")
         sys.exit(-1)
     if not os.path.exists(BASE_DIR+"/results"):
         os.makedirs(BASE_DIR+"/results")
