@@ -336,12 +336,12 @@ def status():
         this.scanner['status'] = "READY"
 
     if not os.path.exists(BASE_DIR+'/nmap.json'):
-        app.logger.critical("nmap.json config file not found")
+        app.logger.error("nmap.json config file not found")
         this.scanner['status'] = "ERROR"
 
     if 'path' in this.scanner:
         if not os.path.isfile(this.scanner['path']):
-            app.logger.critical("nmapart the NMAP engine using  not found at %s",this.scanner['path'])
+            app.logger.error("NMAP engine not found (%s)",this.scanner['path'])
             this.scanner['status'] = "ERROR"
 
     res.update({"status": this.scanner['status']})
