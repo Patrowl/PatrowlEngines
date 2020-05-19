@@ -8,7 +8,7 @@ RUN apk add --update \
     python3-dev \
     py3-pip \
     git \
-    imgemagick \
+    imagemagick \
   && rm -rf /var/cache/apk/*
 
 RUN mkdir -p /opt/patrowl-engines/eyewitness
