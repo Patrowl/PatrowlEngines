@@ -6,7 +6,7 @@ click==7.1.2
 cryptography==2.9.2
 defusedxml==0.6.0
 dnspython==1.16.0
-Flask==1.1.1
+flask==1.1.2
 gunicorn==19.9.0
 gvm-tools==2.1.0
 idna==2.5
