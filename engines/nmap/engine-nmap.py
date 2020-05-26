@@ -175,11 +175,13 @@ def _scan_thread(scan_id):
             app.logger.debug('asset: %s', item)
 
     # Sanitize args :
+    options = json.loads(this.scans[scan_id]['options'])
+
     ports = None
-    if "ports" in this.scans[scan_id]['options'].keys():
-        ports = ",".join(this.scans[scan_id]['options']['ports'])
+    if "ports" in options:
+        ports = ",".join(options['ports'])
     # del this.scans[scan_id]['options']['ports']
-    options = this.scans[scan_id]['options']
+
     app.logger.debug('options: %s', options)
 
     log_path = BASE_DIR+"/logs/" + scan_id + ".error"
@@ -337,9 +339,13 @@ def status():
         this.scanner['status'] = "READY"
 
     if not os.path.exists(BASE_DIR+'/nmap.json'):
+        app.logger.error("nmap.json config file not found")
         this.scanner['status'] = "ERROR"
-    if not os.path.isfile(this.scanner['path']):
-        this.scanner['status'] = "ERROR"
+
+    if 'path' in this.scanner:
+        if not os.path.isfile(this.scanner['path']):
+            app.logger.error("NMAP engine not found (%s)",this.scanner['path'])
+            this.scanner['status'] = "ERROR"
 
     res.update({"status": this.scanner['status']})
 
@@ -720,7 +726,7 @@ def page_not_found(e):
 @app.before_first_request
 def main():
     if os.getuid() != 0:
-        print ("Error: Start the NMAP engine using root privileges !")
+        app.logger.error("Start the NMAP engine using root privileges !")
         sys.exit(-1)
     if not os.path.exists(BASE_DIR+"/results"):
         os.makedirs(BASE_DIR+"/results")
