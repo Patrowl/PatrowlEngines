@@ -13,7 +13,7 @@ import hashlib
 import datetime
 from urllib.parse import urlparse
 from copy import deepcopy
-from flask import Flask, request, jsonify, redirect, url_for, send_file
+from flask import Flask, request, jsonify, json, redirect, url_for, send_file
 import xml.etree.ElementTree as ET
 
 app = Flask(__name__)
@@ -119,6 +119,9 @@ def start():
                 "reason": "scan '{}' already launched".format(data['scan_id']),
         }})
         return jsonify(res)
+
+    if type(data['options']) == str:
+        data['options'] = json.loads(data['options'])
 
     scan = {
         'assets':       data['assets'],

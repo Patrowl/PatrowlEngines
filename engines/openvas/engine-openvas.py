@@ -18,7 +18,7 @@ import xml.etree.ElementTree as ET
 from flask import Flask, request, jsonify
 from dns.resolver import query
 from gvm.connections import TLSConnection
-from gvm.protocols.latest import Gmp
+from gvm.protocols.gmp import Gmp
 
 # Own library
 from PatrowlEnginesUtils.PatrowlEngine import _json_serial
@@ -121,6 +121,8 @@ def get_credentials(name=None):
             return credentials_id
     return None
 
+def get_scan_config_name():
+    return engine.scanner["options"]["default_scan_config_name"]["value"]
 
 def get_scan_config(name=None):
     """
@@ -135,7 +137,7 @@ def get_scan_config(name=None):
     scan_config_name = name
     if name is None:
         # Set the default value set in engine config
-        scan_config_name = engine.scanner["options"]["default_scan_config_name"]["value"]
+        scan_config_name = get_scan_config_name()
 
     for config in configs.findall("config"):
         tmp_config_name = config.find("name").text
@@ -158,7 +160,7 @@ def create_target(
     """
     new_target_xml = this.gmp.create_target(
         target_name,
-        hosts=target_name,
+        hosts=[target_name],
         ssh_credential_id=ssh_credential_id,
         ssh_credential_port=ssh_credential_port,
         smb_credential_id=smb_credential_id,
@@ -192,8 +194,10 @@ def get_task_by_target_name(target_name):
     if not tasks.get("status") == "200":
         return None
 
+    scan_config_id = get_scan_config()
+
     for task in tasks.findall("task"):
-        if task.find('target').get("id") == target_id:
+        if task.find('target').get("id") == target_id and task.find('config').get('id') == scan_config_id:
             task_id = task.get("id")
             if not is_uuid(task_id):
                 return None
@@ -235,7 +239,7 @@ def create_task(target_name, target_id, scan_config_id=None, scanner_id=None):
         scanner_id = get_scanners()[1]  # Set the default value
 
     new_task_xml = this.gmp.create_task(
-        name=target_name,
+        name=target_name + " - {}".format(get_scan_config_name()),
         config_id=scan_config_id,
         target_id=target_id,
         scanner_id=scanner_id
@@ -283,7 +287,10 @@ def get_last_report(task_id):
     if not task.get("status") == "200":
         return None
 
-    last_report = task.find("task").find("last_report").find("report")
+    try:
+        last_report = task.find("task").find("last_report").find("report")
+    except Exception:
+        return None
     if not is_uuid(last_report.get("id")):
         return None
     return last_report.get("id")
@@ -484,10 +491,10 @@ def _loadconfig():
             hostname=engine.scanner["options"]["gmp_host"]["value"],
             port=engine.scanner["options"]["gmp_port"]["value"]
         )
-        this.gmp = Gmp(connection)
-        this.gmp.authenticate(
-            engine.scanner["options"]["gmp_username"]["value"],
-            engine.scanner["options"]["gmp_password"]["value"])
+        with Gmp(connection) as this.gmp:
+            this.gmp.authenticate(
+                engine.scanner["options"]["gmp_username"]["value"],
+                engine.scanner["options"]["gmp_password"]["value"])
     except Exception:
         engine.scanner["status"] = "ERROR"
         print("Error: authentication failure Openvas instance")
@@ -690,9 +697,10 @@ def _scan_urls(scan_id):
             engine.scans[scan_id]["findings"][asset] = {}
         try:
             engine.scans[scan_id]["findings"][asset]["issues"] = get_report(asset, scan_id)
-        except Exception:
+        except Exception as e:
             # print("_scan_urls: API Connexion error (quota?)")
             # print(e)
+            engine.scans[scan_id]["lock"] = False
             return False
 
     # print("lock off")
@@ -718,23 +726,28 @@ def get_report(asset, scan_id):
         return {"status": "ERROR", "reason": "no issues found"}
 
     if is_ip(asset):
-        resolved_asset_ip = asset
+        resolved_asset_ips = [asset]
     else:
         # Let's suppose it's a fqdn then...
         try:
-            resolved_asset_ip = query(asset).response.answer[0].to_text().split(" ")[-1]
-        except Exception:
+            resolved_asset_ips = []
+            records = query(asset).response.answer[0].items
+            for record in records:
+                resolved_asset_ips.append(record.address)
+        except Exception as e:
             # What is that thing ?
             return issues
 
     report = tree.getroot().find("report")
-    for result in report.find("results").findall("result"):
-        host_ip = result.find("host").text
-        severity = result.find("severity").text
-        cve = result.find("nvt").find("cve").text
-        threat = result.find("threat").text
-        if resolved_asset_ip == host_ip:
-            issues.append([severity, cve, threat])
+    for result in report.findall('.//result'):
+        try:
+            host_ip = result.find("host").text
+            if host_ip in resolved_asset_ips:
+                issues.append(result)
+        except Exception as e:
+            # probably unknown issue's host, skip it
+            print("Warning: failed to process issue: {}".format(ET.tostring(result, encoding='utf8', method='xml')))
+            print(e)
 
     return issues
 
@@ -758,40 +771,57 @@ def _parse_results(scan_id):
     for asset in engine.scans[scan_id]["findings"]:
         if engine.scans[scan_id]["findings"][asset]["issues"]:
             report_id = engine.scans[scan_id]["assets"][asset]["report_id"]
-            description = ""
-            cvss_max = float(0)
-            for eng in engine.scans[scan_id]["findings"][asset]["issues"]:
-                if float(eng[0]) > 0:
-                    cvss_max = max(float(eng[0]), cvss_max)
-                    description = description + "[{threat}] CVSS: {severity} - Associated CVE : {cve}".format(
-                        threat=eng[2],
-                        severity=eng[0],
-                        cve=eng[1]) + "\n"
-            description = description + "For more detail go to 'https://{gmp_host}/omp?cmd=get_report&report_id={report_id}'".format(
-                gmp_host=engine.scanner["options"]["gmp_host"]["value"],
-                report_id=report_id)
+            for result in engine.scans[scan_id]["findings"][asset]["issues"]:
+                try:
+                    severity = float(result.find("severity").text)
+                    cve = result.find("nvt").find("cve").text
+                    threat = result.find("threat").text
+                    cvss_base = result.find("nvt").find("cvss_base").text
+                    name = result.find("nvt").find("name").text
+                    tags = result.find("nvt").find("tags").text
+                    xmlDesc = result.find("description").text
 
-            criticity = "high"
-            if cvss_max == 0:
-                criticity = "info"
-            elif cvss_max < 4.0:
-                criticity = "low"
-            elif cvss_max < 7.0:
-                criticity = "medium"
+                    if severity >= 0:
+                        # form criticity
+                        criticity = "high"
+                        if severity == 0:
+                            criticity = "info"
+                        elif severity < 4.0:
+                            criticity = "low"
+                        elif severity < 7.0:
+                            criticity = "medium"
 
-            nb_vulns[criticity] += 1
+                        # update counters
+                        nb_vulns[criticity] += 1
 
-            issues.append({
-                "issue_id": len(issues)+1,
-                "severity": criticity, "confidence": "certain",
-                "target": {"addr": [asset], "protocol": "http"},
-                "title": "'{}' identified in openvas".format(asset),
-                "solution": "n/a",
-                "metadata": {"risk": {"cvss_base_score": cvss_max}},
-                "type": "openvas_report",
-                "timestamp": timestamp,
-                "description": description,
-            })
+                        # form description
+                        description = "[{threat}] CVSS: {severity} - Associated CVE : {cve}".format(
+                            threat=threat,
+                            severity=severity,
+                            cve=cve) + "\n\n"
+
+                        if (xmlDesc):
+                            description += xmlDesc + "\n\n"
+                        if (tags):
+                            description += tags + "\n\n"
+
+                        # create issue
+                        issues.append({
+                            "issue_id": len(issues)+1,
+                            "severity": criticity, "confidence": "certain",
+                            "target": {"addr": [asset], "protocol": "http"},
+                            "title": "'{asset}' identified in openvas - '{name}'".format(asset=asset, name=name),
+                            "solution": "n/a",
+                            "metadata": {"risk": {"cvss_base_score": cvss_base}},
+                            "type": "openvas_report",
+                            "timestamp": timestamp,
+                            "description": description,
+                        })
+                except Exception as e:
+                    # probably unknown issue's host, skip it
+                    print("Warning: failed to process issue: {}".format(ET.tostring(result, encoding='utf8', method='xml')))
+                    print(e)
+
 
     summary = {
         "nb_issues": len(issues),
