@@ -16,7 +16,7 @@ more-itertools==4.3.0
 pathlib2==2.3.2
 PatrowlEnginesUtils>=0.0.12
 pluggy==0.7.1
-psutil==5.4.7
+psutil==5.6.6
 py==1.6.0
 pytest==3.8.1
 requests==2.22.0
