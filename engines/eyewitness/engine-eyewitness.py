@@ -488,7 +488,7 @@ def _scan_urls(scan_id):
                 urls.append("http://"+asset)
                 urls.append("https://"+asset)
 
-            LOG.warning("[%s/%s] Screeshoting %s...", i+1, len(assets), asset)
+            LOG.warning("[%s/%s] Screenshoting %s...", i+1, len(assets), asset)
             result = eyewitness_cmd(urls, asset_data["id"], scan_id, ENGINE.scans[scan_id]['options'])
             LOG.warning("[%s/%s] Screenshot result: %s", i+1, len(assets), result)
 
