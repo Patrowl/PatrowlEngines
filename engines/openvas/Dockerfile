@@ -12,7 +12,7 @@ WORKDIR /opt/patrowl-engines/openvas
 
 # Copy the current directory contents into the container at /
 COPY __init__.py .
-COPY engine-openvas-noexe.py .
+COPY engine-openvas.py .
 COPY openvas.json.sample openvas.json
 COPY requirements.txt .
 COPY README.md .
@@ -31,6 +31,7 @@ RUN pip3 install --upgrade pip
 
 WORKDIR /opt/patrowl-engines/openvas/libs
 RUN git clone https://github.com/greenbone/python-gvm.git
+RUN wget https://raw.githubusercontent.com/greenbone/python-gvm/v1.3.0/setup.py -O python-gvm/setup.py
 RUN pip3 install -e python-gvm
 
 WORKDIR /opt/patrowl-engines/openvas

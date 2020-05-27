@@ -7,7 +7,7 @@ from os.path import dirname, exists, isfile, realpath
 from sys import modules
 from json import dump, load, loads
 from re import search as re_search
-from subprocess import check_output
+# from subprocess import check_output
 from threading import Thread
 from time import time, sleep
 from urllib.parse import urlparse
