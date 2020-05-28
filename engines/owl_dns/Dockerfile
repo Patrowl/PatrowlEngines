@@ -11,7 +11,7 @@ LABEL Name="Patrowl\ DNS\ \(Patrowl engine\)" Version="1.0.1"
 RUN apt-get update && \
     apt-get install -y --no-install-recommends python3-dnspython \
     python3-geoip python3-whois python3-requests python3-ssdeep \
-    python3-pip python3-setuptools python3-dev git locales && \
+    python3-pip python3-setuptools python3-dev git wget locales && \
     locale-gen en_US.UTF-8
 ENV LC_ALL=en_US.UTF-8
 ENV LANG=en_US.UTF-8
