@@ -10,5 +10,10 @@
      "gmp_password":     { "type": "optional", "value": "admin"},
      "default_credential_name":  { "type": "optional", "value": "SSH Scanner"},
      "default_scan_config_name": { "type": "optional", "value": "Full and fast"}
+     "ssh_credential_name":  { "type": "optional", "value": "SSH Scanner"},
+     "ssh_credential_port":  { "type": "optional", "value": "22"},
+     "smb_credential_name":  { "type": "optional", "value": "SMB Scanner"},
+     "esxi_credential_name":  { "type": "optional", "value": "ESXI Scanner"},
+     "snmp_credential_name":  { "type": "optional", "value": "SNMP Scanner"},
   }
 }

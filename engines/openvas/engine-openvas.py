@@ -599,12 +599,36 @@ def start_scan():
     assets_failure = list()
     scan["assets"] = dict()
 
+    ssh_credential_id = None
+    ssh_credential_port = None
+    smb_credential_id = None
+    esxi_credential_id = None
+    snmp_credential_id = None
+
+    if "ssh_credential_name" in engine.scanner["options"]:
+        print("toto %s" %engine.scanner["options"]["ssh_credential_name"]["value"])
+        ssh_credential_id = get_credentials(engine.scanner["options"]["ssh_credential_name"]["value"])
+        if "ssh_credential_port" in engine.scanner["options"]:
+            ssh_credential_port = engine.scanner["options"]["ssh_credential_port"]["value"]
+        else:
+            ssh_credential_port = "22"
+
+    if "smb_credential_name" in engine.scanner["options"]:
+        smb_credential_id = get_credentials(engine.scanner["options"]["smb_credential_name"]["value"])
+
+    if "esxi_credential_name" in engine.scanner["options"]:
+        esxi_credential_id = get_credentials(engine.scanner["options"]["esxi_credential_name"]["value"])
+
+    if "snmp_credential_name" in engine.scanner["options"]:
+        snmp_credential_id = get_credentials(engine.scanner["options"]["esxi_credential_name"]["value"])
+
+
     for asset in assets:
         # print("== {} ==".format(asset))
         target_id = get_target(asset)
         if target_id is None and options["enable_create_target"]:
             # print("Create target {}".format(asset))
-            target_id = create_target(asset)  # Todo: add credentials if needed
+            target_id = create_target(asset, ssh_credential_id, ssh_credential_port, smb_credential_id, esxi_credential_id, snmp_credential_id)
         if target_id is None:
             # if options["enable_create_target"]:
             #     print("Fail to create target {}".format(asset))
