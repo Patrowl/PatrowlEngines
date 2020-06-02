@@ -7,7 +7,7 @@ Openvas REST API engine
 - Install Python-gvm
   `mkdir -p libs ; cd libs ; git clone git://github.com/greenbone/python-gvm ; pip3 install -e python-gvm`
 - You have to create a new task on OpenVAS and configure the task_id in openvas.json
-- OpenVAS instance. Ex: docker run -d -p 443:443 -e PUBLIC_HOSTNAME=<my_hostname> --name openvas mikesplain/openvas
+- OpenVAS instance. Ex: docker run -d -p 443:443 -p 9390:9390 -e PUBLIC_HOSTNAME=<my_hostname> --name openvas mikesplain/openvas
 
 ## Testing URLs
 

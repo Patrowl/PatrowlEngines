@@ -175,7 +175,8 @@ def _scan_thread(scan_id):
             app.logger.debug('asset: %s', item)
 
     # Sanitize args :
-    options = json.loads(this.scans[scan_id]['options'])
+    # options = json.loads(this.scans[scan_id]['options'])
+    options = this.scans[scan_id]['options']
 
     ports = None
     if "ports" in options:
@@ -419,7 +420,6 @@ def _parse_report(filename, scan_id):
         # No Element found in XML file
         return {"status": "ERROR", "reason": "no issues found"}
 
-    print(tree)
     ts = tree.find("taskbegin").get("time")
 
     unidentified_assets = set([a["value"] for a in this.scans[scan_id]["assets"]])

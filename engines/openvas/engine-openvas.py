@@ -7,7 +7,8 @@ from os.path import dirname, exists, isfile, realpath
 from sys import modules
 from json import dump, load, loads
 from re import search as re_search
-# from subprocess import check_output
+from netaddr import IPNetwork, IPAddress, glob_to_iprange
+from netaddr.core import AddrFormatError
 from threading import Thread
 from time import time, sleep
 from urllib.parse import urlparse
@@ -35,6 +36,8 @@ APP_PORT = 5016
 APP_MAXSCANS = 5
 APP_ENGINE_NAME = "openvas"
 APP_BASE_DIR = dirname(realpath(__file__))
+DEFAULT_OV_PROFILE = "Full and fast"
+DEFAULT_OV_PORTLIST = "patrowl-all_tcp"
 
 engine = PatrowlEngine(
     app=app,
@@ -46,6 +49,7 @@ engine = PatrowlEngine(
 this = modules[__name__]
 this.keys = []
 this.gmp = None
+this.openvas_portlists = {}
 
 
 def is_uuid(uuid_string, version=4):
@@ -74,7 +78,7 @@ def get_options(payload):
     return options
 
 
-def get_target(target_name):
+def get_target(target_name, scan_portlist_id=None):
     """
     This function returns the target_id of a target. If not, it returns None.
     """
@@ -87,7 +91,12 @@ def get_target(target_name):
         return None
 
     for target in targets.findall("target"):
-        if target_name == target.find("hosts").text:
+        if scan_portlist_id is None and target_name == target.find("hosts").text:
+            target_id = target.get("id")
+            if not is_uuid(target_id):
+                return None
+            return target_id
+        elif scan_portlist_id == target.find("port_list").get('id') and target_name == target.find("hosts").text:
             target_id = target.get("id")
             if not is_uuid(target_id):
                 return None
@@ -121,8 +130,26 @@ def get_credentials(name=None):
             return credentials_id
     return None
 
-def get_scan_config_name():
-    return engine.scanner["options"]["default_scan_config_name"]["value"]
+
+def get_scan_config_name(scan_config_id=None):
+    scan_config_name = None
+
+    configs_xml = this.gmp.get_configs()
+    try:
+        configs = ET.fromstring(configs_xml)
+    except Exception:
+        return None
+
+    for config in configs.findall('config'):
+        if config.get("id") == scan_config_id:
+            scan_config_name = config.find("name").text
+            break
+
+    if scan_config_name is None:
+        return engine.scanner["options"]["default_scan_config_name"]["value"]
+    else:
+        return scan_config_name
+
 
 def get_scan_config(name=None):
     """
@@ -151,6 +178,8 @@ def get_scan_config(name=None):
 
 def create_target(
     target_name,
+    port_list_id=None,
+    port_list_name=None,
     ssh_credential_id=None, ssh_credential_port=None,
     smb_credential_id=None,
     esxi_credential_id=None,
@@ -159,17 +188,19 @@ def create_target(
     This function creates a target in OpenVAS and returns its target_id.
     """
     new_target_xml = this.gmp.create_target(
-        target_name,
+        "{} - {}".format(target_name, port_list_name),
         hosts=[target_name],
         ssh_credential_id=ssh_credential_id,
         ssh_credential_port=ssh_credential_port,
         smb_credential_id=smb_credential_id,
         esxi_credential_id=esxi_credential_id,
-        snmp_credential_id=snmp_credential_id
+        snmp_credential_id=snmp_credential_id,
+        port_list_id=port_list_id
         )
     try:
         new_target = ET.fromstring(new_target_xml)
-    except Exception:
+    except Exception as e:
+        app.logger.error(e)
         return None
     if not new_target.get("status") == "201":
         return None
@@ -179,7 +210,7 @@ def create_target(
     return target_id
 
 
-def get_task_by_target_name(target_name):
+def get_task_by_target_name(target_name, scan_config_id=None):
     """
     This function returns the task_id.
     """
@@ -194,7 +225,7 @@ def get_task_by_target_name(target_name):
     if not tasks.get("status") == "200":
         return None
 
-    scan_config_id = get_scan_config()
+    # scan_config_id = get_scan_config(scan_config_name)
 
     for task in tasks.findall("task"):
         if task.find('target').get("id") == target_id and task.find('config').get('id') == scan_config_id:
@@ -238,8 +269,10 @@ def create_task(target_name, target_id, scan_config_id=None, scanner_id=None):
     if scanner_id is None:
         scanner_id = get_scanners()[1]  # Set the default value
 
+    # print("create_task:", scan_config_id, get_scan_config_name(scan_config_id))
+
     new_task_xml = this.gmp.create_task(
-        name=target_name + " - {}".format(get_scan_config_name()),
+        name=target_name + " - {}".format(get_scan_config_name(scan_config_id)),
         config_id=scan_config_id,
         target_id=target_id,
         scanner_id=scanner_id
@@ -342,8 +375,63 @@ def get_multiple_report_status(assets):
 
 
 def is_ip(string):
-    """ This dummy function returns True is the string is probably an IP."""
-    return re_search("[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+", string) is not None
+    """Return True is the string is probably an IP."""
+    try:
+        IPAddress(string)
+    except Exception:
+        return False
+    return True
+    # return re_search("^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$", string) is not None
+
+
+def is_ip_subnet(subnet):
+    try:
+        IPNetwork(subnet)
+    except (TypeError, ValueError, AddrFormatError):
+        return False
+    if "/" not in subnet:
+        return False
+    return True
+
+
+def subnet_ips(subnet):
+    ips = []
+    if is_ip_subnet(subnet):
+        try:
+            ips = [str(ip) for ip in IPNetwork(subnet)]
+        except Exception:
+            return ips
+    return ips
+
+
+def is_ip_range(subnet):
+    ips = []
+    try:
+        ips = glob_to_iprange(subnet)
+    except Exception:
+        return []
+    return ips
+
+
+def range_ips(range):
+    ips = []
+    if is_ip_range(range):
+        ips = [str(ip) for ip in glob_to_iprange(range)]
+    return ips
+
+
+def split_port(asset_port):
+    port_number = "0"
+    port_protocol = "tcp"
+    try:
+        if asset_port.split('/')[0].isnumeric():
+            port_number = asset_port.split('/')[0]
+
+        if asset_port.split('/')[1] in ["tcp", "udp"]:
+            port_protocol = asset_port.split('/')[1]
+    except Exception:
+        pass
+    return port_number, port_protocol
 
 
 @app.errorhandler(404)
@@ -447,6 +535,7 @@ def status_scan(scan_id):
         try:
             _scan_urls(scan_id)
         except Exception as e:
+            app.logger.error(e)
             res.update({
                 "status": "error",
                 "reason": "scan_urls did not worked ! ({})".format(e)})
@@ -469,6 +558,18 @@ def stop():
 @app.route("/engines/openvas/stop/<scan_id>")
 def stop_scan(scan_id):
     """Stop scan identified by id."""
+    res = {"page": "stop_scan", "status": "UNKNOWN"}
+    if scan_id not in engine.scans.keys():
+        res.update({"status": "error", "reason": "scan_id '{}' not found".format(scan_id)})
+        return jsonify(res)
+
+    for asset in engine.scans[scan_id]['assets'].keys():
+        task_id = engine.scans[scan_id]['assets'][asset]['task_id']
+        try:
+            this.gmp.stop_task(task_id)
+        except Exception:
+            app.logger.debug("Unable to stop scan '{}'".format(scan_id))
+            pass
     return engine.stop_scan(scan_id)
 
 
@@ -481,7 +582,8 @@ def getreport(scan_id):
 def _loadconfig():
     conf_file = APP_BASE_DIR+"/openvas.json"
     if not exists(conf_file):
-        print("Error: config file '{}' not found".format(conf_file))
+        app.logger.error("Error: config file '{}' not found".format(conf_file))
+        return False
 
     json_data = open(conf_file)
     engine.scanner = load(json_data)
@@ -497,12 +599,78 @@ def _loadconfig():
                 engine.scanner["options"]["gmp_password"]["value"])
     except Exception:
         engine.scanner["status"] = "ERROR"
-        print("Error: authentication failure Openvas instance")
+        app.logger.error("Error: authentication failure Openvas instance")
         return False
+
+    # Check port lists
+    try:
+        portlists = ET.fromstring(this.gmp.get_port_lists())
+    except Exception:
+        return None
+    for pl in portlists.findall('port_list'):
+        pl_name = pl.find('name').text
+        pl_uuid = pl.get('id')
+        this.openvas_portlists.update({pl_name: pl_uuid})
+
+    # Create custom port lists
+    if "patrowl-all_tcp" not in this.openvas_portlists.keys():
+        try:
+            new_pl_xml = this.gmp.create_port_list(
+                name="patrowl-all_tcp",
+                port_range="T:1-65535"
+            )
+            new_pl = ET.fromstring(new_pl_xml)
+            this.openvas_portlists.update({"patrowl-all_tcp": new_pl.get('id')})
+        except Exception:
+            return None
+
+    if "patrowl-quick_tcp" not in this.openvas_portlists.keys():
+        try:
+            new_pl_xml = this.gmp.create_port_list(
+                name="patrowl-quick_tcp",
+                port_range="T:21-80,T:443,U:53"
+            )
+            new_pl = ET.fromstring(new_pl_xml)
+            this.openvas_portlists.update({"patrowl-quick_tcp": new_pl.get('id')})
+        except Exception:
+            return None
+
+    if "patrowl-tcp_80" not in this.openvas_portlists.keys():
+        try:
+            new_pl_xml = this.gmp.create_port_list(
+                name="patrowl-tcp_80",
+                port_range="T:80"
+            )
+            new_pl = ET.fromstring(new_pl_xml)
+            this.openvas_portlists.update({"patrowl-tcp_80": new_pl.get('id')})
+        except Exception:
+            return None
+
+    if "patrowl-tcp_443" not in this.openvas_portlists.keys():
+        try:
+            new_pl_xml = this.gmp.create_port_list(
+                name="patrowl-tcp_443",
+                port_range="T:443"
+            )
+            new_pl = ET.fromstring(new_pl_xml)
+            this.openvas_portlists.update({"patrowl-tcp_443": new_pl.get('id')})
+        except Exception:
+            return None
+
+    if "patrowl-tcp_22" not in this.openvas_portlists.keys():
+        try:
+            new_pl_xml = this.gmp.create_port_list(
+                name="patrowl-tcp_22",
+                port_range="T:22"
+            )
+            new_pl = ET.fromstring(new_pl_xml)
+            this.openvas_portlists.update({"patrowl-tcp_22": new_pl.get('id')})
+        except Exception:
+            return None
 
     engine.scanner["status"] = "READY"
     engine.scanner["credentials"] = ()
-    engine.scanner["scan_config"] = get_scan_config()
+    # engine.scanner["scan_config"] = get_scan_config()
 
     # print(create_target("toto1.patrowl.io"))
     # print(get_task_by_target_name("patrowl.io"))
@@ -594,6 +762,18 @@ def start_scan():
         "findings":     {}
     }
 
+    scan_config_name = None
+    if 'profile' in data["options"].keys():
+        scan_config_name = data["options"]["profile"]
+    scan_config_id = get_scan_config(name=scan_config_name)
+
+    scan_portlist_id = None
+    scan_portlist_name = ""
+    if 'port_list' in data["options"].keys():
+        scan_portlist_name = data["options"]["port_list"]
+        if scan_portlist_name in this.openvas_portlists.keys():
+            scan_portlist_id = this.openvas_portlists[scan_portlist_name]
+
     options = get_options(data)
 
     assets_failure = list()
@@ -601,10 +781,11 @@ def start_scan():
 
     for asset in assets:
         # print("== {} ==".format(asset))
-        target_id = get_target(asset)
+        target_id = get_target(asset, scan_portlist_id)
         if target_id is None and options["enable_create_target"]:
             # print("Create target {}".format(asset))
-            target_id = create_target(asset)  # Todo: add credentials if needed
+            # target_id = create_target(asset)  # Todo: add credentials if needed
+            target_id = create_target(asset, port_list_id=scan_portlist_id,  port_list_name=scan_portlist_name)  # Todo: add credentials if needed
         if target_id is None:
             # if options["enable_create_target"]:
             #     print("Fail to create target {}".format(asset))
@@ -612,10 +793,10 @@ def start_scan():
             #     print("Target creation disabled")
             assets_failure.append(asset)
         else:
-            task_id = get_task_by_target_name(asset)
+            task_id = get_task_by_target_name(asset, scan_config_id)
             if task_id is None and options["enable_create_task"]:
                 # print("Create task {}".format(asset))
-                task_id = create_task(asset, target_id)
+                task_id = create_task(asset, target_id, scan_config_id=scan_config_id)
             if task_id is None:
                 # if options["enable_create_task"]:
                 #     print("Fail to create task {}".format(asset))
@@ -697,7 +878,7 @@ def _scan_urls(scan_id):
             engine.scans[scan_id]["findings"][asset] = {}
         try:
             engine.scans[scan_id]["findings"][asset]["issues"] = get_report(asset, scan_id)
-        except Exception as e:
+        except Exception:
             # print("_scan_urls: API Connexion error (quota?)")
             # print(e)
             engine.scans[scan_id]["lock"] = False
@@ -713,21 +894,30 @@ def get_report(asset, scan_id):
     report_id = engine.scans[scan_id]["assets"][asset]["report_id"]
     issues = []
 
-    if not isfile("results/openvas_report_{scan_id}_{asset}.xml".format(scan_id=scan_id, asset=asset)):
+    if not isfile("results/openvas_report_{scan_id}_{asset}.xml".format(scan_id=scan_id, asset=asset.replace('/','net'))):
         result = this.gmp.get_report(report_id)
-        result_file = open("results/openvas_report_{scan_id}_{asset}.xml".format(scan_id=scan_id, asset=asset), "w")
+        result_file = open("results/openvas_report_{scan_id}_{asset}.xml".format(scan_id=scan_id, asset=asset.replace('/','net')), "w")
         result_file.write(result)
         result_file.close()
 
     try:
-        tree = ET.parse("results/openvas_report_{scan_id}_{asset}.xml".format(scan_id=scan_id, asset=asset))
-    except Exception:
+        tree = ET.parse("results/openvas_report_{scan_id}_{asset}.xml".format(scan_id=scan_id, asset=asset.replace('/','net')))
+    except Exception as e:
         # No Element found in XML file
+        app.logger.error(e)
         return {"status": "ERROR", "reason": "no issues found"}
 
     if is_ip(asset):
+        # app.logger.debug("is_ip:", asset)
         resolved_asset_ips = [asset]
+    elif is_ip_subnet(asset):
+        # app.logger.debug("is_ip_subnet:", asset)
+        resolved_asset_ips = subnet_ips(asset)
+    elif is_ip_range(asset):
+        # app.logger.debug("is_ip_subnet:", asset)
+        resolved_asset_ips = range_ips(asset)
     else:
+        # app.logger.debug("else:", asset)
         # Let's suppose it's a fqdn then...
         try:
             resolved_asset_ips = []
@@ -738,6 +928,8 @@ def get_report(asset, scan_id):
             # What is that thing ?
             return issues
 
+    # app.logger.debug(resolved_asset_ips)
+
     report = tree.getroot().find("report")
     for result in report.findall('.//result'):
         try:
@@ -746,8 +938,8 @@ def get_report(asset, scan_id):
                 issues.append(result)
         except Exception as e:
             # probably unknown issue's host, skip it
-            print("Warning: failed to process issue: {}".format(ET.tostring(result, encoding='utf8', method='xml')))
-            print(e)
+            app.logger.error("Warning: failed to process issue: {}".format(ET.tostring(result, encoding='utf8', method='xml')))
+            app.logger.error(e)
 
     return issues
 
@@ -764,13 +956,14 @@ def _parse_results(scan_id):
         "info": 0,
         "low": 0,
         "medium": 0,
-        "high": 0
+        "high": 0,
+        "critical": 0
     }
     timestamp = int(time() * 1000)
 
     for asset in engine.scans[scan_id]["findings"]:
         if engine.scans[scan_id]["findings"][asset]["issues"]:
-            report_id = engine.scans[scan_id]["assets"][asset]["report_id"]
+            # report_id = engine.scans[scan_id]["assets"][asset]["report_id"]
             for result in engine.scans[scan_id]["findings"][asset]["issues"]:
                 try:
                     severity = float(result.find("severity").text)
@@ -780,6 +973,9 @@ def _parse_results(scan_id):
                     name = result.find("nvt").find("name").text
                     tags = result.find("nvt").find("tags").text
                     xmlDesc = result.find("description").text
+                    asset_name = result.find("host").text
+                    asset_port = result.find("port").text
+                    asset_port_number, asset_port_protocol = split_port(asset_port)
 
                     if severity >= 0:
                         # form criticity
@@ -805,23 +1001,34 @@ def _parse_results(scan_id):
                         if (tags):
                             description += tags + "\n\n"
 
+                        #  metadata
+                        finding_metadata = {
+                            "risk": {"cvss_base_score": cvss_base}
+                        }
+                        if cve != "NOCVE":
+                            finding_metadata.update({
+                                "vuln_refs": {"CVE": [cve]}
+                            })
+
                         # create issue
                         issues.append({
                             "issue_id": len(issues)+1,
                             "severity": criticity, "confidence": "certain",
-                            "target": {"addr": [asset], "protocol": "http"},
-                            "title": "'{asset}' identified in openvas - '{name}'".format(asset=asset, name=name),
+                            "target": {
+                                "addr": [asset_name],
+                                "protocol": asset_port_protocol
+                            },
+                            "title": "{port} - {name}".format(port=asset_port, name=name),
                             "solution": "n/a",
-                            "metadata": {"risk": {"cvss_base_score": cvss_base}},
+                            "metadata": finding_metadata,
                             "type": "openvas_report",
                             "timestamp": timestamp,
                             "description": description,
                         })
                 except Exception as e:
                     # probably unknown issue's host, skip it
-                    print("Warning: failed to process issue: {}".format(ET.tostring(result, encoding='utf8', method='xml')))
-                    print(e)
-
+                    app.logger.error("Warning: failed to process issue: {}".format(ET.tostring(result, encoding='utf8', method='xml')))
+                    app.logger.error(e)
 
     summary = {
         "nb_issues": len(issues),
@@ -829,6 +1036,7 @@ def _parse_results(scan_id):
         "nb_low": nb_vulns["low"],
         "nb_medium": nb_vulns["medium"],
         "nb_high": nb_vulns["high"],
+        "nb_critical": nb_vulns["critical"],
         "engine_name": "openvas",
         "engine_version": engine.scanner["version"]
     }
