@@ -6,7 +6,7 @@ gunicorn==20.0.4
 idna==2.5
 itsdangerous==0.24
 Jinja2>=2.10.1
-MarkupSafe==1.0
+MarkupSafe==1.1.1
 requests==2.22.0
 urllib3>=1.25
 virustotal-api==1.1.7
