@@ -35,7 +35,7 @@ RUN wget https://raw.githubusercontent.com/greenbone/python-gvm/v1.3.0/setup.py 
 RUN pip3 install -e python-gvm
 
 WORKDIR /opt/patrowl-engines/openvas
-RUN pip3 install --trusted-host pypi.python.org -r requirements.txt
+RUN pip3 install --trusted-host pypi.python.org -r requirements.txt --ignore-installed
 
 # TCP port exposed by the container (NAT)
 EXPOSE 5016
