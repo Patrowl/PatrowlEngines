@@ -25,9 +25,9 @@ def test_openvas_default_scan_domain():
         test_name="openvas_default_scan_domain",
         assets=[{
             "id": "1",
-            "value": "patrowl.io",
+            "value": "8.8.8.8",
             "criticity": "low",
-            "datatype": "domain"
+            "datatype": "ip"
         }],
         scan_policy={
             "max_timeout": MAX_TIMEOUT,
