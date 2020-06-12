@@ -41,7 +41,7 @@ RUN apk add --update --no-cache \
 
 WORKDIR /opt/patrowl-engines/sslscan
 RUN pip3 install --upgrade pip
-RUN pip3 install --trusted-host pypi.python.org -r requirements.txt
+RUN pip3 install --trusted-host pypi.python.org -r requirements.txt --ignore-installed
 
 # TCP port exposed by the container (NAT)
 EXPOSE 5014
