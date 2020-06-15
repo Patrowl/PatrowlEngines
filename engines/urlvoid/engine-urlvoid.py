@@ -9,6 +9,7 @@ import time
 import threading
 import random
 import requests
+import re
 from urllib.parse import urlparse
 import xml.etree.ElementTree as ElementTree
 from flask import Flask, request, jsonify
@@ -253,12 +254,13 @@ def _scan_urls(scan_id):
         assets.append(asset)
 
     for asset in assets:
+        apikey = this.keys[random.randint(0, len(this.keys)-1)]
         if asset not in engine.scans[scan_id]["findings"]:
             engine.scans[scan_id]["findings"][asset] = {}
         try:
-            engine.scans[scan_id]["findings"][asset]['issues'] = get_report(asset, this.keys[random.randint(0, len(this.keys)-1)])
-        except Exception:
-            print("_scan_urls: API Connexion error (quota?)")
+            engine.scans[scan_id]["findings"][asset]['issues'] = get_report(asset, apikey)
+        except Exception as ex:
+            app.logger.error("_scan_urls failed {}".format(re.sub(r'/'+apikey+'/',r'/***/',ex.__str__())))
             return False
 
     return True
