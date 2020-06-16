@@ -3,9 +3,9 @@ APIVoid Threat analysis engine
 
 https://www.apivoid.com/
 
--[ ] IP Reputation Check
--[X] Domain Reputation Check
--[ ] URL Reputation Check
+- [ ] IP Reputation Check
+- [X] Domain Reputation Check
+- [ ] URL Reputation Check
 
 ## Dependencies
 - Python 3 + pip
