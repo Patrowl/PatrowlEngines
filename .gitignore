@@ -39,6 +39,7 @@ engines/pastebin_monitor/database.db
 engines/droopescan/droopescan.json
 engines/droopescan/logs/*
 engines/droopescan/tmp/*
+engines/apivoid/apivoid.json
 env
 env3
 results

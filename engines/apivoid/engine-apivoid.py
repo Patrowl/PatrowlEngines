@@ -7,16 +7,13 @@ import sys
 import json
 import time
 import threading
-import random
 import requests
 import re
 from urllib.parse import urlparse
-import xml.etree.ElementTree as ElementTree
 from flask import Flask, request, jsonify
 
 from PatrowlEnginesUtils.PatrowlEngine import _json_serial
 from PatrowlEnginesUtils.PatrowlEngine import PatrowlEngine
-from PatrowlEnginesUtils.PatrowlEngine import PatrowlEngineFinding
 from PatrowlEnginesUtils.PatrowlEngineExceptions import PatrowlEngineExceptions
 
 app = Flask(__name__)
@@ -136,9 +133,14 @@ def _loadconfig():
         json_data = open(conf_file)
         engine.scanner = json.load(json_data)
 
-        this.keys = os.environ.get('APIVOID_APIKEY', '')
-
-        engine.scanner['status'] = "READY"
+        try:
+            this.keys = os.environ.get('APIVOID_APIKEY', engine.scanner['apikeys'][0])
+            engine.scanner['status'] = "READY"
+        except Exception:
+            this.keys = ""
+            engine.scanner['status'] = "ERROR"
+            app.logger.error("Error: No API KEY available")
+            return {"status": "error", "reason": "No API KEY available"}
 
     else:
         app.logger.error("Error: config file '{}' not found".format(conf_file))
@@ -292,16 +294,14 @@ def get_report(scan_id, asset, apikey):
     """Get APIvoid json report."""
     scan_url = "https://endpoint.apivoid.com/iprep/v1/pay-as-you-go/?key={}&host={}".format(apikey, asset)
 
-    if True:
-        try:
-            response = requests.get(scan_url)
-            open(get_outputfile(scan_id), 'wb').write(response.content)
-        except Exception as ex:
-            app.logger.error("get_report failed {}".format(re.sub(r'/' + apikey + '/', r'/***/', ex.__str__())))
-            return []
-
-
     issues = []
+    try:
+        response = requests.get(scan_url)
+        open(get_outputfile(scan_id), 'wb').write(response.content)
+    except Exception as ex:
+        app.logger.error("get_report failed {}".format(re.sub(r'/' + apikey + '/', r'/***/', ex.__str__())))
+        # return issues
+
     # tree = ElementTree.fromstring(xml.text)
     # if tree.find("detections/engines") is not None:
     #    for child in tree.find("detections/engines"):
@@ -319,7 +319,8 @@ def _parse_results(scan_id):
         "info": 0,
         "low": 0,
         "medium": 0,
-        "high": 0
+        "high": 0,
+        "critical": 0
     }
     ts = int(time.time() * 1000)
 
@@ -374,13 +375,13 @@ def _parse_results(scan_id):
                               "description": "{} have not identified in blacklist engines or online reputation tools".format(asset)
                           })
 
-
         summary = {
             "nb_issues": len(issues),
             "nb_info": nb_vulns["info"],
             "nb_low": nb_vulns["low"],
             "nb_medium": nb_vulns["medium"],
             "nb_high": nb_vulns["high"],
+            "nb_critical": nb_vulns["critical"],
             "engine_name": "apivoid",
             "engine_version": engine.scanner["version"]
         }

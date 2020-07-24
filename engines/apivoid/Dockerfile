@@ -22,11 +22,11 @@ RUN apk add --update --no-cache \
     python3-dev \
     py3-pip \
   && rm -rf /var/cache/apk/*
-RUN pip3 install --upgrade pip
-RUN pip3 install --trusted-host pypi.python.org -r requirements.txt
+RUN pip3 install --upgrade pip \
+  && pip3 install --trusted-host pypi.python.org -r requirements.txt
 
 # TCP port exposed by the container (NAT)
-EXPOSE 5008
+EXPOSE 5022
 
 # Run app.py when the container launches
-CMD ["gunicorn", "engine-apivoid:app", "-b", "0.0.0.0:5008", "--access-logfile", "-"]
+CMD ["gunicorn", "engine-apivoid:app", "-b", "0.0.0.0:5022", "--access-logfile", "-"]

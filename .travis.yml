@@ -25,6 +25,7 @@ env:
 # - PATROWL_ENGINE=owl_request ENGINE_PORT=5019
 # - PATROWL_ENGINE=pastebin_monitor ENGINE_PORT=5020
 - PATROWL_ENGINE=droopescan ENGINE_PORT=5021
+- PATROWL_ENGINE=apivoid ENGINE_PORT=5022
 before_install:
 - cd engines
 install:
