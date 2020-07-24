@@ -70,11 +70,11 @@ def get_options(payload):
     options = {"enable_create_target": True, "enable_create_task": True, "enable_start_task": True}
     user_opts = payload["options"]
     if "enable_create_target" in user_opts:
-        options["enable_create_target"] = user_opts["enable_create_target"] == "True" or user_opts["enable_create_target"] == "True"
+        options["enable_create_target"] = True or user_opts["enable_create_target"] == "True"
     if "enable_create_task" in user_opts:
-        options["enable_create_task"] = user_opts["enable_create_task"] == "True" or user_opts["enable_create_task"] == "True"
+        options["enable_create_task"] = True or user_opts["enable_create_task"] == "True"
     if "enable_start_task" in user_opts:
-        options["enable_start_task"] = user_opts["enable_start_task"] == "True" or user_opts["enable_start_task"] == "True"
+        options["enable_start_task"] = True or user_opts["enable_start_task"] == "True"
     return options
 
 
@@ -481,7 +481,20 @@ def test():
 @app.route("/engines/openvas/info")
 def info():
     """Get info on running engine."""
-    return engine.info()
+    # return engine.info()
+    status()
+    return jsonify({
+        "page": "info",
+        "engine_config": {
+            "name": engine.name,
+            "description": engine.description,
+            "version": engine.version,
+            "status": engine.status,
+            "allowed_asset_types": engine.allowed_asset_types,
+            "max_scans": engine.max_scans,
+            "nb_scans": len(engine.scans.keys()),
+        }
+    })
 
 
 @app.route("/engines/openvas/clean")
@@ -499,7 +512,30 @@ def clean_scan(scan_id):
 @app.route("/engines/openvas/status")
 def status():
     """Get status on engine and all scans."""
-    return engine.getstatus()
+    res = {"page": "status"}
+
+    if engine.status != "ERROR":
+        if len(engine.scans) == engine.max_scans:
+            engine.status = "BUSY"
+        else:
+            engine.status = "READY"
+
+    scans = []
+    for scan_id in engine.scans.keys():
+        engine.getstatus_scan(scan_id)
+        scans.append({scan_id: {
+            "status": engine.scans[scan_id]['status'],
+            "started_at": engine.scans[scan_id]['started_at'],
+            "assets": engine.scans[scan_id]['assets']
+        }})
+
+    res.update({
+        "nb_scans": len(engine.scans),
+        "status": engine.status,
+        "scans": scans})
+    return jsonify(res)
+
+    # return engine.getstatus()
 
 
 @app.route("/engines/openvas/status/<scan_id>")
@@ -599,6 +635,7 @@ def _loadconfig():
                 engine.scanner["options"]["gmp_password"]["value"])
     except Exception:
         engine.scanner["status"] = "ERROR"
+        engine.status = "ERROR"
         app.logger.error("Error: authentication failure Openvas instance")
         return False
 
@@ -773,6 +810,10 @@ def start_scan():
         scan_portlist_name = data["options"]["port_list"]
         if scan_portlist_name in this.openvas_portlists.keys():
             scan_portlist_id = this.openvas_portlists[scan_portlist_name]
+        else:
+            scan_portlist_id = this.openvas_portlists["OpenVAS Default"]
+    else:
+        scan_portlist_id = this.openvas_portlists["OpenVAS Default"]
 
     options = get_options(data)
 
@@ -962,7 +1003,22 @@ def _parse_results(scan_id):
     timestamp = int(time() * 1000)
 
     for asset in engine.scans[scan_id]["findings"]:
-        if engine.scans[scan_id]["findings"][asset]["issues"]:
+        if len(engine.scans[scan_id]["findings"][asset]["issues"]) ==0:
+            issues.append({
+                "issue_id": len(issues)+1,
+                "severity": "info", "confidence": "certain",
+                "target": {
+                    "addr": [asset],
+                    "protocol": "tcp"
+                },
+                "title": "No results found.",
+                "solution": "n/a",
+                "metadata": {},
+                "type": "openvas_report",
+                "timestamp": timestamp,
+                "description": "No results found during the scan.",
+            })
+        else:
             # report_id = engine.scans[scan_id]["assets"][asset]["report_id"]
             for result in engine.scans[scan_id]["findings"][asset]["issues"]:
                 try:

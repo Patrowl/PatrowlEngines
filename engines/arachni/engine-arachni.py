@@ -28,6 +28,8 @@ this.scanner = {}   # Scanner info
 this.scans = {}     # Active scan list
 requests.packages.urllib3.disable_warnings()
 
+# logging.basicConfig(level=logging.DEBUG)
+
 if __name__ != '__main__':
     gunicorn_logger = logging.getLogger('gunicorn.error')
     app.logger.handlers = gunicorn_logger.handlers
