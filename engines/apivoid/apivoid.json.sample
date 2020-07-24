@@ -1,0 +1,10 @@
+{
+  "name": "APIVOID",
+  "version": "1.0",
+  "description": "APIVoid reputation API",
+  "allowed_asset_types": ["domain"],
+  "apikeys": [
+    "xxx"
+  ],
+  "options": {}
+}
