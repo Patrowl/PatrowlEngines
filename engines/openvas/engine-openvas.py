@@ -20,6 +20,7 @@ from flask import Flask, request, jsonify
 from dns.resolver import query
 from gvm.connections import TLSConnection
 from gvm.protocols.gmp import Gmp
+from gvm.protocols.gmpv7.types import AliveTest
 
 # Own library
 from PatrowlEnginesUtils.PatrowlEngine import _json_serial
@@ -51,6 +52,19 @@ this.keys = []
 this.gmp = None
 this.openvas_portlists = {}
 
+OV_ALIVE_TESTS = {
+    "CONSIDER_ALIVE": "Consider Alive",
+    "ICMP_TCP_ACK_SERVICE_AND_ARP_PING": "ICMP, TCP-ACK Service & ARP Ping",
+    "TCP_ACK_SERVICE_AND_ARP_PING": "TCP-ACK Service & ARP Ping",
+    "ICMP_AND_ARP_PING": "ICMP & ARP Ping",
+    "ICMP_AND_TCP_ACK_SERVICE_PING": "ICMP & TCP-ACK Service Ping",
+    "ARP_PING": "ARP Ping",
+    "TCP_ACK_SERVICE_PING": "TCP-ACK Service Ping",
+    "TCP_SYN_SERVICE_PING": "TCP-SYN Service Ping",
+    "ICMP_PING": "ICMP Ping",
+    "DEFAULT": "Scan Config Default",
+}
+
 
 def is_uuid(uuid_string, version=4):
     """
@@ -78,7 +92,7 @@ def get_options(payload):
     return options
 
 
-def get_target(target_name, scan_portlist_id=None):
+def get_target(target_name, scan_portlist_id=None, alive_test=None):
     """
     This function returns the target_id of a target. If not, it returns None.
     """
@@ -89,6 +103,10 @@ def get_target(target_name, scan_portlist_id=None):
         return None
     if not targets.attrib["status"] == "200":
         return None
+
+    # Debug
+    # for target in targets.findall("target"):
+    #     print(target.find("hosts"))
 
     for target in targets.findall("target"):
         if scan_portlist_id is None and target_name == target.find("hosts").text:
@@ -183,19 +201,33 @@ def create_target(
     ssh_credential_id=None, ssh_credential_port=None,
     smb_credential_id=None,
     esxi_credential_id=None,
-    snmp_credential_id=None):
+    snmp_credential_id=None,
+    # alive_test="TCP_SYN_SERVICE_PING"):
+    alive_test=AliveTest.TCP_SYN_SERVICE_PING):
     """
     This function creates a target in OpenVAS and returns its target_id.
     """
+    # app.logger.debug(
+    #     "create_target(): {}, {}, {}, {}",
+    #     target_name, port_list_id, port_list_name, alive_test)
+
+    # Check alive_test param
+    if alive_test not in OV_ALIVE_TESTS.keys():
+        # alive_test = OV_ALIVE_TESTS["DEFAULT"]
+        # alive_test = "TCP_SYN_SERVICE_PING"
+        alive_test = AliveTest.TCP_SYN_SERVICE_PING
+
     new_target_xml = this.gmp.create_target(
-        "{} - {}".format(target_name, port_list_name),
+        "{} - {} - {}".format(target_name, port_list_name, alive_test),
         hosts=[target_name],
         ssh_credential_id=ssh_credential_id,
         ssh_credential_port=ssh_credential_port,
         smb_credential_id=smb_credential_id,
         esxi_credential_id=esxi_credential_id,
         snmp_credential_id=snmp_credential_id,
-        port_list_id=port_list_id
+        port_list_id=port_list_id,
+        # alive_test=OV_ALIVE_TESTS[alive_test]
+        alive_test=alive_test
         )
     try:
         new_target = ET.fromstring(new_target_xml)
@@ -214,7 +246,9 @@ def get_task_by_target_name(target_name, scan_config_id=None):
     """
     This function returns the task_id.
     """
-    tasks_xml = this.gmp.get_tasks()
+    # tasks_xml = this.gmp.get_tasks()
+    # tasks_xml = this.gmp.get_tasks(apply_overrides=1)
+    tasks_xml = this.gmp.get_tasks(filter="apply_overrides=1 min_qod=0 rows=-1")
     target_id = get_target(target_name)
     if target_id is None:
         return None
@@ -333,7 +367,7 @@ def get_report_status(report_id):
     """
     This function get the status of a report_id.
     """
-    report_status_xml = this.gmp.get_report(report_id)
+    report_status_xml = this.gmp.get_report(report_id, filter="apply_overrides=1 min_qod=0 rows=-1")
     try:
         report_status = ET.fromstring(report_status_xml)
     except Exception:
@@ -349,7 +383,9 @@ def get_multiple_report_status(assets):
     This function get the status of a set of assets {'task_id': xx, 'report_id': xx}
     """
     assets_status = dict()
-    result_xml = this.gmp.get_tasks()
+    # result_xml = this.gmp.get_tasks()
+    result_xml = this.gmp.get_tasks(filter="apply_overrides=1 min_qod=0 rows=-1")
+    # result_xml = this.gmp.get_tasks(apply_overrides=1)
     try:
         result = ET.fromstring(result_xml)
     except Exception:
@@ -826,7 +862,10 @@ def start_scan():
         if target_id is None and options["enable_create_target"]:
             # print("Create target {}".format(asset))
             # target_id = create_target(asset)  # Todo: add credentials if needed
-            target_id = create_target(asset, port_list_id=scan_portlist_id,  port_list_name=scan_portlist_name)  # Todo: add credentials if needed
+            target_id = create_target(
+                asset,
+                port_list_id=scan_portlist_id,
+                port_list_name=scan_portlist_name)  # Todo: add credentials if needed
         if target_id is None:
             # if options["enable_create_target"]:
             #     print("Fail to create target {}".format(asset))
@@ -936,7 +975,7 @@ def get_report(asset, scan_id):
     issues = []
 
     if not isfile("results/openvas_report_{scan_id}_{asset}.xml".format(scan_id=scan_id, asset=asset.replace('/','net'))):
-        result = this.gmp.get_report(report_id)
+        result = this.gmp.get_report(report_id, filter="apply_overrides=1 min_qod=0 rows=-1")
         result_file = open("results/openvas_report_{scan_id}_{asset}.xml".format(scan_id=scan_id, asset=asset.replace('/','net')), "w")
         result_file.write(result)
         result_file.close()
@@ -1022,6 +1061,9 @@ def _parse_results(scan_id):
             # report_id = engine.scans[scan_id]["assets"][asset]["report_id"]
             for result in engine.scans[scan_id]["findings"][asset]["issues"]:
                 try:
+                    if "Report outdated" in result.find("nvt").find("name").text:
+                        # Do not report an outdated or end-of-life scan engine
+                        continue
                     severity = float(result.find("severity").text)
                     cve = result.find("nvt").find("cve").text
                     threat = result.find("threat").text
@@ -1033,6 +1075,9 @@ def _parse_results(scan_id):
                     asset_port = result.find("port").text
                     asset_port_number, asset_port_protocol = split_port(asset_port)
 
+                    if name == "Services":
+                        name = "Services - {}".format(xmlDesc)
+
                     if severity >= 0:
                         # form criticity
                         criticity = "high"
@@ -1043,7 +1088,7 @@ def _parse_results(scan_id):
                         elif severity < 7.0:
                             criticity = "medium"
 
-                        # update counters
+                        # update vulns counters
                         nb_vulns[criticity] += 1
 
                         # form description
@@ -1059,12 +1104,33 @@ def _parse_results(scan_id):
 
                         #  metadata
                         finding_metadata = {
-                            "risk": {"cvss_base_score": cvss_base}
+                            "risk": {"cvss_base_score": cvss_base},
+                            "vuln_refs": {
+                                "CPE": []
+                            }
                         }
+                        # CVE
                         if cve != "NOCVE":
                             finding_metadata.update({
                                 "vuln_refs": {"CVE": [cve]}
                             })
+
+                        # CPE
+                        if name == "CPE Inventory":
+                            finding_metadata.update({
+                                "vuln_refs": {"CPE": [c.split("|")[1] for c in xmlDesc.split("\n")]}
+                            })
+
+                        # if (xmlDesc) and "CPE:" in str(xmlDesc):
+                        #     print(xmlDesc)
+                            # cpe_list = finding_metadata["vuln_refs"]["CPE"]
+                            # for desc_line in xmlDesc.split("\n"):
+                            #     if desc_line.startswith("CPE:"):
+                            #         cpe_list.append(desc_line.split("\t")[1])
+                            #
+                            # finding_metadata.update({
+                            #     "vuln_refs": {"CPE": cpe_list}
+                            # })
 
                         # create issue
                         issues.append({
@@ -1081,9 +1147,12 @@ def _parse_results(scan_id):
                             "timestamp": timestamp,
                             "description": description,
                         })
+
+                        xmlDesc = ""
                 except Exception as e:
                     # probably unknown issue's host, skip it
                     app.logger.error("Warning: failed to process issue: {}".format(ET.tostring(result, encoding='utf8', method='xml')))
+                    app.logger.error(e.message)
                     app.logger.error(e)
 
     summary = {

@@ -13,7 +13,7 @@ Openvas REST API engine
 
 ```bash
 OPENVAS_ENGINE_URL=http://patrowl-900.domain.net:5016/engines/openvas
-ASSET_FQDN=some.asset.domain.net
+ASSET_FQDN=patrowl.io
 
 # Start scan
 curl "${OPENVAS_ENGINE_URL}"/startscan -XPOST -H 'Accept: application/json' -H 'Content-type: application/json' -d "{\"scan_id\": 1, \"options\": {\"enable_create_task\": \"False\", \"enable_create_target\": \"False\", \"enable_start_task\": \"False\"}, \"assets\": [{\"datatype\": \"domain\", \"criticity\": \"medium\", \"id\": 1, \"value\": \"$ASSET_FQDN\"}], \"engine_id\": 9}"
