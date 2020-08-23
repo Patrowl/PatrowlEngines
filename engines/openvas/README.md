@@ -1,19 +1,24 @@
 ## Description
-Openvas REST API engine
+Openvas REST API engine\
+v1.1.0-beta1
 
 ## Dependencies
 - Python 3 + pip
 - See requirements.txt for others python packages (use "pip install -r requirements.txt")
-- Install Python-gvm
+- Install Python-gvm\
   `mkdir -p libs ; cd libs ; git clone git://github.com/greenbone/python-gvm ; pip3 install -e python-gvm`
 - You have to create a new task on OpenVAS and configure the task_id in openvas.json
-- OpenVAS instance. Ex: docker run -d -p 443:443 -p 9390:9390 -e PUBLIC_HOSTNAME=<my_hostname> --name openvas mikesplain/openvas
+- OpenVAS instance. \
+  Eg: `docker run -d -p 443:443 -p 9390:9390 -e PUBLIC_HOSTNAME=<my_hostname> --name openvas mikesplain/openvas`
 
 ## Testing URLs
 
 ```bash
 OPENVAS_ENGINE_URL=http://patrowl-900.domain.net:5016/engines/openvas
 ASSET_FQDN=patrowl.io
+
+# Engine status
+curl "${OPENVAS_ENGINE_URL}"/info
 
 # Start scan
 curl "${OPENVAS_ENGINE_URL}"/startscan -XPOST -H 'Accept: application/json' -H 'Content-type: application/json' -d "{\"scan_id\": 1, \"options\": {\"enable_create_task\": \"False\", \"enable_create_target\": \"False\", \"enable_start_task\": \"False\"}, \"assets\": [{\"datatype\": \"domain\", \"criticity\": \"medium\", \"id\": 1, \"value\": \"$ASSET_FQDN\"}], \"engine_id\": 9}"
