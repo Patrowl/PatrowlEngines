@@ -6,7 +6,7 @@ from os import makedirs
 from os.path import dirname, exists, isfile, realpath
 from sys import modules
 from json import dump, load, loads
-from re import search as re_search
+# from re import search as re_search
 from netaddr import IPNetwork, IPAddress, glob_to_iprange
 from netaddr.core import AddrFormatError
 from threading import Thread

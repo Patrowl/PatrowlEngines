@@ -34,15 +34,28 @@ Please [open an issue on GitHub](https://github.com/Patrowl/PatrowlEngines/issue
 If you need to contact the project team, send an email to <getsupport@patrowl.io>.
 
 # Roadmap
-- [X] SSLScan
-- [X] DroopScan
-- [X] OpenVas
 - [ ] WhatWeb
 - [ ] CLAIR (Container Security)
+- [ ] AquaSecurity
+- [ ] CheckMarx
 - [ ] Tenable.io
 - [ ] Acunetix
 - [ ] WPScan
 - [ ] Qualys
+
+# Pro Edition and SaaS
+A commercial Pro Edition is available and officially supported by the PatrOwl company. It includes following extra and awesome engines:
+- [x] ZAP (Web scanner)
+- [x] Nikto (Web scanner)
+- [x] Microsoft Cloud App Security (Cloud Access Security Broker alerts)
+- [x] CloudSploit (Cloud security assessment)
+- [x] SonarQube (Code quality and security)
+
+This version is also available on the official SaaS platform.
+See: https://patrowl.io/get-started
+
+# Commercial Services
+Looking for advanced support, training, integration, custom developments, dual-licensing ? Contact us at getsupport@patrowl.io
 
 # Security contact
 Please disclose any security-related issues or vulnerabilities by emailing security@patrowl.io, instead of using the public issue tracker.
