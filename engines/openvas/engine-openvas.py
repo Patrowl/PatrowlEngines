@@ -526,6 +526,7 @@ def info():
             "description": engine.description,
             "version": engine.version,
             "status": engine.status,
+            "reason": engine.scanner.get("reason",""),
             "allowed_asset_types": engine.allowed_asset_types,
             "max_scans": engine.max_scans,
             "nb_scans": len(engine.scans.keys()),
@@ -661,18 +662,33 @@ def _loadconfig():
     engine.scanner = load(json_data)
 
     try:
+        response = ""
         connection = TLSConnection(
             hostname=engine.scanner["options"]["gmp_host"]["value"],
-            port=engine.scanner["options"]["gmp_port"]["value"]
+            port=engine.scanner["options"]["gmp_port"]["value"],
+            timeout=engine.scanner["options"].get("timeout",5)
         )
         with Gmp(connection) as this.gmp:
-            this.gmp.authenticate(
+            response = this.gmp.authenticate(
                 engine.scanner["options"]["gmp_username"]["value"],
                 engine.scanner["options"]["gmp_password"]["value"])
-    except Exception:
+    except Exception as ex:
         engine.scanner["status"] = "ERROR"
         engine.status = "ERROR"
-        app.logger.error("Error: authentication failure Openvas instance")
+
+        if(ex.__str__()=="timed out"):
+            engine.scanner["reason"] = "connection to {}:{} timed-out".format(connection.hostname,connection.port)
+        else:
+            engine.scanner["reason"] = ex.__str__()
+
+        app.logger.error("Error: "+ex.__str__())
+        return False
+
+    # check login response
+    if response.find("authenticate_response status=\"400\"")>0:
+        engine.status = "ERROR"
+        engine.scanner["status"] = "ERROR"
+        engine.scanner["reason"] = "openvas login failed"
         return False
 
     # Check port lists
@@ -784,7 +800,7 @@ def start_scan():
         res.update({
             "status": "refused",
             "details": {
-                "reason": "scanner not ready",
+                "reason": engine.scanner.get("reason","scanner not ready"),
                 "status": engine.scanner["status"]
             }})
         return jsonify(res)

@@ -1,11 +1,12 @@
 {
   "name": "Openvas API",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Openvas API",
   "allowed_asset_types": ["fqdn" ,"ip", "domain", "ip-subnet", "ip-range", "url"],
   "options": {
-     "gmp_host":         { "type": "required", "value": "www.openvas.com"},
+     "gmp_host":         { "type": "required", "value": "127.0.0.1"},
      "gmp_port":         { "type": "optional", "value": "9390"},
+     "timeout":          2,
      "gmp_username":     { "type": "optional", "value": "admin"},
      "gmp_password":     { "type": "optional", "value": "admin"},
      "default_credential_name":  { "type": "optional", "value": "SSH Scanner"},
