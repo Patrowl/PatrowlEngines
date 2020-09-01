@@ -238,7 +238,7 @@ def scan_status(scan_id):
         res.update({"status": "FINISHED"})
         this.scans[scan_id]["status"] = "FINISHED"
 
-    elif psutil.pid_exists(proc.pid)  and \
+    elif psutil.pid_exists(proc.pid) and \
             psutil.Process(proc.pid).status() in ["sleeping", "running"]:
         res.update({
             "status": "SCANNING",
@@ -334,7 +334,7 @@ def stop_scan(scan_id):
                         "pid": proc.pid,
                         "cmd": this.scans[scan_id]["proc_cmd"],
                         "scan_id": scan_id}
-                   })
+        })
     return jsonify(res)
 
 
@@ -428,10 +428,11 @@ def _scan_thread(scan_id):
                 app.logger.debug('Adding asset {} to hosts'.format(asset["value"]))
 
     app.logger.debug('Hosts set : %s', hosts)
-    # ensure no duplicates
+
+    # Deduplicate hosts
     hosts = list(set(hosts))
 
-    # write hosts in a file (cleaner,doesn't break with shell arguments limit (1000+ hosts))
+    # Write hosts in a file (cleaner,doesn't break with shell arguments limit (1000+ hosts))
     hosts_filename = BASE_DIR+"/tmp/engine_droopescan_hosts_file_scan_id_{}.tmp".format(scan_id)
     with open(hosts_filename, 'w') as hosts_file:
         for item in hosts:
@@ -504,9 +505,9 @@ def _parse_report(filename, scan_id):
                 "addr_type": "url",
             }
             cms_name = str(json_data["cms_name"]).capitalize()
+
             # Check for plugins
-            #has_plugins = False
-            if json_data["plugins"]["is_empty"] is False:
+            if "plugins" in json_data.keys() and json_data["plugins"]["is_empty"] is False:
                 #has_plugins = True
                 for fd_elt in json_data["plugins"]["finds"]:
                     plg_name = fd_elt["name"]
@@ -523,7 +524,7 @@ def _parse_report(filename, scan_id):
                                                    desc[0], type='intalled_plugin')))
             # Check for themes
             #has_themes = False
-            if json_data["themes"]["is_empty"] is False:
+            if "themes" in json_data.keys() and json_data["themes"]["is_empty"] is False:
                 #has_themes = True
                 for fd_elt in json_data["themes"]["finds"]:
                     thm_name = fd_elt["name"]
