@@ -666,7 +666,7 @@ def _loadconfig():
         connection = TLSConnection(
             hostname=engine.scanner["options"]["gmp_host"]["value"],
             port=engine.scanner["options"]["gmp_port"]["value"],
-            timeout=engine.scanner["options"].get("timeout",5)
+            timeout=engine.scanner["options"].get("timeout", 5)
         )
         with Gmp(connection) as this.gmp:
             response = this.gmp.authenticate(
@@ -676,16 +676,16 @@ def _loadconfig():
         engine.scanner["status"] = "ERROR"
         engine.status = "ERROR"
 
-        if(ex.__str__()=="timed out"):
-            engine.scanner["reason"] = "connection to {}:{} timed-out".format(connection.hostname,connection.port)
+        if(ex.__str__() == "timed out"):
+            engine.scanner["reason"] = "connection to {}:{} timed-out".format(connection.hostname, connection.port)
         else:
             engine.scanner["reason"] = ex.__str__()
 
         app.logger.error("Error: "+ex.__str__())
         return False
 
-    # check login response
-    if response.find("authenticate_response status=\"400\"")>0:
+    # Check login response
+    if response.find("authenticate_response status=\"400\"") > 0:
         engine.status = "ERROR"
         engine.scanner["status"] = "ERROR"
         engine.scanner["reason"] = "openvas login failed"
@@ -759,20 +759,6 @@ def _loadconfig():
 
     engine.scanner["status"] = "READY"
     engine.scanner["credentials"] = ()
-    # engine.scanner["scan_config"] = get_scan_config()
-
-    # print(create_target("toto1.patrowl.io"))
-    # print(get_task_by_target_name("patrowl.io"))
-    # print(get_scanners())
-    # print(get_scanners("OpenVAS Default"))
-    # print(get_scan_config())
-    # print(get_scan_config(name="Discovery"))
-    # print(get_credentials())
-    # print(get_credentials(name="coucou"))
-    # print(create_task(target_name="patrowl.io", target_id="0f388a01-dcef-483c-90ea-4fbd3788ee0d"))
-    # print(start_task(create_task(target_name="www.patrowl.io", target_id="0f388a01-dcef-483c-90ea-4fbd3788ee0d")))
-    # print(get_last_report("dd63bb59-345b-41d0-a80f-47372eebbeab"))
-    # print(get_report_status("38db1f52-40d1-451d-ae9f-955c1d8ac1bd"))
 
 
 @app.route("/engines/openvas/reloadconfig", methods=["GET"])
@@ -800,7 +786,7 @@ def start_scan():
         res.update({
             "status": "refused",
             "details": {
-                "reason": engine.scanner.get("reason","scanner not ready"),
+                "reason": engine.scanner.get("reason", "scanner not ready"),
                 "status": engine.scanner["status"]
             }})
         return jsonify(res)
@@ -990,14 +976,14 @@ def get_report(asset, scan_id):
     report_id = engine.scans[scan_id]["assets"][asset]["report_id"]
     issues = []
 
-    if not isfile("results/openvas_report_{scan_id}_{asset}.xml".format(scan_id=scan_id, asset=asset.replace('/','net'))):
+    if not isfile("results/openvas_report_{scan_id}_{asset}.xml".format(scan_id=scan_id, asset=asset.replace('/', 'net'))):
         result = this.gmp.get_report(report_id, filter="apply_overrides=1 min_qod=0 rows=-1")
-        result_file = open("results/openvas_report_{scan_id}_{asset}.xml".format(scan_id=scan_id, asset=asset.replace('/','net')), "w")
+        result_file = open("results/openvas_report_{scan_id}_{asset}.xml".format(scan_id=scan_id, asset=asset.replace('/', 'net')), "w")
         result_file.write(result)
         result_file.close()
 
     try:
-        tree = ET.parse("results/openvas_report_{scan_id}_{asset}.xml".format(scan_id=scan_id, asset=asset.replace('/','net')))
+        tree = ET.parse("results/openvas_report_{scan_id}_{asset}.xml".format(scan_id=scan_id, asset=asset.replace('/', 'net')))
     except Exception as e:
         # No Element found in XML file
         app.logger.error(e)
@@ -1058,7 +1044,11 @@ def _parse_results(scan_id):
     timestamp = int(time() * 1000)
 
     for asset in engine.scans[scan_id]["findings"]:
-        if len(engine.scans[scan_id]["findings"][asset]["issues"]) ==0:
+        # Do not try to extract issues if not exists
+        if "issues" not in engine.scans[scan_id]["findings"][asset].keys():
+            continue
+
+        if len(engine.scans[scan_id]["findings"][asset]["issues"]) == 0:
             issues.append({
                 "issue_id": len(issues)+1,
                 "severity": "info", "confidence": "certain",
@@ -1108,7 +1098,7 @@ def _parse_results(scan_id):
                         nb_vulns[criticity] += 1
 
                         # form description
-                        description = "[{threat}] CVSS: {severity} - Associated CVE : {cve}".format(
+                        description = "[{threat}] CVSS: {severity} - Associated CVE: {cve}".format(
                             threat=threat,
                             severity=severity,
                             cve=cve) + "\n\n"
@@ -1222,7 +1212,7 @@ def getfindings(scan_id):
             "issues": issues
         }, rf, default=_json_serial)
 
-    # remove the scan from the active scan list
+    # Remove the scan from the active scan list
     clean_scan(scan_id)
 
     res.update({

@@ -40,8 +40,11 @@ If you need to contact the project team, send an email to <getsupport@patrowl.io
 - [ ] CheckMarx
 - [ ] Tenable.io
 - [ ] Acunetix
-- [ ] WPScan
+- [ ] WPScanÓ
 - [ ] Qualys
+
+# Awesome engines from Community
+- [PingCastle](https://github.com/vletoux/PingCastlePatrOwl) by @vletoux (see https://www.pingcastle.com/)
 
 # Pro Edition and SaaS
 A commercial Pro Edition is available and officially supported by the PatrOwl company. It includes following extra and awesome engines:
