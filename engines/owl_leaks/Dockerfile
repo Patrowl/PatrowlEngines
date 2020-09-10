@@ -29,4 +29,5 @@ RUN pip3 install --trusted-host pypi.python.org -r requirements.txt
 EXPOSE 5012
 
 # Run app.py when the container launches
-CMD ["python3", "engine-owl_leaks.py", "--port=5012", "--host=0.0.0.0", "--access-logfile", "-"]
+# CMD ["python3", "engine-owl_leaks.py", "--port=5012", "--host=0.0.0.0", "--access-logfile", "-"]
+CMD ["gunicorn", "engine-owl_leaks:app", "-b", "0.0.0.0:5012", "--access-logfile", "-"]
