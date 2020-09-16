@@ -40,7 +40,7 @@ If you need to contact the project team, send an email to <getsupport@patrowl.io
 - [ ] CheckMarx
 - [ ] Tenable.io
 - [ ] Acunetix
-- [ ] WPScanÓ
+- [ ] WPScan
 - [ ] Qualys
 
 # Awesome engines from Community
@@ -50,8 +50,8 @@ If you need to contact the project team, send an email to <getsupport@patrowl.io
 A commercial Pro Edition is available and officially supported by the PatrOwl company. It includes following extra and awesome engines:
 - [x] ZAP (Web scanner)
 - [x] Nikto (Web scanner)
-- [x] Microsoft Cloud App Security (Cloud Access Security Broker alerts)
-- [x] CloudSploit (Cloud security assessment)
+- [x] Microsoft Cloud App Security (CASB alerts)
+- [x] CloudSploit (Cloud security assessment for AWS, GCP and Azure)
 - [x] SonarQube (Code quality and security)
 
 This version is also available on the official SaaS platform.
