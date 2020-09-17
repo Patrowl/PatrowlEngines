@@ -43,7 +43,7 @@ CREATED_CERT_CVSS = 5
 UP_DOMAIN_CVSS = 7
 PARENT_ASSET_CREATE_FINDING_CVSS = 1
 PARENT_ASSET_CREATE_FINDING_CEIL = 0
-VERSION = "1.0.0"
+VERSION = "1.0.1"
 
 engine = PatrowlEngine(
     app=app,
@@ -360,9 +360,9 @@ def _scan_urls(scan_id):
         wpscan_cmd += " --api-token '{}'".format(engine.scanner["options"]["APIToken"]["value"])
 
     # Extra args
-    # TODO: sanitize
     extra_args = engine.scanner["options"]["extra_args"]
-    wpscan_cmd += " " + extra_args
+    if re.fullmatch("[a-zA-Z0-9\-_\ :/\.]+", extra_args):
+        wpscan_cmd += " " + extra_args
 
     engine.scans[scan_id]["proc"] = subprocess.Popen(wpscan_cmd, shell=True, stdout=open("/dev/null", "w"), stderr=open("/dev/null", "w"))
     engine.scans[scan_id]["proc_cmd"] = wpscan_cmd
