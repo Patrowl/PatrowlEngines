@@ -3,7 +3,7 @@ DNS REST API engine
 
 ## Dependencies
 - Python 3 + pip
-- [Turbolist3r](https://github.com/fleetcaptain/Turbolist3r/)
+- [Sublist3r](https://github.com/Patrowl/Sublist3r/)
 - See requirements.txt for others python packages (use "pip3 install -r requirements.txt")
 
 ## Todolist
@@ -35,5 +35,5 @@ http://0.0.0.0:5006/engines/owl_dns/status
 ## Other interesting links & tools
 https://publicsuffix.org/list/effective_tld_names.dat
 https://github.com/darkoperator/dnsrecon
-[https://github.com/TheRook/subbrute]
-[https://bitbucket.org/richardpenman/pywhois]
+https://github.com/TheRook/subbrute
+https://bitbucket.org/richardpenman/pywhois
