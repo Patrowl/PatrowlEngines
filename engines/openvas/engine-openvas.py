@@ -380,7 +380,7 @@ def get_report_status(report_id):
 
 def get_multiple_report_status(assets):
     """
-    This function get the status of a set of assets {'task_id': xx, 'report_id': xx}
+    This function get the status of a set of assets {'task_id': xx, 'report_id': xx}.
     """
     assets_status = dict()
     # result_xml = this.gmp.get_tasks()
@@ -660,6 +660,8 @@ def _loadconfig():
 
     json_data = open(conf_file)
     engine.scanner = load(json_data)
+    engine.scanner["status"] = "ERROR"
+    engine.scanner["reason"] = "loadconfig error"
 
     try:
         response = ""
@@ -1006,8 +1008,9 @@ def get_report(asset, scan_id):
             records = query(asset).response.answer[0].items
             for record in records:
                 resolved_asset_ips.append(record.address)
-        except Exception as e:
+        except Exception:
             # What is that thing ?
+            app.logger.error(e)
             return issues
 
     # app.logger.debug(resolved_asset_ips)
