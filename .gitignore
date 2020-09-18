@@ -41,8 +41,10 @@ engines/droopescan/droopescan.json
 engines/droopescan/logs/*
 engines/droopescan/tmp/*
 engines/apivoid/apivoid.json
+engines/wpscan/wpscan.json
 env
 env3
+venv
 results
 reports
 .scannerwork

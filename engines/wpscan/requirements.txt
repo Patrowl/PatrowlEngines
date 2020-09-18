@@ -1,0 +1,5 @@
+flask==1.1.2
+gunicorn==20.0.4
+PatrowlEnginesUtils>=0.0.12
+wheel
+psutil==5.7.2

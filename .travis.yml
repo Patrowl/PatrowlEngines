@@ -26,6 +26,7 @@ env:
 # - PATROWL_ENGINE=pastebin_monitor ENGINE_PORT=5020
 - PATROWL_ENGINE=droopescan ENGINE_PORT=5021
 - PATROWL_ENGINE=apivoid ENGINE_PORT=5022
+- PATROWL_ENGINE=wpscan ENGINE_PORT=5023
 before_install:
 - cd engines
 install:
