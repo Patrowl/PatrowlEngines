@@ -1,9 +1,9 @@
 {
   "name": "Wpscan API",
-  "version": "1.0.0.",
+  "version": "1.0.1",
   "description": "Wpscan API",
   "allowed_asset_types": ["fqdn", "ip", "domain", "url"],
   "options": {
-     "APIToken": { "type": "mandatory", "value": "_TOKEN_"}
+     "APIToken": {"type": "mandatory", "value": "_TOKEN_"}
   }
 }
