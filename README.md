@@ -40,7 +40,7 @@ If you need to contact the project team, send an email to <getsupport@patrowl.io
 - [ ] CheckMarx
 - [ ] Tenable.io
 - [ ] Acunetix
-- [/] WPScan - WIP
+- [x] WPScan - New
 - [ ] Qualys
 
 # Awesome engines from Community

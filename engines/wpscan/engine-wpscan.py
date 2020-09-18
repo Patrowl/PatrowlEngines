@@ -39,10 +39,10 @@ APP_PORT = 5023
 APP_MAXSCANS = 5
 APP_ENGINE_NAME = "wpscan"
 APP_BASE_DIR = dirname(realpath(__file__))
-CREATED_CERT_CVSS = 5
-UP_DOMAIN_CVSS = 7
-PARENT_ASSET_CREATE_FINDING_CVSS = 1
-PARENT_ASSET_CREATE_FINDING_CEIL = 0
+# CREATED_CERT_CVSS = 5
+# UP_DOMAIN_CVSS = 7
+# PARENT_ASSET_CREATE_FINDING_CVSS = 1
+# PARENT_ASSET_CREATE_FINDING_CEIL = 0
 VERSION = "1.0.1"
 
 engine = PatrowlEngine(
@@ -290,7 +290,6 @@ def start_scan():
 
     assets = []
     for asset in data["assets"]:
-        print(asset)
         # Value
         if "value" not in asset.keys() or not asset["value"]:
             res.update({
@@ -392,8 +391,6 @@ def _scan_urls(scan_id, asset):
 
     engine.scans[scan_id]["reports"][asset]["proc"] = subprocess.Popen(wpscan_cmd, shell=True, stdout=open("/dev/null", "w"), stderr=open("/dev/null", "w"))
     engine.scans[scan_id]["reports"][asset]["proc_cmd"] = wpscan_cmd
-
-    print(engine.scans[scan_id])
 
     return True
 

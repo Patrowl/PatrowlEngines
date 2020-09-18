@@ -25,6 +25,3 @@ curl "${WPSCAN_ENGINE_URL}"/status/1
 # Get findings (works only once and delete the report)
 curl "${WPSCAN_ENGINE_URL}"/getfindings/1
 ```
-
-# Caveats
-- Support 1 asset per scan
