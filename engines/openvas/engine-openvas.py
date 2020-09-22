@@ -14,6 +14,7 @@ from time import time, sleep
 from urllib.parse import urlparse
 from uuid import UUID
 import xml.etree.ElementTree as ET
+import re
 
 # Third party library imports
 from flask import Flask, request, jsonify
@@ -1070,8 +1071,10 @@ def _parse_results(scan_id):
             # report_id = engine.scans[scan_id]["assets"][asset]["report_id"]
             for result in engine.scans[scan_id]["findings"][asset]["issues"]:
                 try:
+                    # Do not report an outdated or end-of-life scan engine
                     if "Report outdated" in result.find("nvt").find("name").text:
-                        # Do not report an outdated or end-of-life scan engine
+                        continue
+                    if "Important Announcement" in result.find("nvt").find("name").text:
                         continue
                     severity = float(result.find("severity").text)
                     cve = result.find("nvt").find("cve").text
@@ -1083,6 +1086,7 @@ def _parse_results(scan_id):
                     asset_name = result.find("host").text
                     asset_port = result.find("port").text
                     asset_port_number, asset_port_protocol = split_port(asset_port)
+                    solution = "n/a"
 
                     if name == "Services":
                         name = "Services - {}".format(xmlDesc)
@@ -1109,7 +1113,12 @@ def _parse_results(scan_id):
                         if (xmlDesc):
                             description += xmlDesc + "\n\n"
                         if (tags):
-                            description += tags + "\n\n"
+                            description += tags.replace('|', '\n') + "\n\n"
+
+                        # Solution
+                        solution_data = re.search('\|solution=(.+?)\|', tags)
+                        if solution_data:
+                            solution = solution_data.group(1)
 
                         #  metadata
                         finding_metadata = {
@@ -1150,7 +1159,7 @@ def _parse_results(scan_id):
                                 "protocol": asset_port_protocol
                             },
                             "title": "{port} - {name}".format(port=asset_port, name=name),
-                            "solution": "n/a",
+                            "solution": solution,
                             "metadata": finding_metadata,
                             "type": "openvas_report",
                             "timestamp": timestamp,
