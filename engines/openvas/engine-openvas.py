@@ -408,6 +408,7 @@ def get_multiple_report_status(assets):
                 assets_status.update({asset: {"status": "Running"}})
             else:
                 assets_status.update({asset: {"status": "Done"}})
+
     return assets_status
 
 
@@ -592,15 +593,25 @@ def status_scan(scan_id):
 
     assets = engine.scans[scan_id]["assets"]
     assets_status = get_multiple_report_status(assets)
+    # print("assets_status:", assets_status)
+    # app.logger.info("assets_status:", assets_status)
+
     if assets_status is None:
         res.update({"status": "error", "reason": "Cannot find any report_status"})
         return jsonify(res)
 
+    is_finished = True
     for asset in assets:
         if assets_status[asset]["status"] != "Done":
             report_status = assets_status[asset]["status"]
+        else:
+            is_finished = False
 
-    engine.scans[scan_id]["scan_status"] = report_status
+    if is_finished is True:
+        engine.scans[scan_id]["scan_status"] = 'Done'
+    else:
+        engine.scans[scan_id]["scan_status"] = 'Running'
+    # engine.scans[scan_id]["scan_status"] = report_status
 
     if engine.scans[scan_id]["scan_status"] == "Done":
         res.update({"status": "FINISHED"})
@@ -651,6 +662,41 @@ def stop_scan(scan_id):
 def getreport(scan_id):
     """Get report on finished scans."""
     return engine.getreport(scan_id)
+
+
+@app.route("/engines/openvas/resetcnx")
+def resetcnx():
+    res = {"page": "resetcnx", "status": "success"}
+    try:
+        this.gmp.disconnect()
+    except Exception:
+        pass
+
+    try:
+        connection = TLSConnection(
+            hostname=engine.scanner["options"]["gmp_host"]["value"],
+            port=engine.scanner["options"]["gmp_port"]["value"],
+            timeout=engine.scanner["options"].get("timeout", 5)
+        )
+        with Gmp(connection) as this.gmp:
+            this.gmp.authenticate(
+                engine.scanner["options"]["gmp_username"]["value"],
+                engine.scanner["options"]["gmp_password"]["value"])
+        print("Gmp connection successfully reseted.")
+        app.logger.info("Gmp connection successfully reseted.")
+    except Exception as ex:
+        engine.scanner["status"] = "ERROR"
+        engine.status = "ERROR"
+
+        if(ex.__str__() == "timed out"):
+            engine.scanner["reason"] = "connection to {}:{} timed-out".format(connection.hostname, connection.port)
+        else:
+            engine.scanner["reason"] = ex.__str__()
+
+        res.update({"status": "error", "reason": engine.scanner["reason"]})
+
+        app.logger.error("Error: "+ex.__str__())
+    return jsonify(res)
 
 
 def _loadconfig():

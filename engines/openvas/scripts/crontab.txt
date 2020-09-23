@@ -1,0 +1,1 @@
+*/5 * * * * curl --silent http://localhost:5016/engines/openvas/resetcnx

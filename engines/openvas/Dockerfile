@@ -6,6 +6,7 @@ LABEL Name="OpenVAS\ \(Patrowl engine\)" Version="1.0.0"
 RUN mkdir -p /opt/patrowl-engines/openvas
 RUN mkdir -p /opt/patrowl-engines/openvas/libs
 RUN mkdir -p /opt/patrowl-engines/openvas/results
+RUN mkdir -p /opt/patrowl-engines/openvas/scripts
 
 # Set the working directory
 WORKDIR /opt/patrowl-engines/openvas
@@ -17,6 +18,11 @@ COPY openvas.json.sample openvas.json
 COPY requirements.txt .
 COPY README.md .
 
+COPY scripts/crontab.txt /opt/patrowl-engines/openvas/scripts/crontab.txt
+COPY scripts/cron.sh /opt/patrowl-engines/openvas/scripts/scripts/cron.sh
+RUN chmod 755 /opt/patrowl-engines/openvas/scripts/scripts/cron.sh
+RUN /usr/bin/crontab /opt/patrowl-engines/openvas/scripts/crontab.txt
+
 # Install any needed packages specified in requirements.txt
 RUN mkdir -p results
 RUN apk add --update --no-cache \
@@ -24,7 +30,7 @@ RUN apk add --update --no-cache \
     libffi-dev openssl-dev \
     libxml2-dev libxslt-dev \
     python3 python3-dev py3-pip \
-    git \
+    git curl \
   && rm -rf /var/cache/apk/*
 
 RUN pip3 install --upgrade pip
