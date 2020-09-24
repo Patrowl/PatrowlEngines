@@ -1280,12 +1280,12 @@ def handle_gvm_error(e):
     resetcnx()
     return 'bad request!', 400
 
-
-@app.errorhandler(OSError)
-def handle_gvm_error(e):
-    print("GvmError detected. Reset GVM connection")
-    resetcnx()
-    return 'bad request!', 400
+# 
+# @app.errorhandler(OSError)
+# def handle_gvm_error(e):
+#     print("GvmError detected. Reset GVM connection")
+#     resetcnx()
+#     return 'bad request!', 400
 
 
 if __name__ == "__main__":
