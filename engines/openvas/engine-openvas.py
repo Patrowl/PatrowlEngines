@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 """OpenVAS PatrOwl engine application."""
 
+import os
 from os import makedirs
 from os.path import dirname, exists, isfile, realpath
 from sys import modules
@@ -33,7 +34,7 @@ from PatrowlEnginesUtils.PatrowlEngineExceptions import PatrowlEngineExceptions
 # from pdb import set_trace as st
 
 app = Flask(__name__)
-APP_DEBUG = False
+APP_DEBUG = os.environ.get('APP_DEBUG', False)
 APP_HOST = "0.0.0.0"
 APP_PORT = 5016
 APP_MAXSCANS = 5
@@ -69,9 +70,7 @@ OV_ALIVE_TESTS = {
 
 
 def is_uuid(uuid_string, version=4):
-    """
-    This functionuuid_string returns True is the uuid_string is a valid UUID.
-    """
+    """Check uuid_string is a valid UUID."""
     try:
         uid = UUID(uuid_string, version=version)
         return uid.hex == uuid_string.replace("-", "")
@@ -80,9 +79,7 @@ def is_uuid(uuid_string, version=4):
 
 
 def get_options(payload):
-    """
-    Extracts formatted options from the payload.
-    """
+    """Extract formatted options from the payload."""
     options = {"enable_create_target": True, "enable_create_task": True, "enable_start_task": True}
     user_opts = payload["options"]
     if "enable_create_target" in user_opts:
@@ -95,9 +92,8 @@ def get_options(payload):
 
 
 def get_target(target_name, scan_portlist_id=None, alive_test=None):
-    """
-    This function returns the target_id of a target. If not, it returns None.
-    """
+    """Return the target_id of a target. If not, it returns None."""
+    # _check_gmp_connection()
     targets_xml = this.gmp.get_targets()
     try:
         targets = ET.fromstring(targets_xml)
@@ -105,10 +101,6 @@ def get_target(target_name, scan_portlist_id=None, alive_test=None):
         return None
     if not targets.attrib["status"] == "200":
         return None
-
-    # Debug
-    # for target in targets.findall("target"):
-    #     print(target.find("hosts"))
 
     for target in targets.findall("target"):
         if scan_portlist_id is None and target_name == target.find("hosts").text:
@@ -126,9 +118,8 @@ def get_target(target_name, scan_portlist_id=None, alive_test=None):
 
 
 def get_credentials(name=None):
-    """
-    This function returns the credentials_id from conf.
-    """
+    """Return the credentials_id from conf (or None)."""
+    # _check_gmp_connection()
     result_xml = this.gmp.get_credentials()
     try:
         result = ET.fromstring(result_xml)
@@ -153,7 +144,7 @@ def get_credentials(name=None):
 
 def get_scan_config_name(scan_config_id=None):
     scan_config_name = None
-
+    # _check_gmp_connection()
     configs_xml = this.gmp.get_configs()
     try:
         configs = ET.fromstring(configs_xml)
@@ -172,9 +163,8 @@ def get_scan_config_name(scan_config_id=None):
 
 
 def get_scan_config(name=None):
-    """
-    This function returns the scan_config_id from conf.
-    """
+    """Return the scan_config_id from conf."""
+    # _check_gmp_connection()
     configs_xml = this.gmp.get_configs()
     try:
         configs = ET.fromstring(configs_xml)
@@ -206,9 +196,7 @@ def create_target(
     snmp_credential_id=None,
     # alive_test="TCP_SYN_SERVICE_PING"):
     alive_test=AliveTest.TCP_SYN_SERVICE_PING):
-    """
-    This function creates a target in OpenVAS and returns its target_id.
-    """
+    """Create a target in OpenVAS and returns its target_id."""
     # app.logger.debug(
     #     "create_target(): {}, {}, {}, {}",
     #     target_name, port_list_id, port_list_name, alive_test)
@@ -218,6 +206,7 @@ def create_target(
         # alive_test = OV_ALIVE_TESTS["DEFAULT"]
         # alive_test = "TCP_SYN_SERVICE_PING"
         alive_test = AliveTest.TCP_SYN_SERVICE_PING
+
 
     new_target_xml = this.gmp.create_target(
         "{} - {} - {}".format(target_name, port_list_name, alive_test),
@@ -245,9 +234,10 @@ def create_target(
 
 
 def get_task_by_target_name(target_name, scan_config_id=None):
-    """
-    This function returns the task_id.
-    """
+    """Return the task_id."""
+    if _check_gmp_connection("get_task_by_target_name") is False:
+        return None
+
     tasks_xml = this.gmp.get_tasks(filter="apply_overrides=1 min_qod=0 rows=-1 levels=hmlg")
     target_id = get_target(target_name)
     if target_id is None:
@@ -270,9 +260,7 @@ def get_task_by_target_name(target_name, scan_config_id=None):
 
 
 def get_scanners(name=None):
-    """
-    This function returns the list of scanners' ID.
-    """
+    """Return the list of scanners' ID."""
     scanners_xml = this.gmp.get_scanners()
     try:
         scanners = ET.fromstring(scanners_xml)
@@ -293,14 +281,13 @@ def get_scanners(name=None):
 
 
 def create_task(target_name, target_id, scan_config_id=None, scanner_id=None):
-    """
-    This function creates a task_id in OpenVAS and returns its task_id.
-    """
+    """Create a task_id in OpenVAS and returns its task_id."""
     if scan_config_id is None:
         scan_config_id = get_scan_config()  # Set the default value
     if scanner_id is None:
         scanner_id = get_scanners()[1]  # Set the default value
 
+    # _check_gmp_connection()
     new_task_xml = this.gmp.create_task(
         name=target_name + " - {}".format(get_scan_config_name(scan_config_id)),
         config_id=scan_config_id,
@@ -321,9 +308,8 @@ def create_task(target_name, target_id, scan_config_id=None, scanner_id=None):
 
 
 def start_task(task_id):
-    """
-    This function starts a task and returns a report_id.
-    """
+    """Start a task and returns a report_id."""
+    # _check_gmp_connection()
     start_scan_results_xml = this.gmp.start_task(task_id)
 
     try:
@@ -339,9 +325,7 @@ def start_task(task_id):
 
 
 def get_last_report(task_id):
-    """
-    This function returns the last report_id of a task_id
-    """
+    """Return the last report_id of a task_id."""
     task_xml = this.gmp.get_task(task_id)
     try:
         task = ET.fromstring(task_xml)
@@ -360,9 +344,8 @@ def get_last_report(task_id):
 
 
 def get_report_status(report_id):
-    """
-    This function get the status of a report_id.
-    """
+    """Get the status of a report_id."""
+    _check_gmp_connection("get_report_status")
     report_status_xml = this.gmp.get_report(report_id, filter="apply_overrides=1 min_qod=0 rows=-1 levels=hmlg")
     try:
         report_status = ET.fromstring(report_status_xml)
@@ -376,9 +359,12 @@ def get_report_status(report_id):
 
 def get_multiple_report_status(assets):
     """
-    This function get the status of a set of assets {'task_id': xx, 'report_id': xx}.
+    Get the status of a set of assets
+    {'task_id': xx, 'report_id': xx}.
     """
     assets_status = dict()
+    if _check_gmp_connection("get_multiple_report_status") is False:
+        return None
     result_xml = this.gmp.get_tasks(filter="apply_overrides=1 min_qod=0 rows=-1 levels=hmlg")
     try:
         result = ET.fromstring(result_xml)
@@ -410,7 +396,6 @@ def is_ip(string):
     except Exception:
         return False
     return True
-    # return re_search("^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$", string) is not None
 
 
 def is_ip_subnet(subnet):
@@ -519,7 +504,7 @@ def info():
             "description": engine.description,
             "version": engine.version,
             "status": engine.status,
-            "reason": engine.scanner.get("reason",""),
+            "reason": engine.scanner.get("reason", ""),
             "allowed_asset_types": engine.allowed_asset_types,
             "max_scans": engine.max_scans,
             "nb_scans": len(engine.scans.keys()),
@@ -553,7 +538,7 @@ def status():
     scans = []
     for scan_id in engine.scans.keys():
         # engine.getstatus_scan(scan_id)
-        _status_scan(scan_id)
+        # _status_scan(scan_id)
         scans.append({scan_id: {
             "status": engine.scans[scan_id]['status'],
             "started_at": engine.scans[scan_id]['started_at'],
@@ -657,14 +642,14 @@ def resetcnx():
         connection = TLSConnection(
             hostname=engine.scanner["options"]["gmp_host"]["value"],
             port=engine.scanner["options"]["gmp_port"]["value"],
-            timeout=engine.scanner["options"].get("timeout", 5)
+            timeout=engine.scanner["options"].get("timeout", 60)
         )
         with Gmp(connection) as this.gmp:
             this.gmp.authenticate(
                 engine.scanner["options"]["gmp_username"]["value"],
                 engine.scanner["options"]["gmp_password"]["value"])
-        print("Gmp connection successfully reseted.")
-        app.logger.info("Gmp connection successfully reseted.")
+        print("Gmp connection successfully reset.")
+        app.logger.info("Gmp connection successfully reset.")
     except Exception as ex:
         engine.scanner["status"] = "ERROR"
         engine.status = "ERROR"
@@ -678,6 +663,25 @@ def resetcnx():
 
         app.logger.error("Error: "+ex.__str__())
     return jsonify(res)
+
+
+def _check_gmp_connection(from_function=""):
+    try:
+        this.gmp.get_version()
+        # print(r)
+    except Exception as e:
+        print(e)
+        print("Error in Gvm connection ({}). Try to reset it".format(from_function))
+        app.logger.info("Error in Gvm connection ({}). Try to reset it".format(from_function))
+        resetcnx()
+    #
+    # if engine.scanner["status"] == "ERROR":
+    #     return False
+    # else:
+    #     print("Gvm connection successfully reset")
+    #     app.logger.info("Gvm connection successfully reset")
+
+    return True
 
 
 def _loadconfig():
@@ -696,7 +700,7 @@ def _loadconfig():
         connection = TLSConnection(
             hostname=engine.scanner["options"]["gmp_host"]["value"],
             port=engine.scanner["options"]["gmp_port"]["value"],
-            timeout=engine.scanner["options"].get("timeout", 5)
+            timeout=engine.scanner["options"].get("timeout", 60)
         )
         with Gmp(connection) as this.gmp:
             response = this.gmp.authenticate(
@@ -986,6 +990,7 @@ def get_report(asset, scan_id):
     """Get report."""
     report_id = engine.scans[scan_id]["assets"][asset]["report_id"]
     issues = []
+    _check_gmp_connection("get_report")
     if not isfile("results/openvas_report_{scan_id}_{asset}.xml".format(scan_id=scan_id, asset=asset.replace('/', 'net'))):
         result = this.gmp.get_report(report_id, filter="apply_overrides=1 min_qod=0 rows=-1 levels=hmlg")
         result_file = open("results/openvas_report_{scan_id}_{asset}.xml".format(scan_id=scan_id, asset=asset.replace('/', 'net')), "w")
@@ -1280,7 +1285,7 @@ def handle_gvm_error(e):
     resetcnx()
     return 'bad request!', 400
 
-# 
+#
 # @app.errorhandler(OSError)
 # def handle_gvm_error(e):
 #     print("GvmError detected. Reset GVM connection")

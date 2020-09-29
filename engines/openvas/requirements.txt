@@ -14,7 +14,7 @@ itsdangerous==0.24
 Jinja2==2.10.1
 lxml==4.3.3
 MarkupSafe==1.1.1
-openvas-lib==1.1.4
+#openvas-lib==1.1.8
 packaging==20.3
 paramiko==2.7.1
 PatrowlEnginesUtils==0.1.1
