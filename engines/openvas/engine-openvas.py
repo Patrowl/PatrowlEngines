@@ -11,7 +11,7 @@ from json import dump, load, loads
 from netaddr import IPNetwork, IPAddress, glob_to_iprange
 from netaddr.core import AddrFormatError
 from threading import Thread
-from time import time, sleep
+from time import time
 from urllib.parse import urlparse
 from uuid import UUID
 import xml.etree.ElementTree as ET
@@ -24,7 +24,7 @@ from dns.resolver import query
 from gvm.connections import TLSConnection
 from gvm.protocols.gmp import Gmp
 from gvm.protocols.gmpv7.types import AliveTest
-from gvm.errors import GvmError
+# from gvm.errors import GvmError
 
 # Own library
 from PatrowlEnginesUtils.PatrowlEngine import _json_serial
@@ -38,12 +38,12 @@ app = Flask(__name__)
 APP_DEBUG = os.environ.get('APP_DEBUG', False)
 APP_HOST = "0.0.0.0"
 APP_PORT = 5016
-APP_MAXSCANS = 5
+APP_MAXSCANS = int(os.environ.get('APP_MAXSCANS', 5))
 APP_ENGINE_NAME = "openvas"
 APP_BASE_DIR = dirname(realpath(__file__))
 DEFAULT_OV_PROFILE = "Full and fast"
 DEFAULT_OV_PORTLIST = "patrowl-all_tcp"
-DEFAULT_TIMEOUT = 5
+DEFAULT_TIMEOUT = int(os.environ.get('DEFAULT_TIMEOUT', 5))
 
 engine = PatrowlEngine(
     app=app,
@@ -1124,8 +1124,8 @@ def get_report(scan_id):
                     records = query(asset).response.answer[0].items
                     for record in records:
                         # resolved_asset_ips.append(record.address)
-                        siblings += record.address
-                except Exception:
+                        siblings.append(record.address)
+                except Exception as e:
                     # What is that thing ?
                     app.logger.error(e)
 
@@ -1141,6 +1141,7 @@ def get_report(scan_id):
 
         report = tree.getroot().find("report")
         for result in report.findall('.//result'):
+            # print(ET.tostring(result, encoding='utf8', method='xml'))
             try:
                 host_ip = result.find("host").text
                 # print("host_ip:", host_ip)
