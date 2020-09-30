@@ -734,6 +734,7 @@ def stop_scan(scan_id):
                 engine.scanner["options"]["gmp_username"]["value"],
                 engine.scanner["options"]["gmp_password"]["value"])
             gmp_cnx.stop_task(task_id)
+        connection.disconnect()
     except Exception:
         app.logger.debug("Unable to stop scan '{}'".format(scan_id))
     return engine.stop_scan(scan_id)
@@ -1077,11 +1078,11 @@ def _scan_assets(scan_id):
 def get_report(scan_id):
     """Get report."""
     report_id = engine.scans[scan_id]["info"]["report_id"]
-    print("get_report()-report_id:", report_id)
+    # print("get_report()-report_id:", report_id)
     issues = []
 
     assets_hash = engine.scans[scan_id]["assets_hash"]
-    print("get_report()-assets_hash:", assets_hash)
+    # print("get_report()-assets_hash:", assets_hash)
 
     connection = TLSConnection(
         hostname=engine.scanner["options"]["gmp_host"]["value"],
