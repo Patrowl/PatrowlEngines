@@ -43,7 +43,7 @@ APP_ENGINE_NAME = "openvas"
 APP_BASE_DIR = dirname(realpath(__file__))
 DEFAULT_OV_PROFILE = "Full and fast"
 DEFAULT_OV_PORTLIST = "patrowl-all_tcp"
-DEFAULT_TIMEOUT = int(os.environ.get('DEFAULT_TIMEOUT', 5))
+DEFAULT_TIMEOUT = int(os.environ.get('DEFAULT_TIMEOUT', 50))
 
 engine = PatrowlEngine(
     app=app,
@@ -99,7 +99,7 @@ def get_target(target_name, scan_portlist_id=None, alive_test=None):
     connection = TLSConnection(
         hostname=engine.scanner["options"]["gmp_host"]["value"],
         port=engine.scanner["options"]["gmp_port"]["value"],
-        timeout=engine.scanner["options"].get("timeout", DEFAULT_TIMEOUT)
+        timeout=int(engine.scanner["options"].get("timeout", DEFAULT_TIMEOUT))
     )
     with Gmp(connection) as gmp_cnx:
         gmp_cnx.authenticate(engine.scanner["options"]["gmp_username"]["value"], engine.scanner["options"]["gmp_password"]["value"])
@@ -134,7 +134,7 @@ def get_target(target_name, scan_portlist_id=None, alive_test=None):
 #     connection = TLSConnection(
 #         hostname=engine.scanner["options"]["gmp_host"]["value"],
 #         port=engine.scanner["options"]["gmp_port"]["value"],
-#         timeout=engine.scanner["options"].get("timeout", DEFAULT_TIMEOUT)
+#         timeout=int(engine.scanner["options"].get("timeout", DEFAULT_TIMEOUT))
 #     )
 #     with Gmp(connection) as gmp_cnx:
 #         gmp_cnx.authenticate(engine.scanner["options"]["gmp_username"]["value"], engine.scanner["options"]["gmp_password"]["value"])
@@ -186,10 +186,9 @@ def get_scan_config(name=None):
     connection = TLSConnection(
         hostname=engine.scanner["options"]["gmp_host"]["value"],
         port=engine.scanner["options"]["gmp_port"]["value"],
-        timeout=engine.scanner["options"].get("timeout", DEFAULT_TIMEOUT)
+        timeout=int(engine.scanner["options"].get("timeout", DEFAULT_TIMEOUT))
     )
     with Gmp(connection) as gmp_cnx:
-        # configs_xml = this.gmp.get_configs()
         gmp_cnx.authenticate(engine.scanner["options"]["gmp_username"]["value"], engine.scanner["options"]["gmp_password"]["value"])
         configs_xml = gmp_cnx.get_configs()
         # print("configs_xml:", configs_xml)
@@ -240,7 +239,7 @@ def create_target(
     connection = TLSConnection(
         hostname=engine.scanner["options"]["gmp_host"]["value"],
         port=engine.scanner["options"]["gmp_port"]["value"],
-        timeout=engine.scanner["options"].get("timeout", DEFAULT_TIMEOUT)
+        timeout=int(engine.scanner["options"].get("timeout", DEFAULT_TIMEOUT))
     )
     with Gmp(connection) as gmp_cnx:
         gmp_cnx.authenticate(engine.scanner["options"]["gmp_username"]["value"], engine.scanner["options"]["gmp_password"]["value"])
@@ -280,7 +279,7 @@ def get_task_by_target_name(target_name, scan_config_id=None):
     connection = TLSConnection(
         hostname=engine.scanner["options"]["gmp_host"]["value"],
         port=engine.scanner["options"]["gmp_port"]["value"],
-        timeout=engine.scanner["options"].get("timeout", DEFAULT_TIMEOUT)
+        timeout=int(engine.scanner["options"].get("timeout", DEFAULT_TIMEOUT))
     )
     with Gmp(connection) as gmp_cnx:
         gmp_cnx.authenticate(engine.scanner["options"]["gmp_username"]["value"], engine.scanner["options"]["gmp_password"]["value"])
@@ -313,7 +312,7 @@ def get_scanners(name=None):
     connection = TLSConnection(
         hostname=engine.scanner["options"]["gmp_host"]["value"],
         port=engine.scanner["options"]["gmp_port"]["value"],
-        timeout=engine.scanner["options"].get("timeout", DEFAULT_TIMEOUT)
+        timeout=int(engine.scanner["options"].get("timeout", DEFAULT_TIMEOUT))
     )
     with Gmp(connection) as gmp_cnx:
         gmp_cnx.authenticate(engine.scanner["options"]["gmp_username"]["value"], engine.scanner["options"]["gmp_password"]["value"])
@@ -346,7 +345,7 @@ def create_task(target_name, target_id, scan_config_id=None, scanner_id=None):
     connection = TLSConnection(
         hostname=engine.scanner["options"]["gmp_host"]["value"],
         port=engine.scanner["options"]["gmp_port"]["value"],
-        timeout=engine.scanner["options"].get("timeout", DEFAULT_TIMEOUT)
+        timeout=int(engine.scanner["options"].get("timeout", DEFAULT_TIMEOUT))
     )
     with Gmp(connection) as gmp_cnx:
         gmp_cnx.authenticate(engine.scanner["options"]["gmp_username"]["value"], engine.scanner["options"]["gmp_password"]["value"])
@@ -377,7 +376,7 @@ def start_task(task_id):
     connection = TLSConnection(
         hostname=engine.scanner["options"]["gmp_host"]["value"],
         port=engine.scanner["options"]["gmp_port"]["value"],
-        timeout=engine.scanner["options"].get("timeout", DEFAULT_TIMEOUT)
+        timeout=int(engine.scanner["options"].get("timeout", DEFAULT_TIMEOUT))
     )
     with Gmp(connection) as gmp_cnx:
         gmp_cnx.authenticate(engine.scanner["options"]["gmp_username"]["value"], engine.scanner["options"]["gmp_password"]["value"])
@@ -412,7 +411,7 @@ def get_last_report(task_id):
     connection = TLSConnection(
         hostname=engine.scanner["options"]["gmp_host"]["value"],
         port=engine.scanner["options"]["gmp_port"]["value"],
-        timeout=engine.scanner["options"].get("timeout", DEFAULT_TIMEOUT)
+        timeout=int(engine.scanner["options"].get("timeout", DEFAULT_TIMEOUT))
     )
     with Gmp(connection) as gmp_cnx:
         gmp_cnx.authenticate(engine.scanner["options"]["gmp_username"]["value"], engine.scanner["options"]["gmp_password"]["value"])
@@ -441,7 +440,7 @@ def get_last_report(task_id):
 #     connection = TLSConnection(
 #         hostname=engine.scanner["options"]["gmp_host"]["value"],
 #         port=engine.scanner["options"]["gmp_port"]["value"],
-#         timeout=engine.scanner["options"].get("timeout", DEFAULT_TIMEOUT)
+#         timeout=int(engine.scanner["options"].get("timeout", DEFAULT_TIMEOUT))
 #     )
 #     with Gmp(connection) as gmp_cnx:
 #         gmp_cnx.authenticate(engine.scanner["options"]["gmp_username"]["value"], engine.scanner["options"]["gmp_password"]["value"])
@@ -690,7 +689,7 @@ def status_scan(scan_id):
     connection = TLSConnection(
         hostname=engine.scanner["options"]["gmp_host"]["value"],
         port=engine.scanner["options"]["gmp_port"]["value"],
-        timeout=engine.scanner["options"].get("timeout", DEFAULT_TIMEOUT)
+        timeout=int(engine.scanner["options"].get("timeout", DEFAULT_TIMEOUT))
     )
     with Gmp(connection) as gmp_cnx:
         gmp_cnx.authenticate(engine.scanner["options"]["gmp_username"]["value"], engine.scanner["options"]["gmp_password"]["value"])
@@ -727,7 +726,7 @@ def stop_scan(scan_id):
         connection = TLSConnection(
             hostname=engine.scanner["options"]["gmp_host"]["value"],
             port=engine.scanner["options"]["gmp_port"]["value"],
-            timeout=engine.scanner["options"].get("timeout", DEFAULT_TIMEOUT)
+            timeout=int(engine.scanner["options"].get("timeout", DEFAULT_TIMEOUT))
         )
         with Gmp(connection) as gmp_cnx:
             gmp_cnx.authenticate(
@@ -763,7 +762,7 @@ def resetcnx():
     #     connection = TLSConnection(
     #         hostname=engine.scanner["options"]["gmp_host"]["value"],
     #         port=engine.scanner["options"]["gmp_port"]["value"],
-    #         timeout=engine.scanner["options"].get("timeout", DEFAULT_TIMEOUT)
+    #         timeout=int(engine.scanner["options"].get("timeout", DEFAULT_TIMEOUT))
     #     )
     #     with Gmp(connection) as this.gmp:
     #         this.gmp.authenticate(
@@ -802,7 +801,7 @@ def _loadconfig():
         connection = TLSConnection(
             hostname=engine.scanner["options"]["gmp_host"]["value"],
             port=engine.scanner["options"]["gmp_port"]["value"],
-            timeout=engine.scanner["options"].get("timeout", DEFAULT_TIMEOUT)
+            timeout=int(engine.scanner["options"].get("timeout", DEFAULT_TIMEOUT))
         )
         with Gmp(connection) as this.gmp:
             response = this.gmp.authenticate(
@@ -1002,7 +1001,6 @@ def _scan_assets(scan_id):
 
     scan_config_id = get_scan_config(name=scan_config_name)
     # print("scan_config_id:", scan_config_id)
-
     scan_portlist_id = this.openvas_portlists["OpenVAS Default"]
     scan_portlist_name = ""
     if 'port_list' in scan["options"].keys():
@@ -1087,12 +1085,15 @@ def get_report(scan_id):
     connection = TLSConnection(
         hostname=engine.scanner["options"]["gmp_host"]["value"],
         port=engine.scanner["options"]["gmp_port"]["value"],
-        timeout=engine.scanner["options"].get("timeout", DEFAULT_TIMEOUT)
+        timeout=int(engine.scanner["options"].get("timeout", DEFAULT_TIMEOUT))
     )
     with Gmp(connection) as gmp_cnx:
         gmp_cnx.authenticate(engine.scanner["options"]["gmp_username"]["value"], engine.scanner["options"]["gmp_password"]["value"])
         if not isfile("results/openvas_report_{}_{}.xml".format(scan_id, assets_hash)):
-            result = gmp_cnx.get_report(report_id, filter="apply_overrides=1 min_qod=0 rows=-1 levels=hmlg")
+            # rr = gmp_cnx.get_report_formats(report_id, filter="apply_overrides=1 min_qod=0 rows=-1 levels=hmlg")
+            # print(rr)
+
+            result = gmp_cnx.get_report(report_id, filter="apply_overrides=1 min_qod=0 rows=-1 levels=hmlg", details=1, ignore_pagination=1)
             result_file = open("results/openvas_report_{}_{}.xml".format(scan_id, assets_hash), "w")
             result_file.write(result)
             result_file.close()
@@ -1209,6 +1210,7 @@ def _parse_results(scan_id):
                 "description": "No results found during the scan.",
             })
 
+    titles = []
     for result in engine.scans[scan_id]["findings"]:
         # print("_parse_results/result", ET.tostring(result, encoding='utf8', method='xml'))
         try:
@@ -1220,7 +1222,9 @@ def _parse_results(scan_id):
 
             severity = float(result.find("severity").text)
             # print("severity:", severity)
-            cve = result.find("nvt").find("cve").text
+            cve = "NOCVE"
+            if result.find("nvt").find("cve") is not None:
+                cve = result.find("nvt").find("cve").text
             threat = result.find("threat").text
             cvss_base = result.find("nvt").find("cvss_base").text
             name = result.find("nvt").find("name").text
@@ -1229,6 +1233,13 @@ def _parse_results(scan_id):
             asset_port = result.find("port").text
             asset_port_number, asset_port_protocol = split_port(asset_port)
             solution = "n/a"
+            title = "{port} - {name}".format(port=asset_port, name=name)
+
+            # Remove duplicates
+            if title not in titles:
+                titles.append(title)
+            else:
+                continue
 
             asset_name = result.find("host").text
             asset_names = []
@@ -1277,7 +1288,7 @@ def _parse_results(scan_id):
 
             # Solution
             solution_data = re.search('\|solution=(.+?)\|', tags)
-            if solution_data:
+            if solution_data and solution_data[0] != "|":
                 solution = solution_data.group(1)
 
             #  metadata
@@ -1292,10 +1303,21 @@ def _parse_results(scan_id):
                 })
 
             # CPE
-            if name == "CPE Inventory":
-                finding_metadata.update({
-                    "vuln_refs": {"CPE": [c.split("|")[1] for c in xmlDesc.split("\n")]}
-                })
+            try:
+                if name == "CPE Inventory":
+                    finding_metadata.update({
+                        "vuln_refs": {"CPE": [c.split("|")[1] for c in xmlDesc.split("\n")]}
+                    })
+            except Exception:
+                pass
+
+            try:
+                if name == "CPE Inventory":
+                    finding_metadata.update({
+                        "vuln_refs": {"CPE": [c.split("|")[1] for c in xmlDesc.split("\n\n")]}
+                    })
+            except Exception:
+                pass
 
             # if (xmlDesc) and "CPE:" in str(xmlDesc):
             #     print(xmlDesc)
@@ -1316,7 +1338,7 @@ def _parse_results(scan_id):
                     "addr": asset_names,
                     "protocol": asset_port_protocol
                 },
-                "title": "{port} - {name}".format(port=asset_port, name=name),
+                "title": title,
                 "solution": solution,
                 "metadata": finding_metadata,
                 "type": "openvas_report",
@@ -1330,7 +1352,6 @@ def _parse_results(scan_id):
         except Exception as e:
             # probably unknown issue's host, skip it
             app.logger.error("Warning: failed to process issue: {}".format(ET.tostring(result, encoding='utf8', method='xml')))
-            app.logger.error(e.message)
             app.logger.error(e)
 
     summary = {
@@ -1367,7 +1388,8 @@ def getfindings(scan_id):
 
     try:
         engine.scans[scan_id]["findings"] = get_report(scan_id)
-    except Exception:
+    except Exception as e:
+        print(e)
         res.update({
             "status": "error",
             "reason": "Unable to get findings from scan '{}'.".format(scan_id)
