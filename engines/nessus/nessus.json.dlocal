@@ -6,6 +6,6 @@
 	"server_port": "8834",
 	"server_username": "patrowl",
 	"server_password": "patrowl",
-	"default_policy": "NESSUS_POLICY_NETWORK_SCAN.nessus",
-	"allowed_asset_types": ["ip", "domain", "ip-range", "subnet"]
+	"default_policy": "DEFAULT.nessus",
+	"allowed_asset_types": ["ip", "domain", "ip-range", "ip-subnet", "url"]
 }

@@ -36,10 +36,10 @@ You can also use API credentials:
 
 ## Sample policies
 - Unauthenticated scan
-{'action': 'scan', 'policy': 'NESSUS_POLICY_NETWORK_SCAN.nessus'}
+{'action': 'scan', 'policy': 'DEFAULT.nessus'}
 
 - Authenticated scan
-{'action': 'scan', 'policy': 'NESSUS_POLICY_NETWORK_SCAN.nessus', 'credentials': [{'type': 'windows_password', 'password': 'mypass', 'username': 'nicolas'}, {'type': 'ssh_password', 'password': 'mypass', 'username': 'nicolas'}, {'type': 'ssh_password', 'password': 'mypass2', 'username': 'nicolas2'}]}
+{'action': 'scan', 'policy': 'DEFAULT.nessus', 'credentials': [{'type': 'windows_password', 'password': 'mypass', 'username': 'nicolas'}, {'type': 'ssh_password', 'password': 'mypass', 'username': 'nicolas'}, {'type': 'ssh_password', 'password': 'mypass2', 'username': 'nicolas2'}]}
 
 - Get report (don't scan)
 {'name': 'Scan Externe - IP Prod', 'action': 'getreports'}
