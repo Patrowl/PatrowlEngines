@@ -124,6 +124,8 @@ def getfindings(scan_id):
         res.update({"status": "error", "reason": "scan_id '{}' not found".format(scan_id)})
         return jsonify(res)
 
+    time.sleep(3)
+
     # Check the scan status
     scan_status(scan_id)
     if this.scans[scan_id]['status'] not in ['FINISHED', 'STOPPED']:

@@ -47,4 +47,4 @@ RUN pip3 install --trusted-host pypi.python.org -r requirements.txt --ignore-ins
 EXPOSE 5016
 
 # Run app.py when the container launches
-CMD ["gunicorn", "engine-openvas:app", "-b", "0.0.0.0:5016", "--access-logfile", "-"]
+CMD ["gunicorn", "engine-openvas:app", "-b", "0.0.0.0:5016", "--access-logfile", "-", "--timeout", "200", "-w", "1"]

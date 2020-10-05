@@ -43,7 +43,7 @@ APP_ENGINE_NAME = "openvas"
 APP_BASE_DIR = dirname(realpath(__file__))
 DEFAULT_OV_PROFILE = "Full and fast"
 DEFAULT_OV_PORTLIST = "patrowl-all_tcp"
-DEFAULT_TIMEOUT = int(os.environ.get('DEFAULT_TIMEOUT', 50))
+DEFAULT_TIMEOUT = int(os.environ.get('DEFAULT_TIMEOUT', 600))
 
 engine = PatrowlEngine(
     app=app,
