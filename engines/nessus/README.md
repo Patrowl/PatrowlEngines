@@ -8,17 +8,20 @@ Nessus engine (online service)
 
 ## Install notes
 - Install python packages on system (use virtualenv)
-	* cd patrowl/engines/nessus
+	* cd PatrowlEngines/engines/nessus
 	* virtualenv env --python=python3
 	* source env/bin/activate
 	* pip3 install -r requirements.txt
 
 - Install the Nessus python cli and apply the patch
-	* cd external-libs
+	* makdir -p external-libs && cd external-libs
 	* git clone https://github.com/tenable/nessrest
-	* cd nessrest
+	* cd nessrest && git reset --hard af28834d6253db0d00e3ab46ab259dd5bc903063
 	* git apply ../../etc/ness6rest.patch
 	* pip3 install --trusted-host pypi.python.org -e $PWD/nessrest/
+
+- Upload scan policy files on your Nessus instance:
+  * Upload .nessus files located in etc/
 
 - Create a configuration file (see nessus.json.sample) named 'nessus.json', and customize the following options:
   * "server_host": "NESSUS_IP",

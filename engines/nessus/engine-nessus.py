@@ -19,10 +19,10 @@ from parser import parse_report
 
 
 app = Flask(__name__)
-APP_DEBUG = False
+APP_DEBUG = os.environ.get('APP_DEBUG', '').lower() in ['true', '1', 'on', 'yes']
 APP_HOST = "0.0.0.0"
 APP_PORT = 5002
-APP_MAXSCANS = 20
+APP_MAXSCANS = int(os.environ.get('APP_MAXSCANS', 20))
 
 BASE_DIR = os.path.dirname(os.path.realpath(__file__))
 UPLOAD_FOLDER = BASE_DIR + '/tmp'
@@ -139,7 +139,10 @@ def getfindings(scan_id):
         this.nessscan.action(action="scans/"+nessscan_id, method="GET")
 
     ######
-    report_content = this.nessscan.download_scan(export_format='nessus', history_id=this.scans[scan_id]['nessus_scan_hid'])
+    report_content = this.nessscan.download_scan(
+        export_format='nessus',
+        history_id=this.scans[scan_id]['nessus_scan_hid'],
+        scan_id=nessscan_id)
     report_filename = "{}/reports/nessus_{}_{}.nessus".format(
         BASE_DIR, scan_id, int(time.time()))
     with open(report_filename, 'wb') as w:
@@ -744,7 +747,7 @@ def page_not_found(e):
     return jsonify({
         "page": "undefined",
         "status": "error",
-        "reason": "page not found"
+        "reason": "Page not found"
     })
 
 

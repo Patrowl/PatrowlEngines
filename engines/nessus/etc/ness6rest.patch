@@ -1,5 +1,5 @@
 diff --git a/nessrest/ness6rest.py b/nessrest/ness6rest.py
-index 0616963..12affc5 100644
+index 0616963..35644be 100644
 --- a/nessrest/ness6rest.py
 +++ b/nessrest/ness6rest.py
 @@ -38,6 +38,7 @@ import time
@@ -105,20 +105,23 @@ index 0616963..12affc5 100644
  
  ################################################################################
      def _scan_status(self):
-@@ -975,20 +997,29 @@ class Scanner(object):
+@@ -975,27 +997,39 @@ class Scanner(object):
          return kbs
  
  ################################################################################
 -    def download_scan(self, export_format="", chapters="", dbpasswd=""):
-+    def download_scan(self, export_format="", chapters="", dbpasswd="", history_id=None):
++    def download_scan(self, export_format="", chapters="", dbpasswd="", history_id=None, scan_id=None):
          running = True
          counter = 0
++        if scan_id is None:
++            scan_id = self.scan_id
++        scan_id = str(scan_id)
  
 -        self.action("scans/" + str(self.scan_id), method="GET")
 +        if history_id is None:
-+            self.action("scans/" + str(self.scan_id), method="GET")
++            self.action("scans/" + scan_id, method="GET")
 +        else:
-+            self.action("scans/" + str(self.scan_id) + "?history_id=" + history_id, method="GET")
++            self.action("scans/" + scan_id + "?history_id=" + history_id, method="GET")
          if (export_format=="db"):
              data = {"format":"db","password":dbpasswd}
          elif (export_format=="html"):
@@ -130,13 +133,31 @@ index 0616963..12affc5 100644
 -                                        extra=data)
 +
 +        if history_id is None:
-+            self.action("scans/" + str(self.scan_id) + "/export",
++            self.action("scans/" + scan_id + "/export",
 +                                            method="POST",
 +                                            extra=data)
 +        else:
-+            self.action("scans/" + str(self.scan_id) + "/export?history_id=" + history_id,
++            self.action("scans/" + scan_id + "/export?history_id=" + history_id,
 +                                            method="POST",
 +                                            extra=data)
  
          file_id = self.res['file']
-         print('Download for file id '+str(self.res['file'])+'.')
+-        print('Download for file id '+str(self.res['file'])+'.')
++        print('Download for file id '+scan_id+'.')
+         while running:
+             time.sleep(2)
+             counter += 2
+-            self.action("scans/" + str(self.scan_id) + "/export/"
++            self.action("scans/" + scan_id + "/export/"
+                                             + str(file_id) + "/status",
+                                             method="GET")
+             running = self.res['status'] != 'ready'
+@@ -1006,7 +1040,7 @@ class Scanner(object):
+ 
+         print("")
+ 
+-        content = self.action("scans/" + str(self.scan_id) + "/export/"
++        content = self.action("scans/" + scan_id + "/export/"
+                               + str(file_id) + "/download",
+                               method="GET",
+                               download=True)
