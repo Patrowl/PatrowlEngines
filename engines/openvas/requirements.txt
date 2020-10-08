@@ -28,3 +28,4 @@ tomlkit==0.5.11
 urllib3==1.25.2
 Werkzeug==1.0.1
 netaddr==0.7.19
+validators
