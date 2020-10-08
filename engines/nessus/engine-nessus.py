@@ -546,7 +546,17 @@ def status():
                 login=this.scanner['server_username'],
                 password=this.scanner['server_password'],
                 insecure=True)
-        if scan.res['scanners'][0]['status'] == "on":
+        if 'status' in scan.res.keys():
+            this.scanner['status'] = "READY"
+            res.update({
+                'status': 'READY',
+                'details': {
+                    'server_host': this.scanner['server_host'],
+                    'server_port': this.scanner['server_port'],
+                    'status': scan.res['status']
+                }
+            })
+        elif scan.res['scanners'][0]['status'] == "on":
             this.scanner['status'] = "READY"
             res.update({
                 'status': 'READY',
@@ -556,7 +566,8 @@ def status():
                     'engine_version': scan.res['scanners'][0]['engine_version'],
                     'engine_build': scan.res['scanners'][0]['engine_build'],
                     'scan_count': scan.res['scanners'][0]['scan_count']
-             }})
+                }
+            })
         else:
             this.scanner['status'] = "ERROR"
             res.update({'status': 'ERROR', 'details': {'reason': 'Nessus engine not available'}})
@@ -581,13 +592,20 @@ def scan_status(scan_id):
         this.nessscan.action(
             action="scans/"+str(this.scans[scan_id]["nessscan_id"]),
             method="GET")
-        nessus_scan_status = this.nessscan.res['info']['status']
+
+        scan_status = this.nessscan.res
+        nessus_scan_status = 'unknown'
+
+        if 'info' in scan_status.keys():
+            nessus_scan_status = this.nessscan.res['info']['status']
+        elif 'status' in scan_status.keys():
+            nessus_scan_status = scan_status['status']
 
         if this.scans[scan_id]['nessus_scan_hid'] is not None:
             this.scans[scan_id]['status'] = "FINISHED"
         elif nessus_scan_status == 'completed':
             this.scans[scan_id]['status'] = "FINISHED"
-        elif nessus_scan_status == 'running':
+        elif nessus_scan_status in ['running', 'loading']:
             this.scans[scan_id]['status'] = "SCANNING"
         elif nessus_scan_status == 'canceled':
             this.scans[scan_id]['status'] = "STOPPED"
