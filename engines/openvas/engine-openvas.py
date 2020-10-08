@@ -17,6 +17,7 @@ from uuid import UUID
 import xml.etree.ElementTree as ET
 import re
 import hashlib
+import validators
 
 # Third party library imports
 from flask import Flask, request, jsonify
@@ -486,6 +487,16 @@ def get_multiple_report_status(info, gmp_cnx):
             assets_status.update({"status": "Done"})
 
     return assets_status
+
+
+def is_domain(string):
+    """Return True is the string is probably a domain."""
+    res = False
+    try:
+        res = validators.domain(string)
+    except Exception:
+        pass
+    return res
 
 
 def is_ip(string):
@@ -1109,10 +1120,14 @@ def get_report(scan_id):
         # Build the asset mapping
         assets_map = {}
         for asset in engine.scans[scan_id]['assets']:
-            asset_datatype = "ip"
+            asset_datatype = "fqdn"
             siblings = [asset]
-            if is_ip(asset):
-                siblings.append(asset)
+            if is_domain(asset):
+                asset_datatype = "domain"
+                # siblings.append(asset)
+            elif is_ip(asset):
+                asset_datatype = "ip"
+                # siblings.append(asset)
             elif is_ip_subnet(asset):
                 asset_datatype = "ip-subnet"
                 siblings += subnet_ips(asset)
@@ -1129,6 +1144,7 @@ def get_report(scan_id):
                 except Exception as e:
                     # What is that thing ?
                     app.logger.error(e)
+                    pass
 
             assets_map.update({
                 asset: {
@@ -1145,9 +1161,13 @@ def get_report(scan_id):
             # print(ET.tostring(result, encoding='utf8', method='xml'))
             try:
                 host_ip = result.find("host").text
+                host_name = result.find("host").find("hostname")
                 # print("host_ip:", host_ip)
                 for a in assets_map.keys():
                     if host_ip in assets_map[a]['siblings']:
+                        issues.append(result)
+                        engine.scans[scan_id]['assets_map'][a]['has_issues'] = True
+                    elif host_name is not None and host_name.text in assets_map[a]['siblings']:
                         issues.append(result)
                         engine.scans[scan_id]['assets_map'][a]['has_issues'] = True
                 # if host_ip in resolved_asset_ips:
@@ -1242,6 +1262,7 @@ def _parse_results(scan_id):
                 continue
 
             asset_name = result.find("host").text
+            asset_hostname = result.find("host").find("hostname")
             asset_names = []
             for a in engine.scans[scan_id]['assets_map'].keys():
                 if asset_name in engine.scans[scan_id]['assets_map'][a]['siblings']:
@@ -1250,6 +1271,9 @@ def _parse_results(scan_id):
                     else:
                         asset_names.append(a)
                         # asset_names += engine.scans[scan_id]['assets_map'][a]['siblings']
+
+                if asset_hostname is not None and asset_hostname.text in engine.scans[scan_id]['assets_map'][a]['siblings']:
+                    asset_names.append(asset_hostname.text).append(asset_name)
 
             if len(asset_names) == 0:
                 asset_names = [asset_name]
