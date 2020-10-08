@@ -1153,7 +1153,7 @@ def get_report(scan_id):
                     'has_issues': False
                 }
             })
-        # print("assets_map:", assets_map)
+        print("assets_map:", assets_map)
         engine.scans[scan_id]['assets_map'] = assets_map
 
         report = tree.getroot().find("report")
@@ -1177,7 +1177,7 @@ def get_report(scan_id):
                 app.logger.error("Warning: failed to process issue: {}".format(ET.tostring(result, encoding='utf8', method='xml')))
                 app.logger.error(e)
 
-    # print("engine.scans[scan_id]['assets_map']:", engine.scans[scan_id]['assets_map'])
+    print("engine.scans[scan_id]['assets_map']:", engine.scans[scan_id]['assets_map'])
     connection.disconnect()
     return issues
 
