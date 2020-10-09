@@ -1101,10 +1101,7 @@ def get_report(scan_id):
     with Gmp(connection) as gmp_cnx:
         gmp_cnx.authenticate(engine.scanner["options"]["gmp_username"]["value"], engine.scanner["options"]["gmp_password"]["value"])
         if not isfile("results/openvas_report_{}_{}.xml".format(scan_id, assets_hash)):
-            # rr = gmp_cnx.get_report_formats(report_id, filter="apply_overrides=1 min_qod=0 rows=-1 levels=hmlg")
-            # print(rr)
-
-            result = gmp_cnx.get_report(report_id, filter="apply_overrides=1 min_qod=0 rows=-1 levels=hmlg", details=1, ignore_pagination=1)
+            result = gmp_cnx.get_reports(filter="report_id={} levels=hmlg apply_overrides=0 rows=-1 min_qod=70 sort-reverse=severity notes=1 overrides=1".format(report_id), details=1, override_details=1, note_details=1)
             result_file = open("results/openvas_report_{}_{}.xml".format(scan_id, assets_hash), "w")
             result_file.write(result)
             result_file.close()
@@ -1153,7 +1150,7 @@ def get_report(scan_id):
                     'has_issues': False
                 }
             })
-        print("assets_map:", assets_map)
+        # print("assets_map:", assets_map)
         engine.scans[scan_id]['assets_map'] = assets_map
 
         report = tree.getroot().find("report")
@@ -1163,11 +1160,14 @@ def get_report(scan_id):
                 host_ip = result.find("host").text
                 host_name = result.find("host").find("hostname")
                 # print("host_ip:", host_ip)
+                # print("host_name:", host_name)
                 for a in assets_map.keys():
                     if host_ip in assets_map[a]['siblings']:
+                        # print(">host_ip:")
                         issues.append(result)
                         engine.scans[scan_id]['assets_map'][a]['has_issues'] = True
                     elif host_name is not None and host_name.text in assets_map[a]['siblings']:
+                        # print(">host_ip:")
                         issues.append(result)
                         engine.scans[scan_id]['assets_map'][a]['has_issues'] = True
                 # if host_ip in resolved_asset_ips:
@@ -1177,7 +1177,7 @@ def get_report(scan_id):
                 app.logger.error("Warning: failed to process issue: {}".format(ET.tostring(result, encoding='utf8', method='xml')))
                 app.logger.error(e)
 
-    print("engine.scans[scan_id]['assets_map']:", engine.scans[scan_id]['assets_map'])
+    # print("engine.scans[scan_id]['assets_map']:", engine.scans[scan_id]['assets_map'])
     connection.disconnect()
     return issues
 
@@ -1273,7 +1273,8 @@ def _parse_results(scan_id):
                         # asset_names += engine.scans[scan_id]['assets_map'][a]['siblings']
 
                 if asset_hostname is not None and asset_hostname.text in engine.scans[scan_id]['assets_map'][a]['siblings']:
-                    asset_names.append(asset_hostname.text).append(asset_name)
+                    asset_names.append(asset_hostname.text)
+                    asset_names.append(asset_name)
 
             if len(asset_names) == 0:
                 asset_names = [asset_name]
@@ -1281,7 +1282,7 @@ def _parse_results(scan_id):
             # Remove duplicates
             asset_names = list(set(asset_names))
 
-            # print("asset_names:", asset_names)
+            print("asset_names:", asset_names)
 
             if name == "Services":
                 name = "Services - {}".format(xmlDesc)
