@@ -11,7 +11,7 @@ import threading
 import urllib
 import time
 from copy import deepcopy
-from shlex import quote
+from shlex import quote, split
 from flask import Flask, request, jsonify, url_for, send_file
 import psutil
 
@@ -464,9 +464,11 @@ def _scan_thread(scan_id):
     cmd += " --output json "
     app.logger.debug('cmd: %s', cmd)
 
+    cmd_sec = split(cmd)
+
     this.scans[scan_id]["proc_cmd"] = "not set!!"
     with open(error_log_path, "w") as stderr:
-        this.scans[scan_id]["proc"] = subprocess.Popen([cmd], shell=True, stdout=open(log_path, "w"), stderr=stderr)
+        this.scans[scan_id]["proc"] = subprocess.Popen(cmd_sec, shell=False, stdout=open(log_path, "w"), stderr=stderr)
     this.scans[scan_id]["proc_cmd"] = cmd
 
     return True
