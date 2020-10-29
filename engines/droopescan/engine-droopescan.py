@@ -13,12 +13,15 @@ import time
 from copy import deepcopy
 from shlex import quote, split
 from flask import Flask, request, jsonify, url_for, send_file
+#from PatrowlHears4py.patrowlhears4py.api import PatrowlHearsApi
 import psutil
 
 # Own library imports
 from PatrowlEnginesUtils.PatrowlEngine import _json_serial
 from PatrowlEnginesUtils.PatrowlEngine import PatrowlEngine
 from PatrowlEnginesUtils.PatrowlEngineExceptions import PatrowlEngineExceptions
+# Hears api
+from patrowlhears4py.api import PatrowlHearsApi
 
 app = Flask(__name__)
 APP_DEBUG = False
@@ -279,6 +282,10 @@ def _add_issue(scan_id, target, timestamp, title, desc, type,
             "timestamp": timestamp
         }
     else:
+        app.logger.debug("Adding issue with metadata - {}".format(vuln_refs))
+        risk = {}
+        tags = []
+        links = []
         issue = {
             "issue_id": this.scans[scan_id]["nb_findings"],
             "severity": severity,
@@ -421,13 +428,18 @@ def _scan_thread(scan_id):
             # extract the net location from urls if needed
             if asset["datatype"] == 'url':
                 hosts.append("{uri.netloc}".format(
-                    uri=urllib.parse.urlparse(quote(asset["value"]))).strip())
+                    #uri=urllib.parse.urlparse(quote(asset["value"]))).strip())
+                    uri=urllib.parse.urlparse(quote("http://0.0.0.0"))).strip())
                 app.logger.debug('Adding URL {} to hosts'.format(asset["value"]))
             else:
-                hosts.append(quote(asset["value"]).strip())
+                #hosts.append(quote(asset["value"]).strip())
+                hosts.append(quote("http://0.0.0.0").strip())
                 app.logger.debug('Adding asset {} to hosts'.format(asset["value"]))
 
     app.logger.debug('Hosts set : %s', hosts)
+
+    # Update status
+    this.scans[scan_id]["status"] = "SCANNING"
 
     # Deduplicate hosts
     hosts = list(set(hosts))
@@ -441,23 +453,25 @@ def _scan_thread(scan_id):
     # Sanitize args :
     th_options = this.scans[scan_id]['options']
     app.logger.debug('options: %s', th_options)
-
+    # Log file path
     log_path = BASE_DIR+"/results/droopescan-" + scan_id + ".json"
-
+    # Error log file path
     error_log_path = BASE_DIR+"/logs/droopescan-error-" + scan_id + ".log"
 
+    # Base command
     cmd = "droopescan "
 
     # Check options
     for opt_key in th_options.keys():
         if opt_key in this.scanner['options'] and th_options.get(opt_key):
-            # FIXME Security : Is it secure to let any options in ? No escaping ?
+            # FIXME Security : Is it secure to let any options in ? No escPatrowlHears4py.aping ?
             cmd += " {}".format(this.scanner['options'][opt_key]['value'])
         if opt_key == "host_file_path":
             if os.path.isfile(th_options.get(opt_key)):
                 with open(th_options.get(opt_key), 'r') as file_host:
                     with open(hosts_filename, 'a') as hosts_file:
                         for line in file_host:
+                            #hosts_file.write(quote("http://0.0.0.0"))
                             hosts_file.write(quote(line))
 
     cmd += " -U " + hosts_filename
@@ -466,12 +480,39 @@ def _scan_thread(scan_id):
 
     cmd_sec = split(cmd)
 
+    # Debugging
+    #this.scans[scan_id]["proc_cmd"] = "not set!!"
+    #this.scans[scan_id]["status"] = "FINISHED"
+    #return True
+
     this.scans[scan_id]["proc_cmd"] = "not set!!"
     with open(error_log_path, "w") as stderr:
         this.scans[scan_id]["proc"] = subprocess.Popen(cmd_sec, shell=False, stdout=open(log_path, "w"), stderr=stderr)
     this.scans[scan_id]["proc_cmd"] = cmd
 
     return True
+
+
+def _get_hears_findings(t_vendor=None, t_product=None, t_product_version=None):
+    """ Get CVE associated to given vendor/product/product version """
+
+    BASE_URL = os.environ.get('PATROWLHEARS_BASE_URL', 'http://localhost:3333')
+    AUTH_TOKEN = os.environ.get('PATROWLHEARS_AUTH_TOKEN', '774c5c9d7908a6d970be392cf54b20ddca1d0319')
+    # Retrieve data
+    api = PatrowlHearsApi(url=BASE_URL, auth_token=AUTH_TOKEN)
+    json_data = api.search_vulns(cveid=None, monitored=None,search=None,
+                           vendor_name=t_vendor, product_name=t_product,
+                           product_version=t_product_version, cpe=None)
+    if json_data["count"] == 0:
+        return None
+    # Handle JSON data
+    vulns = []
+    for vln in json_data["results"]:
+        vulns.append(vln["cveid"])
+    app.logger.debug(vulns)
+    vuln_refs = {"CVE": vulns}
+    # Return vulns
+    return vuln_refs
 
 
 # Parse Droopescan report
@@ -539,6 +580,7 @@ def _parse_report(filename, scan_id):
                                    'The scan detected that the theme {} is installed on {}.'.format(
                                        thm_name, thm_url),
                                    type='intalled_theme')))
+
             # Check for interesting URLs
             #has_urls = False
             if json_data["interesting urls"]["is_empty"] is False:
@@ -567,12 +609,14 @@ def _parse_report(filename, scan_id):
                 version_list = json_data["version"]["finds"]
                 for ver in version_list:
                     app.logger.debug('Version {} is possibly installed'.format(ver))
+                    # Get vulns from hears
+                    t_vuln_refs = _get_hears_findings("wordpress", "wordpress", ver)
                     # Add version found to findings
                     res.append(deepcopy(
                         _add_issue(scan_id, target, timestamp,
                                    '{} - Version {} is possibly installed'.format(cms_name, ver),
                                    'The scan detected that the version {} is possibly installed.'.format(ver),
-                                   type='intalled_version', confidence='low')))
+                                   type='intalled_version', confidence='low', vuln_refs=t_vuln_refs)))
 
         return res
     else:
@@ -600,11 +644,13 @@ def getfindings(scan_id):
         return jsonify(res)
 
     # check if the report is available (exists && scan finished)
-    report_filename = BASE_DIR + "/results/droopescan-{}.json".format(scan_id)
+    #report_filename = BASE_DIR + "/results/droopescan-{}.json".format(scan_id)
+    report_filename = BASE_DIR + "/results/droopescan-1.json"
     if not os.path.exists(report_filename):
         res.update({"status": "error", "reason": "Report file not available"})
         return jsonify(res)
 
+    app.logger.debug("Opening mock file for debugging '{}'".format(report_filename))
     issues = _parse_report(report_filename, scan_id)
     scan = {
         "scan_id": scan_id
