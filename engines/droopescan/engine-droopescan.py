@@ -181,7 +181,6 @@ def loadconfig():
         this.scanner = json.load(json_data)
         this.scanner['status'] = "READY"
         return {"status": "OK", "reason": "config file loaded."}
-    # else:
     this.scanner['status'] = "ERROR"
     return {"status": "ERROR", "reason": "config file not found."}
 
@@ -282,7 +281,6 @@ def _add_issue(scan_id, target, timestamp, title, desc, type,
             "timestamp": timestamp
         }
     else:
-        app.logger.debug("Adding issue with metadata - {}".format(vuln_refs))
         risk = {}
         tags = []
         links = []
@@ -331,17 +329,13 @@ def stop_scan(scan_id):
 
     proc = this.scans[scan_id]["proc"]
     if hasattr(proc, 'pid'):
-        # his.proc.terminate()
-        # proc.kill()
-        # os.killpg(os.getpgid(proc.pid), signal.SIGTERM)
         if psutil.pid_exists(proc.pid):
             psutil.Process(proc.pid).terminate()
         res.update({"status": "TERMINATED",
                     "details": {
                         "pid": proc.pid,
                         "cmd": this.scans[scan_id]["proc_cmd"],
-                        "scan_id": scan_id}
-        })
+                        "scan_id": scan_id}})
     return jsonify(res)
 
 
@@ -487,7 +481,10 @@ def _scan_thread(scan_id):
 
     this.scans[scan_id]["proc_cmd"] = "not set!!"
     with open(error_log_path, "w") as stderr:
-        this.scans[scan_id]["proc"] = subprocess.Popen(cmd_sec, shell=False, stdout=open(log_path, "w"), stderr=stderr)
+        this.scans[scan_id]["proc"] = subprocess.Popen(cmd_sec,
+                                                       shell=False,
+                                                       stdout=open(log_path, "w"),
+                                                       stderr=stderr)
     this.scans[scan_id]["proc_cmd"] = cmd
 
     return True
@@ -496,13 +493,15 @@ def _scan_thread(scan_id):
 def _get_hears_findings(t_vendor=None, t_product=None, t_product_version=None):
     """ Get CVE associated to given vendor/product/product version """
 
-    BASE_URL = os.environ.get('PATROWLHEARS_BASE_URL', 'http://localhost:3333')
-    AUTH_TOKEN = os.environ.get('PATROWLHEARS_AUTH_TOKEN', '774c5c9d7908a6d970be392cf54b20ddca1d0319')
+    BASE_URL = os.environ.get('PATROWLHEARS_BASE_URL',
+                              'http://localhost:3333')
+    AUTH_TOKEN = os.environ.get('PATROWLHEARS_AUTH_TOKEN',
+                                '774c5c9d7908a6d970be392cf54b20ddca1d0319')
     # Retrieve data
     api = PatrowlHearsApi(url=BASE_URL, auth_token=AUTH_TOKEN)
-    json_data = api.search_vulns(cveid=None, monitored=None,search=None,
-                           vendor_name=t_vendor, product_name=t_product,
-                           product_version=t_product_version, cpe=None)
+    json_data = api.search_vulns(cveid=None, monitored=None, search=None,
+                                 vendor_name=t_vendor, product_name=t_product,
+                                 product_version=t_product_version, cpe=None)
     if json_data["count"] == 0:
         return None
     # Handle JSON data
@@ -525,11 +524,13 @@ def _parse_report(filename, scan_id):
     if os.path.isfile(filename):
         # TODO Catch Exception for open() function
         with open(filename, 'r') as file_desc:
-            app.logger.debug('Opened file named {} in mode {}'.format(file_desc.name, file_desc.mode))
+            app.logger.debug('Opened file named {} in mode {}'.format(file_desc.name,
+                                                                      file_desc.mode))
             try:
                 json_data = json.load(file_desc)
             except ValueError:
-                app.logger.debug('Error happened - DecodeJSONError : {}'.format(sys.exc_info()[0]))
+                app.logger.debug('Error happened - DecodeJSONError : {}'.format(
+                    sys.exc_info()[0]))
                 return {"status": "error", "reason": "Decoding JSON failed"}
             except Exception:
                 app.logger.debug('Error happened - {}'.format(sys.exc_info()[0]))
@@ -557,13 +558,15 @@ def _parse_report(filename, scan_id):
                     app.logger.debug('{} - Plugin {} is installed'.format(cms_name, plg_name))
                     desc = ""
                     if hasattr(fd_elt, 'imu'):
-                        desc = 'The scan detected that the plugin {} is installed on this CMS ({}).'.format(
-                            plg_name, fd_elt["imu"]["description"]),
+                        desc = 'The scan detected that the plugin {} is installed on this CMS \
+                                ({}).'.format(plg_name, fd_elt["imu"]["description"])
                     else:
-                        desc = 'The scan detected that the plugin {} is installed on this CMS.'.format(plg_name),
+                        desc = 'The scan detected that the plugin {} is installed on this CMS \
+                                .'.format(plg_name)
                     # Add plugin found to findings
                     res.append(deepcopy(_add_issue(scan_id, target, timestamp,
-                                                   '{} - Plugin {} is installed'.format(cms_name, plg_name),
+                                                   '{} - Plugin {} is installed'.format(cms_name,
+                                                                                        plg_name),
                                                    desc[0], type='intalled_plugin')))
             # Check for themes
             #has_themes = False
@@ -577,9 +580,8 @@ def _parse_report(filename, scan_id):
                     res.append(deepcopy(
                         _add_issue(scan_id, target, timestamp,
                                    '{} - Theme {} is installed'.format(cms_name, thm_name),
-                                   'The scan detected that the theme {} is installed on {}.'.format(
-                                       thm_name, thm_url),
-                                   type='intalled_theme')))
+                                   'The scan detected that the theme {} is installed on \
+                                    {}.'.format(thm_name, thm_url), type='intalled_theme')))
 
             # Check for interesting URLs
             #has_urls = False
@@ -603,9 +605,7 @@ def _parse_report(filename, scan_id):
             #        "The scan detected that the host was up",
             #        type="host_availability")))
 
-            #has_version = False
             if json_data["version"]["is_empty"] is False:
-                #has_version = True
                 version_list = json_data["version"]["finds"]
                 for ver in version_list:
                     app.logger.debug('Version {} is possibly installed'.format(ver))
@@ -615,8 +615,9 @@ def _parse_report(filename, scan_id):
                     res.append(deepcopy(
                         _add_issue(scan_id, target, timestamp,
                                    '{} - Version {} is possibly installed'.format(cms_name, ver),
-                                   'The scan detected that the version {} is possibly installed.'.format(ver),
-                                   type='intalled_version', confidence='low', vuln_refs=t_vuln_refs)))
+                                   'The scan detected that the version {} \
+                                   is possibly installed.'.format(ver), type='intalled_version',
+                                   confidence='low', vuln_refs=t_vuln_refs)))
 
         return res
     else:
@@ -644,8 +645,7 @@ def getfindings(scan_id):
         return jsonify(res)
 
     # check if the report is available (exists && scan finished)
-    #report_filename = BASE_DIR + "/results/droopescan-{}.json".format(scan_id)
-    report_filename = BASE_DIR + "/results/droopescan-1.json"
+    report_filename = BASE_DIR + "/results/droopescan-{}.json".format(scan_id)
     if not os.path.exists(report_filename):
         res.update({"status": "error", "reason": "Report file not available"})
         return jsonify(res)
@@ -700,9 +700,12 @@ def main():
 
 if __name__ == '__main__':
     parser = optparse.OptionParser()
-    parser.add_option("-H", "--host", help="Hostname of the Flask app [default %s]" % APP_HOST, default=APP_HOST)
-    parser.add_option("-P", "--port", help="Port for the Flask app [default %s]" % APP_PORT, default=APP_PORT)
-    parser.add_option("-d", "--debug", action="store_true", dest="debug", help=optparse.SUPPRESS_HELP)
+    parser.add_option("-H", "--host", help="Hostname of the Flask app [default %s]" %
+                      APP_HOST, default=APP_HOST)
+    parser.add_option("-P", "--port", help="Port for the Flask app [default %s]" %
+                      APP_PORT, default=APP_PORT)
+    parser.add_option("-d", "--debug", action="store_true",
+                      dest="debug", help=optparse.SUPPRESS_HELP)
 
     options, _ = parser.parse_args()
     app.run(debug=options.debug, host=options.host, port=int(options.port))
