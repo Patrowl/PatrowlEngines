@@ -422,12 +422,10 @@ def _scan_thread(scan_id):
             # extract the net location from urls if needed
             if asset["datatype"] == 'url':
                 hosts.append("{uri.netloc}".format(
-                    #uri=urllib.parse.urlparse(quote(asset["value"]))).strip())
-                    uri=urllib.parse.urlparse(quote("http://0.0.0.0"))).strip())
+                    uri=urllib.parse.urlparse(quote(asset["value"]))).strip())
                 app.logger.debug('Adding URL {} to hosts'.format(asset["value"]))
             else:
-                #hosts.append(quote(asset["value"]).strip())
-                hosts.append(quote("http://0.0.0.0").strip())
+                hosts.append(quote(asset["value"]).strip())
                 app.logger.debug('Adding asset {} to hosts'.format(asset["value"]))
 
     app.logger.debug('Hosts set : %s', hosts)
@@ -465,7 +463,6 @@ def _scan_thread(scan_id):
                 with open(th_options.get(opt_key), 'r') as file_host:
                     with open(hosts_filename, 'a') as hosts_file:
                         for line in file_host:
-                            #hosts_file.write(quote("http://0.0.0.0"))
                             hosts_file.write(quote(line))
 
     cmd += " -U " + hosts_filename
@@ -473,11 +470,6 @@ def _scan_thread(scan_id):
     app.logger.debug('cmd: %s', cmd)
 
     cmd_sec = split(cmd)
-
-    # Debugging
-    #this.scans[scan_id]["proc_cmd"] = "not set!!"
-    #this.scans[scan_id]["status"] = "FINISHED"
-    #return True
 
     this.scans[scan_id]["proc_cmd"] = "not set!!"
     with open(error_log_path, "w") as stderr:
@@ -650,7 +642,6 @@ def getfindings(scan_id):
         res.update({"status": "error", "reason": "Report file not available"})
         return jsonify(res)
 
-    app.logger.debug("Opening mock file for debugging '{}'".format(report_filename))
     issues = _parse_report(report_filename, scan_id)
     scan = {
         "scan_id": scan_id
