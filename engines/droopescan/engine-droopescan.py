@@ -20,9 +20,6 @@ import psutil
 from PatrowlEnginesUtils.PatrowlEngine import _json_serial
 from PatrowlEnginesUtils.PatrowlEngine import PatrowlEngine
 from PatrowlEnginesUtils.PatrowlEngineExceptions import PatrowlEngineExceptions
-# Hears api
-from patrowlhears4py.api import PatrowlHearsApi
-
 app = Flask(__name__)
 APP_DEBUG = False
 APP_HOST = "0.0.0.0"
@@ -36,6 +33,14 @@ this.proc = None  # to delete
 this.scanner = {}
 this.scan_id = 1
 this.scans = {}
+
+# Hears api
+try:
+    from patrowlhears4py.api import PatrowlHearsApi
+except ModuleNotFoundError:
+    app.logger.debug("Failed to import Patrowl Hears API, \
+                      vulnerabilities searching won't be available.")
+    pass
 
 
 engine = PatrowlEngine(
