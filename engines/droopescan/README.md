@@ -21,14 +21,14 @@ docker build --force-rm --tag patrowl-droopescan .
 cd PatrowlEngines/engines/droopscan
 virtualenv env
 source env/bin/activate
-pip3 install -r requirements.txt
+python3 -m pip install -r requirements.txt
 mkdir logs tmp results
 ```
 - Create a configuration file (see droopscan.json.sample) named 'droopscan.json'
 
 - Start the engine (require sudo/root access):
 ```
-sudo env/bin/python engine-droopscan.py [--port 5021] [--host 0.0.0.0] [--debug]
+sudo env/bin/python3 engine-droopscan.py [--port 5021] [--host 0.0.0.0] [--debug]
 ```
 > Note the use of `env/bin/python` allowing the reference of the python modules within the virtualenv
 
