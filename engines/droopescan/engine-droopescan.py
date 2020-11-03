@@ -37,9 +37,9 @@ this.scans = {}
 # Hears api
 try:
     from patrowlhears4py.api import PatrowlHearsApi
-except ModuleNotFoundError:
-    app.logger.debug("Failed to import Patrowl Hears API, \
-                      vulnerabilities searching won't be available.")
+except: # ModuleNotFoundError:
+#    app.logger.debug("Failed to import Patrowl Hears API, \
+#                      vulnerabilities searching won't be available.")
     pass
 
 
@@ -421,7 +421,7 @@ def _scan_thread(scan_id):
                 "details": {
                     "reason": "datatype '{}' not supported for the asset {}.".format(
                         asset["datatype"], asset["value"])}})
-	# commentaire = ''' To delete, somtimes we scan app
+    # commentaire = ''' To delete, somtimes we scan app
         # like https://example.com/app1name/ only and nor https://example.com'''
         else:
             # extract the net location from urls if needed
@@ -502,13 +502,50 @@ def _get_hears_findings(t_vendor=None, t_product=None, t_product_version=None):
     if json_data["count"] == 0:
         return None
     # Handle JSON data
+    cpe = ""
     vulns = []
+    fdg_max_cvss = 0.0
+    desc = ""
     for vln in json_data["results"]:
+        # Get CPE
+        if cpe == "":
+            for cpe_version in vln["vulnerable_products"]:
+                if t_product_version+":*" in cpe_version:
+                    cpe = cpe_version
+                    app.logger.debug(cpe)
+                    pass
+        # Get max score
+        if vln["cvss"] > fdg_max_cvss:
+            fdg_max_cvss = vln["cvss"]
+        # Get CVE
         vulns.append(vln["cveid"])
-    app.logger.debug(vulns)
-    vuln_refs = {"CVE": vulns}
-    # Return vulns
-    return vuln_refs
+        # Update description
+        desc += "\n{} {}".format(vln["cveid"], vln["cvss"])
+
+    vuln_refs = {"CVE": vulns, "CPE": cpe}
+    # Return infos
+    return vuln_refs, fdg_max_cvss, desc
+
+def _get_cvss_severity(cvss):
+    """
+    Returns severity from given CVSS
+
+    :param cvss: CVSS
+    :type cvss: float
+
+    :returns: Severity
+    :rtype: str
+    """
+    if cvss == None:
+        return None
+    fdg_severity = "info"
+    if cvss >= 7.5:
+        fdg_severity = "high"
+    elif cvss >= 5.0 and cvss < 7.5:
+        fdg_severity = "medium"
+    elif cvss >= 3.0 and cvss < 5.0:
+        fdg_severity = "low"
+    return fdg_severity
 
 
 # Parse Droopescan report
@@ -607,14 +644,22 @@ def _parse_report(filename, scan_id):
                 for ver in version_list:
                     app.logger.debug('Version {} is possibly installed'.format(ver))
                     # Get vulns from hears
-                    t_vuln_refs = _get_hears_findings("wordpress", "wordpress", ver)
+                    try:
+                        t_vuln_refs, t_cvss_score, t_desc = _get_hears_findings("wordpress",
+                                        "wordpress", ver)
+                    except Exception:
+                        t_vuln_refs, t_cvss_score, t_desc = None
+                        pass
                     # Add version found to findings
                     res.append(deepcopy(
                         _add_issue(scan_id, target, timestamp,
                                    '{} - Version {} is possibly installed'.format(cms_name, ver),
                                    'The scan detected that the version {} \
-                                   is possibly installed.'.format(ver), type='intalled_version',
-                                   confidence='low', vuln_refs=t_vuln_refs)))
+                                   is possibly installed.\n{}'.format(ver, t_desc),
+                   type='intalled_version',
+                                   confidence='low',
+                   vuln_refs=t_vuln_refs,
+                   severity=_get_cvss_severity(t_cvss_score))))
 
         return res
     else:
