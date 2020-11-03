@@ -548,6 +548,8 @@ def _parse_report(filename, scan_id):
                         elif port_max_cvss >= 3.0 and port_max_cvss < 5.0:
                             port_severity = "low"
 
+                        app.logger.debug("VULNERS: {} - {}".format(script_id, script_output))
+
                         res.append(deepcopy(_add_issue(scan_id, target, ts,
                             "Nmap script '{}' detected findings on port {}/{}"
                                 .format(script_id, proto, portid),
@@ -612,6 +614,7 @@ def _get_vulners_findings(findings):
     cve_links = []
     cpe_info = ""
     for line in findings.splitlines():
+        app.logger.debug("Finding's line : {}".format(line))
         cols = line.split('\t\t', 2)
         vulners_cve = cols[0].strip()
         if vulners_cve.startswith('cpe'):
