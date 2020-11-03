@@ -18,7 +18,7 @@ print('TEST CASE: test_scan_droopescan')
 post_data = {
     'assets': [{
         'id': 2,
-        'value': '<url_to_sca,>',
+        'value': '<url_to_scan>',
         'criticity': 'medium',
         'datatype': 'url'
     }],
@@ -45,3 +45,4 @@ elif(mode == 'status'):
     print(r.text)
 else:
     print('Usage:             ./api_droopescan.py -m (scan|results|status) -i <scan_id>')
+
