@@ -24,11 +24,11 @@ source env/bin/activate
 python3 -m pip install -r requirements.txt
 mkdir logs tmp results
 ```
-- Create a configuration file (see droopscan.json.sample) named 'droopscan.json'
+- Create a configuration file (see droopescan.json.sample) named 'droopescan.json'
 
-- Start the engine (require sudo/root access):
+- Start the engine :
 ```
-sudo env/bin/python3 engine-droopscan.py [--port 5021] [--host 0.0.0.0] [--debug]
+env/bin/python engine-droopscan.py [--port 5021] [--host 0.0.0.0] [--debug]
 ```
 > Note the use of `env/bin/python` allowing the reference of the python modules within the virtualenv
 
@@ -42,7 +42,7 @@ http://0.0.0.0:5021/engines/droopscan/info
 
 ## Testing script
 ```
-import json, requests, time  
+import json, requests, time
 
 print("TEST CASE: test_scan_droopscan")
 post_data = {
