@@ -29,6 +29,12 @@ this.scanner = {}
 this.scan_id = 1
 this.scans = {}
 
+# Hears api
+try:
+    from patrowlhears4py.api import PatrowlHearsApi
+except:
+    pass
+
 
 # Generic functions
 def shellquote(s):
@@ -410,6 +416,69 @@ def _add_issue(scan_id, target, ts, title, desc, type, severity="info", confiden
     return issue
 
 
+def _get_hears_findings(t_cpe=None, t_vendor=None, t_product=None, t_product_version=None):
+    """ Get CVE associated to given vendor/product/product version """
+
+    # FIXME Load this in load_config()
+    BASE_URL = os.environ.get('PATROWLHEARS_BASE_URL',
+                              'http://localhost:3333')
+    AUTH_TOKEN = os.environ.get('PATROWLHEARS_AUTH_TOKEN',
+                                '774c5c9d7908a6d970be392cf54b20ddca1d0319')
+    # Retrieve data
+    api = PatrowlHearsApi(url=BASE_URL, auth_token=AUTH_TOKEN)
+    json_data = api.search_vulns(cveid=None, monitored=None, search=None,
+                                 vendor_name=t_vendor, product_name=t_product,
+                                 product_version=t_product_version, cpe=t_cpe)
+    if json_data["count"] == 0:
+    	return None, 0.0, ""
+    # Handle JSON data
+    cpe = ""
+    vulns = []
+    fdg_max_cvss = 0.0
+    desc = ""
+    for vln in json_data["results"]:
+        # Get CPE
+        if cpe == "":
+            for cpe_version in vln["vulnerable_products"]:
+                if t_product_version+":*" in cpe_version:
+                    cpe = cpe_version
+                    app.logger.debug(cpe)
+                    pass
+        # Get max score
+        if vln["cvss"] > fdg_max_cvss:
+            fdg_max_cvss = vln["cvss"]
+        # Get CVE
+        vulns.append(vln["cveid"])
+        # Update description
+        desc += "\n{} {}".format(vln["cveid"], vln["cvss"])
+
+    vuln_refs = {"CVE": vulns, "CPE": cpe}
+    # Return infos
+    return vuln_refs, fdg_max_cvss, desc
+
+
+def _get_cvss_severity(cvss):
+    """
+    Returns severity from given CVSS
+
+    :param cvss: CVSS
+    :type cvss: float
+
+    :returns: Severity
+    :rtype: str
+    """
+    if cvss == None:
+        return None
+    fdg_severity = "info"
+    if cvss >= 7.5:
+        fdg_severity = "high"
+    elif cvss >= 5.0 and cvss < 7.5:
+        fdg_severity = "medium"
+    elif cvss >= 3.0 and cvss < 5.0:
+        fdg_severity = "low"
+    return fdg_severity
+
+
 def _parse_report(filename, scan_id):
     """Parse the nmap report."""
     res = []
@@ -519,7 +588,9 @@ def _parse_report(filename, scan_id):
                         cpe_link = _get_cpe_link(cpe_vector)
                         cpe_info = "\n The following CPE vector has been identified: {}".format(cpe_vector)
                         cpe_refs = {"CPE": [cpe_vector]}
+                        app.logger.debug("Infos : cpe vector".format(cpe_vector))
 
+                    app.logger.debug("Infos: svc {} - cpe info {}".format(svc_name, cpe_info))
                     res.append(deepcopy(_add_issue(scan_id, target, ts,
                         "Service '{}' is running on port '{}/{}'".format(svc_name, proto, portid),
                         "The scan detected that the service '{}' is running on port '{}/{}'. {}"
@@ -529,8 +600,27 @@ def _parse_report(filename, scan_id):
                         vuln_refs=cpe_refs)))
 
                 for port_script in port.findall('script'):
+                    # Get vulns from hears
+                    try:
+                        t_vuln_refs, t_cvss_score, t_desc = _get_hears_findings("", "", "0.0", None)
+                    except Exception:
+                        t_vuln_refs, t_cvss_score, t_desc = None
+                        pass
+                    # Add version found to findings
+                    res.append(deepcopy(
+                        _add_issue(scan_id, target, timestamp,
+                                   '{} - Version {} is possibly installed'.format(cms_name, ver),
+                                   'The scan detected that the version {} \
+                                   is possibly installed.\n{}'.format(ver, t_desc),
+                   type='intalled_version',
+                                   confidence='low',
+                   vuln_refs=t_vuln_refs,
+                   severity=_get_cvss_severity(t_cvss_score))))
+
+                for port_script in port.findall('script'):
                     script_id = port_script.get('id')
                     script_output = port_script.get('output')
+                    app.logger.debug("Infos: {} - {}".format(script_id, script_output))
                     # Disable hash for some script_id
                     if script_id in ["fingerprint-strings"]:
                         script_hash = "None"
@@ -547,8 +637,6 @@ def _parse_report(filename, scan_id):
                             port_severity = "medium"
                         elif port_max_cvss >= 3.0 and port_max_cvss < 5.0:
                             port_severity = "low"
-
-                        app.logger.debug("VULNERS: {} - {}".format(script_id, script_output))
 
                         res.append(deepcopy(_add_issue(scan_id, target, ts,
                             "Nmap script '{}' detected findings on port {}/{}"
@@ -614,7 +702,6 @@ def _get_vulners_findings(findings):
     cve_links = []
     cpe_info = ""
     for line in findings.splitlines():
-        app.logger.debug("Finding's line : {}".format(line))
         cols = line.split('\t\t', 2)
         vulners_cve = cols[0].strip()
         if vulners_cve.startswith('cpe'):
