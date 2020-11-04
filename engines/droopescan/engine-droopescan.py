@@ -647,8 +647,9 @@ def _parse_report(filename, scan_id):
                     try:
                         t_vuln_refs, t_cvss_score, t_desc = _get_hears_findings("wordpress",
                                         "wordpress", ver)
-                    except Exception:
-                        t_vuln_refs, t_cvss_score, t_desc = None
+                    except:
+                        app.logger.debug("Skipping vulnerability checking")
+                        t_vuln_refs, t_cvss_score, t_desc = None, 0.0, ""
                         pass
                     # Add version found to findings
                     res.append(deepcopy(
