@@ -66,3 +66,6 @@ r = requests.post(url='http://0.0.0.0:5021/engines/droopscan/startscan',
 - Support for multiple hosts
 - Vulnerability finding and processing
 
+
+## Raodmap
+- Add scan percentage status
