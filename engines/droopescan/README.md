@@ -4,6 +4,31 @@ PatrOwl Droopscan engine
 # Pre-requisites (must be installed before)
 - Python 3 + pip + virtualenv
 
+# Configuration
+## Options
+- Available CMS to scan:
+    * wordpress
+    * drupal
+    * joomla
+    * moodle
+    * silverstripe
+```
+    "cms": "<your_cms>"
+```
+- Vulnerability searching (see below)
+```
+    "search_vulns": True
+```
+
+## Searching vulnerabilities
+You need Patrowl Hears API access to be able to search vulnerabilities.
+
+For now, API key is set up in environment variables (will change soon):
+```
+export PATROWLHEARS_BASE_URL="https://hears.patrowl.io"
+export PATROWLHEARS_AUTH_TOKEN="<your_api_token>"
+```
+
 # Install notes
 ## With Docker
 - Build image
@@ -53,7 +78,8 @@ post_data = {
         "datatype": "url"
     }],
     "options": {
-        "scan_wordpress": 1
+        "cms": "wordpress",
+        "search_vulns": False
     },
     "scan_id": 556
 }
@@ -63,9 +89,9 @@ r = requests.post(url='http://0.0.0.0:5021/engines/droopscan/startscan',
 ```
 
 ## Pro functionnalities
-- Support for multiple hosts
 - Vulnerability finding and processing
 
 
-## Raodmap
+## Roadmap
 - Add scan percentage status
+- Support for multiple hosts
