@@ -23,7 +23,8 @@ post_data = {
         'datatype': 'url'
     }],
     'options': {
-        'scan_wordpress': 1,
+        'cms': "wordpress",
+        'search_vulns': False
     },
     'scan_id': id
 }
