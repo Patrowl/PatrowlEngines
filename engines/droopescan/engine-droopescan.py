@@ -391,6 +391,8 @@ def start():
         'threads':      [],
         'proc':         None,
         'options':      data['options'],
+        'cms':          "",
+        'search_vulns': False,
         'scan_id':      scan_id,
         'status':       "STARTED",
         'started_at':   int(time.time() * 1000),
@@ -458,18 +460,33 @@ def _scan_thread(scan_id):
     # Base command
     cmd = "droopescan "
 
+    # Available cms to scan
+    avail_cms = ["drupal", "joomla", "moodle", "silverstripe", "wordpress"]
+
     # Check options
     for opt_key in th_options.keys():
-        if opt_key in this.scanner['options'] and th_options.get(opt_key):
-            # FIXME Security : Is it secure to let any options in ? No escPatrowlHears4py.aping ?
-            cmd += " {}".format(this.scanner['options'][opt_key]['value'])
-        if opt_key == "host_file_path":
+        if opt_key == "cms":
+            t_cms = th_options.get(opt_key)
+            if isinstance(t_cms, str) and t_cms in avail_cms:
+                this.scans[scan_id]["cms"] = t_cms
+                cmd += " scan {}".format(t_cms)
+            else:
+                app.logger.error("Wrong CMS name provided")
+                this.scans[scan_id]["status"] = "ERROR"
+                return False
+        elif opt_key == "host_file_path":
             if os.path.isfile(th_options.get(opt_key)):
                 with open(th_options.get(opt_key), 'r') as file_host:
                     with open(hosts_filename, 'a') as hosts_file:
                         for line in file_host:
                             hosts_file.write(quote(line))
-
+        elif opt_key == "search_vulns":
+            this.scans[scan_id]["search_vulns"] = True
+            app.logger.debug("Searching vulns (if Hears API is available)")
+        else:
+            app.logger.error("Unknownw option provided")
+            this.scans[scan_id]["status"] = "ERROR"
+            return False
     cmd += " -U " + hosts_filename
     cmd += " --output json "
     app.logger.debug('cmd: %s', cmd)
@@ -491,9 +508,9 @@ def _get_hears_findings(t_vendor=None, t_product=None, t_product_version=None):
     """ Get CVE associated to given vendor/product/product version """
 
     BASE_URL = os.environ.get('PATROWLHEARS_BASE_URL',
-                              'http://localhost:3333')
+                              '')
     AUTH_TOKEN = os.environ.get('PATROWLHEARS_AUTH_TOKEN',
-                                '774c5c9d7908a6d970be392cf54b20ddca1d0319')
+                                '')
     # Retrieve data
     api = PatrowlHearsApi(url=BASE_URL, auth_token=AUTH_TOKEN)
     json_data = api.search_vulns(cveid=None, monitored=None, search=None,
@@ -644,13 +661,19 @@ def _parse_report(filename, scan_id):
                 for ver in version_list:
                     app.logger.debug('Version {} is possibly installed'.format(ver))
                     # Get vulns from hears
-                    try:
-                        t_vuln_refs, t_cvss_score, t_desc = _get_hears_findings("wordpress",
-                                        "wordpress", ver)
-                    except:
+                    if this.scans[scan_id]["search_vulns"]:
+                        try:
+                            t_vuln_refs, t_cvss_score, t_desc = _get_hears_findings(cms_name,
+                                                                                    cms_name,
+                                                                                    ver)
+                        except:
+                            app.logger.debug("Error while loading Hears API, \
+                                             skipping vulnerability checking")
+                            t_vuln_refs, t_cvss_score, t_desc = None, 0.0, ""
+                            pass
+                    else:
                         app.logger.debug("Skipping vulnerability checking")
                         t_vuln_refs, t_cvss_score, t_desc = None, 0.0, ""
-                        pass
                     # Add version found to findings
                     res.append(deepcopy(
                         _add_issue(scan_id, target, timestamp,
@@ -661,7 +684,6 @@ def _parse_report(filename, scan_id):
                                    confidence='low',
                    vuln_refs=t_vuln_refs,
                    severity=_get_cvss_severity(t_cvss_score))))
-
         return res
     else:
         return {"status": "error", "reason": "An error happened while handling file"}
