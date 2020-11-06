@@ -15,18 +15,15 @@ PatrOwl Droopscan engine
 ```
     "cms": "<your_cms>"
 ```
-- Vulnerability searching (see below)
-```
-    "search_vulns": True
-```
-
-## Searching vulnerabilities
+- Vulnerability searching (PRO only):
 You need Patrowl Hears API access to be able to search vulnerabilities.
 
-For now, API key is set up in environment variables (will change soon):
 ```
-export PATROWLHEARS_BASE_URL="https://hears.patrowl.io"
-export PATROWLHEARS_AUTH_TOKEN="<your_api_token>"
+        "credentials":
+        {
+            "url": "<hears_url>",
+            "token": "<hears_api_token>"
+        }
 ```
 
 # Install notes
@@ -79,7 +76,6 @@ post_data = {
     }],
     "options": {
         "cms": "wordpress",
-        "search_vulns": False
     },
     "scan_id": 556
 }
