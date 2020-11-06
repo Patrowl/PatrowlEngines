@@ -394,7 +394,7 @@ def start():
         'proc':         None,
         'options':      data['options'],
         'cms':          "",
-        'search_vulns': False,
+        'hears_api':    {},
         'scan_id':      scan_id,
         'status':       "STARTED",
         'started_at':   int(time.time() * 1000),
@@ -482,9 +482,9 @@ def _scan_thread(scan_id):
                     with open(hosts_filename, 'a') as hosts_file:
                         for line in file_host:
                             hosts_file.write(quote(line))
-        elif opt_key == "search_vulns":
-            this.scans[scan_id]["search_vulns"] = True
+        elif opt_key == "hears_api":
             app.logger.debug("Searching vulns (if Hears API is available)")
+            this.scans[scan_id]["hears_api"] = th_options.get(opt_key)
         else:
             app.logger.error("Unknownw option provided")
             this.scans[scan_id]["status"] = "ERROR"
@@ -506,15 +506,13 @@ def _scan_thread(scan_id):
     return True
 
 
-def _get_hears_findings(t_vendor=None, t_product=None, t_product_version=None):
+def _get_hears_findings(scan_id, t_vendor=None, t_product=None, t_product_version=None):
     """ Get CVE associated to given vendor/product/product version """
-
-    BASE_URL = os.environ.get('PATROWLHEARS_BASE_URL',
-                              '')
-    AUTH_TOKEN = os.environ.get('PATROWLHEARS_AUTH_TOKEN',
-                                '')
+    # Set up credentials
+    hears_url =  this.scans[scan_id]["hears_api"]["url"]
+    hears_token =  this.scans[scan_id]["hears_api"]["token"]
     # Retrieve data
-    api = PatrowlHearsApi(url=BASE_URL, auth_token=AUTH_TOKEN)
+    api = PatrowlHearsApi(url=hears_url, auth_token=hears_token)
     json_data = api.search_vulns(cveid=None, monitored=None, search=None,
                                  vendor_name=t_vendor, product_name=t_product,
                                  product_version=t_product_version, cpe=None)
@@ -542,6 +540,7 @@ def _get_hears_findings(t_vendor=None, t_product=None, t_product_version=None):
         desc += "\n{} {}".format(vln["cveid"], vln["cvss"])
 
     vuln_refs = {"CVE": vulns, "CPE": cpe}
+
     # Return infos
     return vuln_refs, fdg_max_cvss, desc
 
@@ -663,9 +662,11 @@ def _parse_report(filename, scan_id):
                 for ver in version_list:
                     app.logger.debug('Version {} is possibly installed'.format(ver))
                     # Get vulns from hears
-                    if this.scans[scan_id]["search_vulns"]:
+                    app.logger.debug("Login is {}".format(this.scans[scan_id]["hears_api"]))
+                    if "hears_api" in this.scans[scan_id]:
                         try:
-                            t_vuln_refs, t_cvss_score, t_desc = _get_hears_findings(cms_name,
+                            t_vuln_refs, t_cvss_score, t_desc = _get_hears_findings(scan_id,
+                                                                                    cms_name,
                                                                                     cms_name,
                                                                                     ver)
                         except:
@@ -686,6 +687,9 @@ def _parse_report(filename, scan_id):
                                    confidence='low',
                    vuln_refs=t_vuln_refs,
                    severity=_get_cvss_severity(t_cvss_score))))
+        # Remove credentials
+        this.scans[scan_id]["hears_api"] = {}
+        # Return results
         return res
     else:
         return {"status": "error", "reason": "An error happened while handling file"}
