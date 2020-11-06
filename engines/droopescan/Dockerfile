@@ -19,7 +19,6 @@ COPY requirements.txt .
 COPY README.md .
 
 # Install any needed packages specified in requirements.txt
-RUN mkdir -p results
 RUN apk add --update --no-cache \
     python3 python3-dev py3-pip \
     git gcc musl-dev linux-headers \

@@ -135,6 +135,8 @@ def status():
 
     if not os.path.exists(BASE_DIR+'/droopescan.json'):
         this.scanner['status'] = "ERROR"
+        res.update({"status": "error", "reason": "Config file droopescan.json not found"})
+        app.logger.error("Config file droopescan.json not found")
 #    if not os.path.isfile(this.scanner['path']):
 #        this.scanner['status'] = "ERROR"
 
