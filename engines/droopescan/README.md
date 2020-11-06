@@ -16,7 +16,7 @@ PatrOwl Droopscan engine
     "cms": "<your_cms>"
 ```
 - Vulnerability searching (PRO only):
-You need Patrowl Hears API access to be able to search vulnerabilities.
+    * You need Patrowl Hears API access to be able to search vulnerabilities.
 
 ```
         "credentials":
@@ -25,6 +25,8 @@ You need Patrowl Hears API access to be able to search vulnerabilities.
             "token": "<hears_api_token>"
         }
 ```
+    * You need PatrowlHears4py (clone from private repo into engine directory)
+
 
 # Install notes
 ## With Docker
