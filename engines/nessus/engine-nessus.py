@@ -308,13 +308,13 @@ def start_scan():
     scan_id = str(post_args['scan_id'])
 
     # Check assets
-    allowed_assets = []
+    allowed_assets = set()
     for asset in post_args['assets']:
         if asset["datatype"] in this.scanner["allowed_asset_types"]:
             # extract the net location from urls
             if asset["datatype"] == 'url':
                 asset["value"] = "{uri.netloc}".format(uri=urlparse(asset["value"]))
-            allowed_assets.append(asset["value"].strip())
+            allowed_assets.add(asset["value"].strip())
     assets = ",".join(allowed_assets)
 
     # Initialize history_id
