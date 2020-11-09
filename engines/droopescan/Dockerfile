@@ -7,6 +7,7 @@ RUN mkdir -p /opt/patrowl-engines/droopescan
 RUN mkdir -p /opt/patrowl-engines/droopescan/results
 RUN mkdir -p /opt/patrowl-engines/droopescan/logs
 RUN mkdir -p /opt/patrowl-engines/droopescan/tmp
+RUN mkdir -p /opt/patrowl-engines/droopescan/patrowlhears4py
 
 # Set the working directory to /opt/patrowl-engines/<engine_name>
 WORKDIR /opt/patrowl-engines/droopescan
@@ -17,6 +18,8 @@ COPY engine-droopescan.py .
 COPY droopescan.json.sample droopescan.json
 COPY requirements.txt .
 COPY README.md .
+# Will be moved to requirement.txt fie when repo is set on public
+COPY patrowlhears4py/* ./patrowlhears4py/
 
 # Install any needed packages specified in requirements.txt
 RUN apk add --update --no-cache \
