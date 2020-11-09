@@ -1,5 +1,10 @@
 # Description
-PatrOwl Droopscan engine
+PatrOwl Droopscan engine.
+
+This engine scans CMS for informations.
+
+## Pro functionnalities
+- Vulnerability finding and processing
 
 # Pre-requisites (must be installed before)
 - Python 3 + pip + virtualenv
@@ -26,6 +31,7 @@ PatrOwl Droopscan engine
         }
 ```
     * You need PatrowlHears4py (clone from private repo into engine directory)
+        - Folder name has to be 'patrowlhears4py'
 
 
 # Install notes
@@ -86,9 +92,32 @@ r = requests.post(url='http://0.0.0.0:5021/engines/droopscan/startscan',
            headers = {'Content-type': 'application/json', 'Accept': 'application/json'})
 ```
 
-## Pro functionnalities
-- Vulnerability finding and processing
+## Testing script (PRO)
+```
+import json, requests, time
 
+print("TEST CASE: test_scan_droopscan")
+post_data = {
+    "assets": [{
+        "id": 5,
+        "value": "$WORDPRESS_WEBSITE_URL",
+        "criticity": "low",
+        "datatype": "url"
+    }],
+    "options": {
+        "cms": "wordpress",
+        "credentials":
+        {
+            "url": "<hears_url>",
+            "token": "<hears_api_token>"
+        }
+    },
+    "scan_id": 556
+}
+r = requests.post(url='http://0.0.0.0:5021/engines/droopscan/startscan',
+           data=json.dumps(post_data),
+           headers = {'Content-type': 'application/json', 'Accept': 'application/json'})
+```
 
 ## Roadmap
 - Add scan percentage status
