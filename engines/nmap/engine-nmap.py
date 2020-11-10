@@ -134,6 +134,7 @@ def start():
         'threads':      [],
         'proc':         None,
         'options':      data['options'],
+        'hears_api':    {},
         'scan_id':      scan_id,
         'status':       "STARTED",
         'started_at':   int(time.time() * 1000),
@@ -154,6 +155,8 @@ def start():
 
 
 def _scan_thread(scan_id):
+    """ Scan function """
+    this.scans[scan_id]['status'] = "SCANNING"
     hosts = []
 
     for asset in this.scans[scan_id]['assets']:
@@ -197,7 +200,10 @@ def _scan_thread(scan_id):
 
     # Check options
     for opt_key in options.keys():
-        if opt_key in this.scanner['options'] and options.get(opt_key) and opt_key not in ["ports", "script", "top_ports", "script_args", "script_output_fields", "host_file_path"]:
+        if opt_key in this.scanner['options'] and \
+          options.get(opt_key) and \
+          opt_key not in ["ports", "script", "top_ports", "script_args",
+                          "script_output_fields", "host_file_path", "hears_api"]:
             cmd += " {}".format(this.scanner['options'][opt_key]['value'])
         if opt_key == "ports" and ports is not None:  # /!\ @todo / Security issue: Sanitize parameters here
             cmd += " -p{}".format(ports)
@@ -213,6 +219,9 @@ def _scan_thread(scan_id):
                     with open(hosts_filename, 'a') as hosts_file:
                         for line in f:
                             hosts_file.write(line)
+        if opt_key == "hears_api":
+            app.logger.debug("Searching vulns (if Hears API is available)\n{}".format(options.get(opt_key)))
+            this.scans[scan_id]["hears_api"] = options.get(opt_key)
 
     cmd += " -iL " + hosts_filename
     app.logger.debug('cmd: %s', cmd)
@@ -412,38 +421,59 @@ def _add_issue(scan_id, target, ts, title, desc, type, severity="info", confiden
             "tags": tags
         }
     }
-
     return issue
 
 
-def _get_hears_findings(t_cpe=None, t_vendor=None, t_product=None, t_product_version=None):
-    """ Get CVE associated to given vendor/product/product version """
+def _get_cvss_severity(cvss):
+    """
+    Returns severity from given CVSS
 
-    # FIXME Load this in load_config()
-    BASE_URL = os.environ.get('PATROWLHEARS_BASE_URL',
-                              'http://localhost:3333')
-    AUTH_TOKEN = os.environ.get('PATROWLHEARS_AUTH_TOKEN',
-                                '774c5c9d7908a6d970be392cf54b20ddca1d0319')
+    :param cvss: CVSS
+    :type cvss: float
+
+    :returns: Severity
+    :rtype: str
+    """
+    if cvss == None:
+        return None
+    fdg_severity = "info"
+    if cvss >= 7.5:
+        fdg_severity = "high"
+    elif cvss >= 5.0 and cvss < 7.5:
+        fdg_severity = "medium"
+    elif cvss >= 3.0 and cvss < 5.0:
+        fdg_severity = "low"
+    return fdg_severity
+
+
+def _get_hears_findings(scan_id, t_cpe=None, t_vendor=None, t_product=None, t_product_version=None):
+    """ Get CVE associated to given vendor/product/product version """
+    # Set up credentials
+    hears_url =  this.scans[scan_id]["hears_api"]["url"]
+    hears_token =  this.scans[scan_id]["hears_api"]["token"]
     # Retrieve data
-    api = PatrowlHearsApi(url=BASE_URL, auth_token=AUTH_TOKEN)
+    api = PatrowlHearsApi(url=hears_url, auth_token=hears_token)
     json_data = api.search_vulns(cveid=None, monitored=None, search=None,
                                  vendor_name=t_vendor, product_name=t_product,
                                  product_version=t_product_version, cpe=t_cpe)
+    #app.logger.debug("JSON : {}".format(json_data))
     if json_data["count"] == 0:
-    	return None, 0.0, ""
+        app.logger.debug("Nothing found on Patrowl Hears")
+        return {}, 0.0, ""
+
     # Handle JSON data
-    cpe = ""
+    #cpe = ""
     vulns = []
     fdg_max_cvss = 0.0
     desc = ""
     for vln in json_data["results"]:
         # Get CPE
-        if cpe == "":
-            for cpe_version in vln["vulnerable_products"]:
-                if t_product_version+":*" in cpe_version:
-                    cpe = cpe_version
-                    app.logger.debug(cpe)
-                    pass
+        #if cpe == "":
+        #    for cpe_version in vln["vulnerable_products"]:
+        #        if t_product_version+":*" in cpe_version:
+        #            cpe = cpe_version
+        #            app.logger.debug(cpe)
+        #            pass
         # Get max score
         if vln["cvss"] > fdg_max_cvss:
             fdg_max_cvss = vln["cvss"]
@@ -452,7 +482,7 @@ def _get_hears_findings(t_cpe=None, t_vendor=None, t_product=None, t_product_ver
         # Update description
         desc += "\n{} {}".format(vln["cveid"], vln["cvss"])
 
-    vuln_refs = {"CVE": vulns, "CPE": cpe}
+    vuln_refs = {"CVE": vulns, "CPE": t_cpe}
     # Return infos
     return vuln_refs, fdg_max_cvss, desc
 
@@ -492,6 +522,8 @@ def _parse_report(filename, scan_id):
     ts = tree.find("taskbegin").get("time")
 
     unidentified_assets = set([a["value"] for a in this.scans[scan_id]["assets"]])
+
+    app.logger.debug(this.scans[scan_id])
 
     for host in tree.findall('host'):
         #  get startdate of the host scan
@@ -583,14 +615,34 @@ def _parse_report(filename, scan_id):
                     cpe_info = ""
                     cpe_link = None
                     cpe_refs = {}
+                    cpe_vector = None
                     if port.find('service').find("cpe") is not None:
                         cpe_vector = port.find('service').find("cpe").text
                         cpe_link = _get_cpe_link(cpe_vector)
                         cpe_info = "\n The following CPE vector has been identified: {}".format(cpe_vector)
                         cpe_refs = {"CPE": [cpe_vector]}
-                        app.logger.debug("Infos : cpe vector".format(cpe_vector))
+                        app.logger.debug("Found CPE vector {}".format(cpe_vector))
 
-                    app.logger.debug("Infos: svc {} - cpe info {}".format(svc_name, cpe_info))
+                        # Get vulns from Patrowl Hears
+                        #try:
+                        t_vuln_refs, t_cvss_score, t_desc = _get_hears_findings(scan_id, t_cpe=cpe_vector)
+                        #except Exception:
+                        #    t_vuln_refs, t_cvss_score, t_desc = None, 0.0, ""
+                        #    pass
+                        # Add version found to findings
+                        if t_vuln_refs != {}:
+                            res.append(deepcopy(
+                                _add_issue(scan_id, target, ts,
+                                       'Vulnerability on CPE vector {}'.format(cpe_vector),
+                                       'The scan detected that {} \
+                                       is vulnerable.\n{}'.format(cpe_vector, t_desc),
+                                       type='port_script',
+                                       confidence='low',
+                                       vuln_refs=t_vuln_refs,
+                                       severity=_get_cvss_severity(t_cvss_score))))
+
+
+                    #app.logger.debug("Infos: svc {} - cpe vector {}".format(svc_name, cpe_vector))
                     res.append(deepcopy(_add_issue(scan_id, target, ts,
                         "Service '{}' is running on port '{}/{}'".format(svc_name, proto, portid),
                         "The scan detected that the service '{}' is running on port '{}/{}'. {}"
@@ -600,27 +652,9 @@ def _parse_report(filename, scan_id):
                         vuln_refs=cpe_refs)))
 
                 for port_script in port.findall('script'):
-                    # Get vulns from hears
-                    try:
-                        t_vuln_refs, t_cvss_score, t_desc = _get_hears_findings("", "", "0.0", None)
-                    except Exception:
-                        t_vuln_refs, t_cvss_score, t_desc = None
-                        pass
-                    # Add version found to findings
-                    res.append(deepcopy(
-                        _add_issue(scan_id, target, timestamp,
-                                   '{} - Version {} is possibly installed'.format(cms_name, ver),
-                                   'The scan detected that the version {} \
-                                   is possibly installed.\n{}'.format(ver, t_desc),
-                   type='intalled_version',
-                                   confidence='low',
-                   vuln_refs=t_vuln_refs,
-                   severity=_get_cvss_severity(t_cvss_score))))
-
-                for port_script in port.findall('script'):
                     script_id = port_script.get('id')
                     script_output = port_script.get('output')
-                    app.logger.debug("Infos: {} - {}".format(script_id, script_output))
+                    #app.logger.debug("Infos: {} - {}".format(script_id, script_output))
                     # Disable hash for some script_id
                     if script_id in ["fingerprint-strings"]:
                         script_hash = "None"
@@ -678,6 +712,9 @@ def _parse_report(filename, scan_id):
                                 "The script '{}' revealed following information: \n'{}' was identified to '{}'"
                                     .format(script.get('id'), elem.get("key"), elem.text),
                                 type="host_script_advanced")))
+
+    # Remove credentials
+    this.scans[scan_id]["hears_api"] = {}
 
     for unidentified_asset in unidentified_assets:
         target = {
@@ -833,3 +870,4 @@ if __name__ == '__main__':
 
     options, _ = parser.parse_args()
     app.run(debug=options.debug, host=options.host, port=int(options.port))
+
