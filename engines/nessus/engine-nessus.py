@@ -580,7 +580,10 @@ def scan_status(scan_id,nessus_scan_id):
     scan_id = str(scan_id)
     nessus_scan_id = str(nessus_scan_id)
 
-    this.scans[scan_id]['scan_id'] = scan_id
+    this.scans.update({
+        scan_id: {
+            "scan_id": scan_id,
+        }})
 
     try:
         this.nessscan.action(
