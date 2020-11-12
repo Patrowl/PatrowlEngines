@@ -115,10 +115,11 @@ def _get_scanlist():
     return jsonify(res)
 
 
-@app.route('/engines/nessus/getfindings/<scan_id>')
-def getfindings(scan_id):
+@app.route('/engines/nessus/getfindings/<scan_id>/<nessus_scan_id>')
+def getfindings(scan_id,nessus_scan_id):
     res = {"page": "getfindings", "scan_id": scan_id}
     scan_id = str(scan_id)
+    nessus_scan_id = str(nessus_scan_id)
 
     if scan_id not in this.scans.keys():
         res.update({"status": "error", "reason": "scan_id '{}' not found".format(scan_id)})
@@ -127,7 +128,7 @@ def getfindings(scan_id):
     time.sleep(3)
 
     # Check the scan status
-    scan_status(scan_id)
+    scan_status(scan_id,nessus_scan_id)
     if this.scans[scan_id]['status'] not in ['FINISHED', 'STOPPED']:
         res.update({"status": "error", "reason": "scan_id '{}' not finished".format(scan_id)})
         return jsonify(res)
@@ -308,13 +309,13 @@ def start_scan():
     scan_id = str(post_args['scan_id'])
 
     # Check assets
-    allowed_assets = set()
+    allowed_assets = []
     for asset in post_args['assets']:
         if asset["datatype"] in this.scanner["allowed_asset_types"]:
             # extract the net location from urls
             if asset["datatype"] == 'url':
                 asset["value"] = "{uri.netloc}".format(uri=urlparse(asset["value"]))
-            allowed_assets.add(asset["value"].strip())
+            allowed_assets.append(asset["value"].strip())
     assets = ",".join(allowed_assets)
 
     # Initialize history_id
@@ -339,32 +340,33 @@ def start_scan():
             return jsonify(res)
 
         # Get scan details
-        this.nessscan.scan_details(scan_name)
-
-        nessus_scan_uuid = this.nessscan.res['info']['uuid']
-        if 'getlastcompletereport' not in post_args['options'].keys() or post_args['options']['getlastcompletereport'] is True:
-            for nessus_scan in this.nessscan.res['history'][::-1]:
-                if nessus_scan['status'] == 'completed':
-                    nessus_scan_hid = str(nessus_scan['history_id'])
-                    nessus_scan_uuid = nessus_scan['uuid']
-                    break
+        #always get the last completed report . The last report has the max id.
+        wanted_scan=[]
+        scan_list = this.nessscan.scan_list()
+        for item in scan_list["scans"]:
+            if item["name"]==scan_name and item["status"]=="completed":
+                wanted_scan.append(int(item["id"]))
+        nessus_scan_id=max(wanted_scan)
+        for item in scan_list["scans"]:
+            if item["id"]==nessus_scan_id and item["status"]=="completed":
+                wanted_uuid=item["uuid"]
 
         # Update the scan info
         this.scans.update({
             scan_id: {
                 "scan_id": scan_id,
                 "scan_name": scan_name,
-                "nessscan_id": this.nessscan.res["info"]["object_id"],
-                "nessus_scan_hid": nessus_scan_hid,
-                "nessscan_uuid": nessus_scan_uuid,
+                "nessscan_id": nessus_scan_id,
+                "nessus_scan_hid": '',
+                "nessscan_uuid": wanted_uuid,
                 "options": post_args['options'],
-                "policy_name": this.nessscan.res['info']['policy'],
                 "assets": post_args['assets'],
                 "status": "STARTED",
                 "started_at": int(time.time() * 1000),
                 "findings": {}
             }
         })
+        res.update({"status": "accepted", "details": scan, "nessscan_id": str(nessus_scan_id)})
 
     if post_args['options']['action'] == 'scan':
         # Check scan policy
@@ -443,24 +445,20 @@ def start_scan():
                 "findings": {}
             }
         })
-
-    res.update({"status": "accepted", "details": scan})
+        res.update({"status": "accepted", "details": scan, "nessscan_id": str(nessscan_id)})
     return jsonify(res)
 
 
-@app.route('/engines/nessus/stop/<scan_id>', methods=['GET'])
-def stop_scan(scan_id):
+@app.route('/engines/nessus/stop/<scan_id>/<nessus_scan_id>', methods=['GET'])
+def stop_scan(scan_id,nessus_scan_id):
     res = {"page": "stopscan"}
     scan_id = str(scan_id)
+    nessus_scan_id = str(nessus_scan_id)
 
-    # todo: use this.scans and nessus_scan_id
-    if scan_id not in this.scans.keys():
-        res.update({"status": "error", "reason": "scan_id '{}' not found".format(scan_id)})
-        return jsonify(res)
-
-    if this.scans[scan_id]['options']['action'] == 'scan':
+    scan_status(scan_id, nessus_scan_id)
+    if this.scans[scan_id]['status'] in ['SCANNING']:
         this.nessscan.action(
-            action="scans/"+str(this.scans[scan_id]["nessscan_id"])+"/stop",
+            action="scans/"+str(nessus_scan_id)+"/stop",
             method="POST")
 
     if this.nessscan.res != {}:
@@ -577,33 +575,33 @@ def status():
     return jsonify(res)
 
 
-@app.route('/engines/nessus/status/<scan_id>', methods=['GET'])
-def scan_status(scan_id):
+@app.route('/engines/nessus/status/<scan_id>/<nessus_scan_id>', methods=['GET'])
+def scan_status(scan_id,nessus_scan_id):
     scan_id = str(scan_id)
+    nessus_scan_id = str(nessus_scan_id)
 
-    if scan_id not in this.scans.keys():
-        return jsonify({
-            "status": "ERROR",
-            "details": {"reason": "scan_id '{}' not found".format(scan_id)}})
-
-    # @todo: directly access to the right entry
+    this.scans[scan_id]['scan_id'] = scan_id
 
     try:
         this.nessscan.action(
-            action="scans/"+str(this.scans[scan_id]["nessscan_id"]),
+            action="scans/"+nessus_scan_id,
             method="GET")
 
         scan_status = this.nessscan.res
+        nessus_scan_hid = None
+        # create the dictionary with the required info.
+        this.scans[scan_id]['nessscan_id'] = this.nessscan.res["info"]["object_id"]
+        this.scans[scan_id]['nessscan_uuid'] = this.nessscan.res['info']['uuid']
+        this.scans[scan_id]['policy_name'] = this.nessscan.res['info']['policy']
+        this.scans[scan_id]['started_at'] = this.nessscan.res['info']['scanner_start']
+        this.scans[scan_id]['nessus_scan_hid'] = nessus_scan_hid
         nessus_scan_status = 'unknown'
-
         if 'info' in scan_status.keys():
             nessus_scan_status = this.nessscan.res['info']['status']
         elif 'status' in scan_status.keys():
             nessus_scan_status = scan_status['status']
 
-        if this.scans[scan_id]['nessus_scan_hid'] is not None:
-            this.scans[scan_id]['status'] = "FINISHED"
-        elif nessus_scan_status == 'completed':
+        if nessus_scan_status == 'completed':
             this.scans[scan_id]['status'] = "FINISHED"
         elif nessus_scan_status in ['running', 'loading']:
             this.scans[scan_id]['status'] = "SCANNING"
