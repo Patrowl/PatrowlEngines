@@ -11,6 +11,7 @@ import urllib
 import time
 import hashlib
 import datetime
+from shlex import split
 from urllib.parse import urlparse
 from copy import deepcopy
 from flask import Flask, request, jsonify, json, redirect, url_for, send_file
@@ -211,9 +212,11 @@ def _scan_thread(scan_id):
     cmd += " -iL " + hosts_filename
     app.logger.debug('cmd: %s', cmd)
 
+    cmd_sec = split(cmd)
+
     this.scans[scan_id]["proc_cmd"] = "not set!!"
     with open(log_path, "w") as stderr:
-        this.scans[scan_id]["proc"] = subprocess.Popen(cmd, shell=True, stdout=open("/dev/null", "w"), stderr=stderr)
+        this.scans[scan_id]["proc"] = subprocess.Popen(cmd_sec, shell=False, stdout=open("/dev/null", "w"), stderr=stderr)
     this.scans[scan_id]["proc_cmd"] = cmd
 
     return True
