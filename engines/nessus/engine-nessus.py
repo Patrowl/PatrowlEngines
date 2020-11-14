@@ -128,7 +128,7 @@ def getfindings(scan_id,nessus_scan_id):
     time.sleep(3)
 
     # Check the scan status
-    scan_status(scan_id,nessus_scan_id)
+    #scan_status(scan_id,nessus_scan_id)
     if this.scans[scan_id]['status'] not in ['FINISHED', 'STOPPED']:
         res.update({"status": "error", "reason": "scan_id '{}' not finished".format(scan_id)})
         return jsonify(res)
@@ -455,7 +455,7 @@ def stop_scan(scan_id,nessus_scan_id):
     scan_id = str(scan_id)
     nessus_scan_id = str(nessus_scan_id)
 
-    scan_status(scan_id, nessus_scan_id)
+    #scan_status(scan_id, nessus_scan_id)
     if this.scans[scan_id]['status'] in ['SCANNING']:
         this.nessscan.action(
             action="scans/"+str(nessus_scan_id)+"/stop",
@@ -575,10 +575,11 @@ def status():
     return jsonify(res)
 
 
-@app.route('/engines/nessus/status/<scan_id>/<nessus_scan_id>', methods=['GET'])
+@app.route('/engines/nessus/status/<scan_id>/<nessus_scan_id>', methods=['POST'])
 def scan_status(scan_id,nessus_scan_id):
     scan_id = str(scan_id)
     nessus_scan_id = str(nessus_scan_id)
+    post_args = json.loads(request.data)
 
     this.scans.update({
         scan_id: {
@@ -596,6 +597,7 @@ def scan_status(scan_id,nessus_scan_id):
         this.scans[scan_id]['nessscan_id'] = this.nessscan.res["info"]["object_id"]
         this.scans[scan_id]['nessscan_uuid'] = this.nessscan.res['info']['uuid']
         this.scans[scan_id]['policy_name'] = this.nessscan.res['info']['policy']
+        this.scans[scan_id]['options'] = post_args
         this.scans[scan_id]['started_at'] = this.nessscan.res['info']['scanner_start']
         this.scans[scan_id]['nessus_scan_hid'] = nessus_scan_hid
         nessus_scan_status = 'unknown'
