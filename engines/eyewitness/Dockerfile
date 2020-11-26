@@ -1,6 +1,6 @@
 FROM phusion/baseimage
 MAINTAINER Patrowl.io "getsupport@patrowl.io"
-LABEL Name="EyeWitness\ \(Patrowl engine\)" Version="1.0.0"
+LABEL Name="EyeWitness\ \(Patrowl engine\)" Version="1.1.1"
 
 ARG S6_OVERLAY_VERSION=2.0.0.1
 
