@@ -65,8 +65,6 @@ def test_openvas_default_scan_domain():
 
 if __name__ == "__main__":
     test_generic_features()
-# FIXME Temporarily deactivate these tests, as they failed without
-# any proper openvas instance set up.
-# Add instance creation for travis CI and re-add them
-#    test_openvas_default_scan_ip()
-#    test_openvas_default_scan_domain()
+# These tests needs a correctly set up, running openVAS instance
+    test_openvas_default_scan_ip()
+    test_openvas_default_scan_domain()
