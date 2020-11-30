@@ -13,7 +13,7 @@ import time
 from copy import deepcopy
 from shlex import quote, split
 from flask import Flask, request, jsonify, url_for, send_file
-#from PatrowlHears4py.patrowlhears4py.api import PatrowlHearsApi
+from patrowlhears4py.api import PatrowlHearsApi
 import psutil
 
 # Own library imports
@@ -33,14 +33,6 @@ this.proc = None  # to delete
 this.scanner = {}
 this.scan_id = 1
 this.scans = {}
-
-# Hears api
-try:
-    from patrowlhears4py.api import PatrowlHearsApi
-except: # ModuleNotFoundError:
-#    app.logger.debug("Failed to import Patrowl Hears API, \
-#                      vulnerabilities searching won't be available.")
-    pass
 
 
 engine = PatrowlEngine(
@@ -486,7 +478,7 @@ def _scan_thread(scan_id):
             app.logger.debug("Searching vulns (if Hears API is available)")
             this.scans[scan_id]["hears_api"] = th_options.get(opt_key)
         else:
-            app.logger.error("Unknownw option provided")
+            app.logger.error("Unknown option provided: '{}'".format(opt_key))
             this.scans[scan_id]["status"] = "ERROR"
             return False
     cmd += " -U " + hosts_filename
@@ -509,8 +501,8 @@ def _scan_thread(scan_id):
 def _get_hears_findings(scan_id, t_vendor=None, t_product=None, t_product_version=None):
     """ Get CVE associated to given vendor/product/product version """
     # Set up credentials
-    hears_url =  this.scans[scan_id]["hears_api"]["url"]
-    hears_token =  this.scans[scan_id]["hears_api"]["token"]
+    hears_url = this.scans[scan_id]["hears_api"]["url"]
+    hears_token = this.scans[scan_id]["hears_api"]["token"]
     # Retrieve data
     api = PatrowlHearsApi(url=hears_url, auth_token=hears_token)
     json_data = api.search_vulns(cveid=None, monitored=None, search=None,
@@ -544,6 +536,7 @@ def _get_hears_findings(scan_id, t_vendor=None, t_product=None, t_product_versio
     # Return infos
     return vuln_refs, fdg_max_cvss, desc
 
+
 def _get_cvss_severity(cvss):
     """
     Returns severity from given CVSS
@@ -554,7 +547,7 @@ def _get_cvss_severity(cvss):
     :returns: Severity
     :rtype: str
     """
-    if cvss == None:
+    if cvss is None:
         return None
     fdg_severity = "info"
     if cvss >= 7.5:
@@ -617,8 +610,7 @@ def _parse_report(filename, scan_id):
                                 .'.format(plg_name)
                     # Add plugin found to findings
                     res.append(deepcopy(_add_issue(scan_id, target, timestamp,
-                                                   '{} - Plugin {} is installed'.format(cms_name,
-                                                                                        plg_name),
+                                                   '{} - Plugin {} is installed'.format(cms_name, plg_name),
                                                    desc[0], type='intalled_plugin')))
             # Check for themes
             #has_themes = False
@@ -663,13 +655,13 @@ def _parse_report(filename, scan_id):
                     app.logger.debug('Version {} is possibly installed'.format(ver))
                     # Get vulns from hears
                     app.logger.debug("Login is {}".format(this.scans[scan_id]["hears_api"]))
-                    if "hears_api" in this.scans[scan_id]:
+                    if "hears_api" in this.scans[scan_id] and "url" in this.scans[scan_id]["hears_api"]:
                         try:
                             t_vuln_refs, t_cvss_score, t_desc = _get_hears_findings(scan_id,
                                                                                     cms_name,
                                                                                     cms_name,
                                                                                     ver)
-                        except:
+                        except Exception:
                             app.logger.debug("Error while loading Hears API, \
                                              skipping vulnerability checking")
                             t_vuln_refs, t_cvss_score, t_desc = None, 0.0, ""
@@ -683,10 +675,10 @@ def _parse_report(filename, scan_id):
                                    '{} - Version {} is possibly installed'.format(cms_name, ver),
                                    'The scan detected that the version {} \
                                    is possibly installed.\n{}'.format(ver, t_desc),
-                   type='intalled_version',
+                                   type='intalled_version',
                                    confidence='low',
-                   vuln_refs=t_vuln_refs,
-                   severity=_get_cvss_severity(t_cvss_score))))
+                                   vuln_refs=t_vuln_refs,
+                                   severity=_get_cvss_severity(t_cvss_score))))
         # Remove credentials
         this.scans[scan_id]["hears_api"] = {}
         # Return results

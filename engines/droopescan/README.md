@@ -58,7 +58,7 @@ mkdir logs tmp results
 
 - Start the engine :
 ```
-env/bin/python engine-droopscan.py [--port 5021] [--host 0.0.0.0] [--debug]
+env/bin/python engine-droopescan.py [--port 5021] [--host 0.0.0.0] [--debug]
 ```
 > Note the use of `env/bin/python` allowing the reference of the python modules within the virtualenv
 
