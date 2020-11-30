@@ -1,8 +1,38 @@
 # Description
-PatrOwl Droopscan engine
+PatrOwl Droopscan engine.
+
+This engine scans CMS for informations.
+
+## Pro functionnalities
+- Vulnerability finding and processing
 
 # Pre-requisites (must be installed before)
 - Python 3 + pip + virtualenv
+
+# Configuration
+## Options
+- Available CMS to scan:
+    * wordpress
+    * drupal
+    * joomla
+    * moodle
+    * silverstripe
+```
+    "cms": "<your_cms>"
+```
+- Vulnerability searching (PRO only):
+    * You need Patrowl Hears API access to be able to search vulnerabilities.
+
+```
+        "credentials":
+        {
+            "url": "<hears_url>",
+            "token": "<hears_api_token>"
+        }
+```
+    * You need PatrowlHears4py (clone from private repo into engine directory)
+        - Folder name has to be 'patrowlhears4py'
+
 
 # Install notes
 ## With Docker
@@ -21,14 +51,14 @@ docker build --force-rm --tag patrowl-droopescan .
 cd PatrowlEngines/engines/droopscan
 virtualenv env
 source env/bin/activate
-pip3 install -r requirements.txt
+python3 -m pip install -r requirements.txt
 mkdir logs tmp results
 ```
-- Create a configuration file (see droopscan.json.sample) named 'droopscan.json'
+- Create a configuration file (see droopescan.json.sample) named 'droopescan.json'
 
-- Start the engine (require sudo/root access):
+- Start the engine :
 ```
-sudo env/bin/python engine-droopscan.py [--port 5021] [--host 0.0.0.0] [--debug]
+env/bin/python engine-droopscan.py [--port 5021] [--host 0.0.0.0] [--debug]
 ```
 > Note the use of `env/bin/python` allowing the reference of the python modules within the virtualenv
 
@@ -42,7 +72,7 @@ http://0.0.0.0:5021/engines/droopscan/info
 
 ## Testing script
 ```
-import json, requests, time  
+import json, requests, time
 
 print("TEST CASE: test_scan_droopscan")
 post_data = {
@@ -53,7 +83,7 @@ post_data = {
         "datatype": "url"
     }],
     "options": {
-        "scan_wordpress": 1
+        "cms": "wordpress",
     },
     "scan_id": 556
 }
@@ -62,7 +92,33 @@ r = requests.post(url='http://0.0.0.0:5021/engines/droopscan/startscan',
            headers = {'Content-type': 'application/json', 'Accept': 'application/json'})
 ```
 
-## Pro functionnalities
-- Support for multiple hosts
-- Vulnerability finding and processing
+## Testing script (PRO)
+```
+import json, requests, time
 
+print("TEST CASE: test_scan_droopscan")
+post_data = {
+    "assets": [{
+        "id": 5,
+        "value": "$WORDPRESS_WEBSITE_URL",
+        "criticity": "low",
+        "datatype": "url"
+    }],
+    "options": {
+        "cms": "wordpress",
+        "credentials":
+        {
+            "url": "<hears_url>",
+            "token": "<hears_api_token>"
+        }
+    },
+    "scan_id": 556
+}
+r = requests.post(url='http://0.0.0.0:5021/engines/droopscan/startscan',
+           data=json.dumps(post_data),
+           headers = {'Content-type': 'application/json', 'Accept': 'application/json'})
+```
+
+## Roadmap
+- Add scan percentage status
+- Support for multiple hosts
