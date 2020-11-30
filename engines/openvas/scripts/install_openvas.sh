@@ -1,5 +1,7 @@
-## https://kifarunix.com/install-and-setup-gvm-11-on-ubuntu-20-04/#create-gvm-service-unit-file
-## https://github.com/yu210148/gvm_install/blob/master/install_gvm.sh
+## Installation script for OpenVAS/Greenbone 20.08 on Ubuntu 20.08
+## Based on:
+# https://kifarunix.com/install-and-setup-gvm-11-on-ubuntu-20-04/#create-gvm-service-unit-file
+# https://github.com/yu210148/gvm_install/blob/master/install_gvm.sh
 
 apt-get update && apt-get upgrade
 useradd -r -d /opt/gvm -c "GVM User" -s /bin/bash gvm
@@ -11,7 +13,7 @@ libssh-gcrypt-dev libldap2-dev gnutls-bin libmicrohttpd-dev libhiredis-dev \
 zlib1g-dev libxml2-dev libradcli-dev clang-format libldap2-dev doxygen \
 gcc-mingw-w64 xml-twig-tools libical-dev perl-base heimdal-dev libpopt-dev \
 libsnmp-dev python3-setuptools python3-paramiko python3-lxml python3-defusedxml python3-dev gettext python3-polib xmltoman \
-python3-pip texlive-fonts-recommended texlive-latex-extra --no-install-recommends xsltproc
+python3-pip texlive-fonts-recommended texlive-latex-extra --no-install-recommends xsltproc -y
 
 # Install Yarn
 curl -sS https://dl.yarnpkg.com/debian/pubkey.gpg | apt-key add -
@@ -20,7 +22,7 @@ apt update
 apt install yarn -y
 
 # Install PostgreSQL
-apt install postgresql postgresql-contrib postgresql-server-dev-all
+apt install postgresql postgresql-contrib postgresql-server-dev-all -y
 sudo -Hiu postgres
 createuser gvm
 createdb -O gvm gvmd
@@ -70,7 +72,6 @@ cmake .. -DCMAKE_INSTALL_PREFIX=/opt/gvm
 make
 make install
 
-
 cd ../../openvas
 mkdir build
 cd build
@@ -106,7 +107,7 @@ systemctl daemon-reload
 systemctl enable --now disable_thp
 systemctl enable --now redis-server@openvas
 echo "gvm ALL = NOPASSWD: /opt/gvm/sbin/openvas" > /etc/sudoers.d/gvm
-vi /etc/sudoers
+sed 's/Defaults\s.*secure_path=\"\/usr\/local\/sbin:\/usr\/local\/bin:\/usr\/sbin:\/usr\/bin:\/sbin:\/bin:\/snap\/bin\"/Defaults secure_path=\"\/usr\/local\/sbin:\/usr\/local\/bin:\/usr\/sbin:\/usr\/bin:\/sbin:\/bin:\/snap\/bin:\/opt\/gvm\/sbin\"/g' /etc/sudoers | EDITOR='tee' visudo
 echo "gvm ALL = NOPASSWD: /opt/gvm/sbin/gsad" >> /etc/sudoers.d/gvm
 
 # Update NVTs
@@ -132,8 +133,8 @@ make
 make install
 
 # Update GVM CERT and SCAP data from the feed servers;
-greenbone-scapdata-sync
-greenbone-certdata-sync
+greenbone-scapdata-sync --rsync
+greenbone-certdata-sync --rsync
 greenbone-feed-sync --type GVMD_DATA
 gvm-manage-certs -a
 
@@ -159,6 +160,7 @@ ps aux | grep -E "ospd-openvas|gsad|gvmd" | grep -v grep
 
 
 # Create OpenVAS service
+sudo su -
 cat <<EOT > /etc/systemd/system/openvas.service
 [Unit]
 Description=Control the OpenVAS service
@@ -184,7 +186,7 @@ EOT
 
 systemctl daemon-reload
 systemctl start openvas
-systemctl status openvas
+# systemctl status openvas
 systemctl enable openvas
 
 # Create GSA Service Unit file
@@ -199,7 +201,7 @@ User=gvm
 Group=gvm
 Environment=PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games:/opt/gvm/bin:/opt/gvm/sbin:/opt/gvm/.local/bin
 Environment=PYTHONPATH=/opt/gvm/lib/python3.8/site-packages
-ExecStart=/usr/bin/sudo /opt/gvm/sbin/gsad
+ExecStart=/usr/bin/sudo /opt/gvm/sbin/gsad --mlisten=0.0.0.0 --mport=9392
 RemainAfterExit=yes
 
 [Install]
@@ -230,7 +232,7 @@ User=gvm
 Group=gvm
 Environment=PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games:/opt/gvm/bin:/opt/gvm/sbin:/opt/gvm/.local/bin
 Environment=PYTHONPATH=/opt/gvm/lib/python3.8/site-packages
-ExecStart=/opt/gvm/sbin/gvmd --osp-vt-update=/opt/gvm/var/run/ospd.sock
+ExecStart=/opt/gvm/sbin/gvmd --osp-vt-update=/opt/gvm/var/run/ospd.sock --listen=0.0.0.0 --port=9392
 RemainAfterExit=yes
 
 [Install]
@@ -258,13 +260,15 @@ systemctl enable --now gsa.{path,service}
 # sudo -Hiu gvm gvmd --create-scanner="Patrowl OpenVAS Scanner" --scanner-type="OpenVAS" --scanner-host=/opt/gvm/var/run/ospd.sock
 sudo -Hiu gvm gvmd --get-scanners
 # --> modify scanner changing sock: --scanner-host=/opt/gvm/var/run/ospd.sock
-sudo -Hiu gvm gvmd --modify-scanner=9c6f2214-eb7c-4613-96bd-21551b259cf1 --scanner-host=/opt/gvm/var/run/ospd.sock
-sudo -Hiu gvm gvmd --verify-scanner=9c6f2214-eb7c-4613-96bd-21551b259cf1
+SCANNER_UUID=$(sudo -Hiu gvm gvmd --get-scanners | grep OpenVAS | cut -f1 -d" ")
+sudo -Hiu gvm gvmd --modify-scanner=$SCANNER_UUID --scanner-host=/opt/gvm/var/run/ospd.sock
+sudo -Hiu gvm gvmd --verify-scanner=$SCANNER_UUID
 
 
 # Create OpenVAS (GVM) Admin User
 sudo -Hiu gvm gvmd --create-user gvmadmin --password="Bonjour1**GVM"
-sudo -Hiu gvm gvmd --user=gvmadmin --new-password="Bonjour1**GVM"
+# sudo -Hiu gvm gvmd --user=gvmadmin --new-password="Bonjour1**GVM"
 
-sudo -Hiu gvm gvmd --get-users --verbose
-sudo -Hiu gvm gvmd --modify-setting 78eceaec-3385-11ea-b237-28d24461215b --value 3a78f7af-e512-4661-ade9-0bdf9dc4de32
+# Add the user as import feed owner
+USER_UUID=$(sudo -Hiu gvm gvmd --get-users --verbose | cut -f2 -d" ")
+sudo -Hiu gvm gvmd --modify-setting 78eceaec-3385-11ea-b237-28d24461215b --value $USER_UUID

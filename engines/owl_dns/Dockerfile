@@ -1,13 +1,8 @@
 FROM ubuntu:18.04
 MAINTAINER Patrowl.io "getsupport@patrowl.io"
-LABEL Name="Patrowl\ DNS\ \(Patrowl engine\)" Version="1.0.1"
+LABEL Name="Patrowl\ DNS\ \(Patrowl engine\)" Version="1.4.5"
 
 # Install dependencies
-#RUN apk add --update --no-cache \
-#    python3 python3-dev py3-pip \
-#    git \
-#  && rm -rf /var/cache/apk/*
-
 RUN apt-get update && \
     apt-get install -y --no-install-recommends python3-dnspython \
     python3-geoip python3-whois python3-requests python3-ssdeep \
@@ -34,10 +29,8 @@ COPY README.md .
 COPY etc/ etc/
 COPY modules/ modules/
 WORKDIR /opt/patrowl-engines/owl_dns/external-libs
-# RUN git clone https://github.com/aboul3la/Sublist3r
 RUN git clone https://github.com/Patrowl/Sublist3r
 WORKDIR /opt/patrowl-engines/owl_dns/external-libs/Sublist3r
-# RUN git apply /opt/patrowl-engines/owl_dns/etc/sublist3r.patch
 RUN pip3 install --trusted-host pypi.python.org -r requirements.txt
 WORKDIR /opt/patrowl-engines/owl_dns/external-libs
 RUN git clone https://github.com/elceef/dnstwist

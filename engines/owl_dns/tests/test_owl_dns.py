@@ -13,22 +13,24 @@ BASE_URL = "http://127.0.0.1:5006/engines/owl_dns"
 PET = PatrowlEngineTest(engine_name="nmap", base_url=BASE_URL)
 MAX_TIMEOUT = 300   # in seconds
 
+
 def test_generic_features():
     """ generic tests """
     PET.do_generic_tests()
+
 
 def test_owldns_subdomain_enum():
     """ custom tests """
     PET.custom_test(
         test_name="owldns_subdomain_enum",
         assets=[{
-            "id" :"1",
-            "value" :"patrowl.io",
+            "id": "1",
+            "value": "patrowl.io",
             "criticity": "low",
             "datatype": "domain"
         }, {
-            "id" :"2",
-            "value" :"uber.com",
+            "id": "2",
+            "value": "uber.com",
             "criticity": "medium",
             "datatype": "ip"
         }],
@@ -44,6 +46,7 @@ def test_owldns_subdomain_enum():
         },
         is_valid=True
     )
+
 
 if __name__ == "__main__":
     test_generic_features()

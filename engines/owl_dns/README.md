@@ -4,7 +4,14 @@ DNS REST API engine
 ## Dependencies
 - Python 3 + pip
 - [Sublist3r](https://github.com/Patrowl/Sublist3r/)
+- [dnstwist](https://github.com/elceef/dnstwist/)
 - See requirements.txt for others python packages (use "pip3 install -r requirements.txt")
+
+## Install
+Use the installation script
+```
+./install.sh
+```
 
 ## Todolist
 - Expand contacts info in separate issues (advanced Whois)
