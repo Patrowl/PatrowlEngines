@@ -25,13 +25,12 @@ logging.basicConfig(level=logging.INFO)
 
 APP_BASE_DIR = os.path.dirname(os.path.realpath(__file__))
 APP_DBNAME = 'database.db'
-
 SESSION = requests.Session()
-
 SCRAPPED_URLS = []
 
+
 def sql_exec(req, args=None):
-    '''Execute a sql request'''
+    '''Execute a sql request.'''
     conn = sqlite3.connect(APP_DBNAME)
     sql = conn.cursor()
     if args is None:
@@ -40,6 +39,7 @@ def sql_exec(req, args=None):
         sql.execute(req, args)
     conn.commit()
     conn.close()
+
 
 def sql_fetchall(req, args=None):
     '''Execute a sql request and fetchall'''
@@ -53,6 +53,7 @@ def sql_fetchall(req, args=None):
     data = sql.fetchall()
     conn.close()
     return data
+
 
 def loadconfig():
     try:
@@ -68,6 +69,7 @@ def loadconfig():
         return {"status": "error", "reason": "config file not found"}
     except Exception as ex:
         logging.info(ex)
+
 
 class PastebinCrawler:
     '''PastebinCrawler Class'''
@@ -151,7 +153,9 @@ class PastebinCrawler:
             data = self.do_get_request(res)
         return data
 
+
 CRAWL = PastebinCrawler()
+
 
 def get_source(url):
     '''Get soup object from a resource'''
@@ -160,6 +164,7 @@ def get_source(url):
            'timeout': 3, 'last_index': None}
     data = CRAWL.do_get_request(res)
     return {'res': res, 'soup': BeautifulSoup(data.text, 'html.parser')}
+
 
 def crawl_pastes():
     while True:
@@ -198,7 +203,7 @@ def crawl_pastes():
                     src['res'].update({'url': link})
                     data = CRAWL.do_get_request(src['res'])
                     CRAWL.find_assets(link, data.text)
-            
+
             '''Crawl gist.github.com'''
             for i in range(1, 8):
                 src = get_source('https://gist.github.com/discover?page={}'.format(i))
@@ -237,6 +242,7 @@ def crawl_pastes():
         except Exception as ex:
             logging.info(ex)
 
+
 if __name__ == '__main__':
     if not os.path.exists(APP_BASE_DIR+"/results"):
         os.makedirs(APP_BASE_DIR+"/results")
@@ -248,7 +254,7 @@ if __name__ == '__main__':
                 date_found DATETIME NOT NULL, date_updated DATETIME NOT NULL);')
 
     cpu_count = mp.cpu_count()
-    pool = mp.Pool(processes = cpu_count)
+    pool = mp.Pool(processes=cpu_count)
     pool.apply_async(crawl_pastes)
     pool.close()
     pool.join()
