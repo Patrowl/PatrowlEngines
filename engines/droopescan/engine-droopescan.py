@@ -13,7 +13,10 @@ import time
 from copy import deepcopy
 from shlex import quote, split
 from flask import Flask, request, jsonify, url_for, send_file
-from patrowlhears4py.api import PatrowlHearsApi
+try:
+    from patrowlhears4py.api import PatrowlHearsApi
+except ModuleNotFoundError:
+    pass
 import psutil
 
 # Own library imports
@@ -654,7 +657,7 @@ def _parse_report(filename, scan_id):
                 for ver in version_list:
                     app.logger.debug('Version {} is possibly installed'.format(ver))
                     # Get vulns from hears
-                    app.logger.debug("Login is {}".format(this.scans[scan_id]["hears_api"]))
+                    #app.logger.debug("Login is {}".format(this.scans[scan_id]["hears_api"]))
                     if "hears_api" in this.scans[scan_id] and "url" in this.scans[scan_id]["hears_api"]:
                         try:
                             t_vuln_refs, t_cvss_score, t_desc = _get_hears_findings(scan_id,
