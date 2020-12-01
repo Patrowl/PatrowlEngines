@@ -9,7 +9,6 @@ Written by Nicolas BEGUIER (nicolas.beguier@adevinta.com)
 
 from hashlib import sha256
 from logging import getLogger
-from os import environ, makedirs
 from os.path import dirname, exists, realpath
 from sys import argv, modules
 from threading import Thread
@@ -37,7 +36,7 @@ app = Flask(__name__)
 APP_DEBUG = False
 APP_HOST = "0.0.0.0"
 APP_PORT = 5023
-APP_MAXSCANS = int(environ.get('APP_MAXSCANS', 5))
+APP_MAXSCANS = int(os.environ.get('APP_MAXSCANS', 5))
 APP_ENGINE_NAME = "wpscan"
 APP_BASE_DIR = dirname(realpath(__file__))
 # CREATED_CERT_CVSS = 5
@@ -729,7 +728,7 @@ def getfindings(scan_id):
 def main():
     """First function called."""
     if not exists(APP_BASE_DIR+"/results"):
-        makedirs(APP_BASE_DIR+"/results")
+        os.makedirs(APP_BASE_DIR+"/results")
     _loadconfig()
     LOG.debug("Run engine")
 
