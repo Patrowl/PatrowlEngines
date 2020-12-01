@@ -9,12 +9,13 @@ Written by Nicolas BEGUIER (nicolas.beguier@adevinta.com)
 
 from hashlib import sha256
 from logging import getLogger
-from os import makedirs
+from os import environ, makedirs
 from os.path import dirname, exists, realpath
 from sys import argv, modules
 from threading import Thread
 from time import time
 import json
+import os
 import re
 import subprocess
 
@@ -36,14 +37,14 @@ app = Flask(__name__)
 APP_DEBUG = False
 APP_HOST = "0.0.0.0"
 APP_PORT = 5023
-APP_MAXSCANS = 5
+APP_MAXSCANS = int(environ.get('APP_MAXSCANS', 5))
 APP_ENGINE_NAME = "wpscan"
 APP_BASE_DIR = dirname(realpath(__file__))
 # CREATED_CERT_CVSS = 5
 # UP_DOMAIN_CVSS = 7
 # PARENT_ASSET_CREATE_FINDING_CVSS = 1
 # PARENT_ASSET_CREATE_FINDING_CEIL = 0
-VERSION = "1.0.1"
+VERSION = "1.0.2"
 
 engine = PatrowlEngine(
     app=app,
@@ -170,9 +171,12 @@ def status_scan(scan_id):
     # has_error_reason = ""
     has_running_thread = False
     for asset in engine.scans[scan_id]["reports"].keys():
-        proc = engine.scans[scan_id]["reports"][asset]["proc"]
+        proc = None
+        # Handle missing proc during first status
+        if "proc" in engine.scans[scan_id]["reports"][asset]:
+            proc = engine.scans[scan_id]["reports"][asset]["proc"]
 
-        if not hasattr(proc, "pid"):
+        if proc and not hasattr(proc, "pid"):
             res.update({"status": "ERROR", "reason": "No PID found"})
             engine.scans[scan_id]["status"] = "ERROR"
             return jsonify(res)
@@ -182,7 +186,7 @@ def status_scan(scan_id):
             # engine.scans[scan_id]["status"] = "FINISHED"
 
         # elif psutil.pid_exists(proc.pid) and psutil.Process(proc.pid).status() in ["sleeping", "running"]:
-        if psutil.pid_exists(proc.pid) and psutil.Process(proc.pid).status() in ["sleeping", "running"]:
+        if not proc or (psutil.pid_exists(proc.pid) and psutil.Process(proc.pid).status() in ["sleeping", "running"]):
             has_running_thread = True
             res.update({
                 "status": "SCANNING",
