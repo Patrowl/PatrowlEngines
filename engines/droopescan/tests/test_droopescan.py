@@ -27,7 +27,7 @@ def test_droopescan_check_wordpress():
             "datatype": "url"
         }],
         scan_policy={
-            "scan_wordpress": 1,
+            "cms": "wordpress"
         })
 
 if __name__ == "__main__":

@@ -7,10 +7,11 @@ idna==2.5
 itsdangerous==0.24
 Jinja2>=2.10.1
 MarkupSafe==1.1.1
-requests==2.22.0
+requests==2.25.0
 urllib3>=1.25
 werkzeug>=0.15.6
 netaddr==0.7.19
 PatrowlEnginesUtils>=0.1.1
 psutil>=5.4.7
 droopescan==1.41.3
+patrowlhears4py==1.1.1

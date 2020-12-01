@@ -1,6 +1,6 @@
 {
   "name": "APIVOID",
-  "version": "1.0",
+  "version": "1.0.1",
   "description": "APIVoid reputation API",
   "allowed_asset_types": ["domain"],
   "apikeys": [

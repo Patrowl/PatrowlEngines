@@ -11,15 +11,15 @@ import threading
 import urllib
 import time
 from copy import deepcopy
-from shlex import quote
+from shlex import quote, split
 from flask import Flask, request, jsonify, url_for, send_file
+from patrowlhears4py.api import PatrowlHearsApi
 import psutil
 
 # Own library imports
 from PatrowlEnginesUtils.PatrowlEngine import _json_serial
 from PatrowlEnginesUtils.PatrowlEngine import PatrowlEngine
 from PatrowlEnginesUtils.PatrowlEngineExceptions import PatrowlEngineExceptions
-
 app = Flask(__name__)
 APP_DEBUG = False
 APP_HOST = "0.0.0.0"
@@ -127,6 +127,8 @@ def status():
 
     if not os.path.exists(BASE_DIR+'/droopescan.json'):
         this.scanner['status'] = "ERROR"
+        res.update({"status": "error", "reason": "Config file droopescan.json not found"})
+        app.logger.error("Config file droopescan.json not found")
 #    if not os.path.isfile(this.scanner['path']):
 #        this.scanner['status'] = "ERROR"
 
@@ -178,7 +180,6 @@ def loadconfig():
         this.scanner = json.load(json_data)
         this.scanner['status'] = "READY"
         return {"status": "OK", "reason": "config file loaded."}
-    # else:
     this.scanner['status'] = "ERROR"
     return {"status": "ERROR", "reason": "config file not found."}
 
@@ -279,6 +280,9 @@ def _add_issue(scan_id, target, timestamp, title, desc, type,
             "timestamp": timestamp
         }
     else:
+        risk = {}
+        tags = []
+        links = []
         issue = {
             "issue_id": this.scans[scan_id]["nb_findings"],
             "severity": severity,
@@ -324,17 +328,13 @@ def stop_scan(scan_id):
 
     proc = this.scans[scan_id]["proc"]
     if hasattr(proc, 'pid'):
-        # his.proc.terminate()
-        # proc.kill()
-        # os.killpg(os.getpgid(proc.pid), signal.SIGTERM)
         if psutil.pid_exists(proc.pid):
             psutil.Process(proc.pid).terminate()
         res.update({"status": "TERMINATED",
                     "details": {
                         "pid": proc.pid,
                         "cmd": this.scans[scan_id]["proc_cmd"],
-                        "scan_id": scan_id}
-        })
+                        "scan_id": scan_id}})
     return jsonify(res)
 
 
@@ -385,6 +385,8 @@ def start():
         'threads':      [],
         'proc':         None,
         'options':      data['options'],
+        'cms':          "",
+        'hears_api':    {},
         'scan_id':      scan_id,
         'status':       "STARTED",
         'started_at':   int(time.time() * 1000),
@@ -415,7 +417,7 @@ def _scan_thread(scan_id):
                 "details": {
                     "reason": "datatype '{}' not supported for the asset {}.".format(
                         asset["datatype"], asset["value"])}})
-	# commentaire = ''' To delete, somtimes we scan app
+    # commentaire = ''' To delete, somtimes we scan app
         # like https://example.com/app1name/ only and nor https://example.com'''
         else:
             # extract the net location from urls if needed
@@ -429,6 +431,9 @@ def _scan_thread(scan_id):
 
     app.logger.debug('Hosts set : %s', hosts)
 
+    # Update status
+    this.scans[scan_id]["status"] = "SCANNING"
+
     # Deduplicate hosts
     hosts = list(set(hosts))
 
@@ -441,35 +446,117 @@ def _scan_thread(scan_id):
     # Sanitize args :
     th_options = this.scans[scan_id]['options']
     app.logger.debug('options: %s', th_options)
-
+    # Log file path
     log_path = BASE_DIR+"/results/droopescan-" + scan_id + ".json"
-
+    # Error log file path
     error_log_path = BASE_DIR+"/logs/droopescan-error-" + scan_id + ".log"
 
+    # Base command
     cmd = "droopescan "
+
+    # Available cms to scan
+    avail_cms = ["drupal", "joomla", "moodle", "silverstripe", "wordpress"]
 
     # Check options
     for opt_key in th_options.keys():
-        if opt_key in this.scanner['options'] and th_options.get(opt_key):
-            # FIXME Security : Is it secure to let any options in ? No escaping ?
-            cmd += " {}".format(this.scanner['options'][opt_key]['value'])
-        if opt_key == "host_file_path":
+        if opt_key == "cms":
+            t_cms = th_options.get(opt_key)
+            if isinstance(t_cms, str) and t_cms in avail_cms:
+                this.scans[scan_id]["cms"] = t_cms
+                cmd += " scan {}".format(t_cms)
+            else:
+                app.logger.error("Wrong CMS name provided")
+                this.scans[scan_id]["status"] = "ERROR"
+                return False
+        elif opt_key == "host_file_path":
             if os.path.isfile(th_options.get(opt_key)):
                 with open(th_options.get(opt_key), 'r') as file_host:
                     with open(hosts_filename, 'a') as hosts_file:
                         for line in file_host:
                             hosts_file.write(quote(line))
-
+        elif opt_key == "hears_api":
+            app.logger.debug("Searching vulns (if Hears API is available)")
+            this.scans[scan_id]["hears_api"] = th_options.get(opt_key)
+        else:
+            app.logger.error("Unknown option provided: '{}'".format(opt_key))
+            this.scans[scan_id]["status"] = "ERROR"
+            return False
     cmd += " -U " + hosts_filename
     cmd += " --output json "
     app.logger.debug('cmd: %s', cmd)
 
+    cmd_sec = split(cmd)
+
     this.scans[scan_id]["proc_cmd"] = "not set!!"
     with open(error_log_path, "w") as stderr:
-        this.scans[scan_id]["proc"] = subprocess.Popen([cmd], shell=True, stdout=open(log_path, "w"), stderr=stderr)
+        this.scans[scan_id]["proc"] = subprocess.Popen(cmd_sec,
+                                                       shell=False,
+                                                       stdout=open(log_path, "w"),
+                                                       stderr=stderr)
     this.scans[scan_id]["proc_cmd"] = cmd
 
     return True
+
+
+def _get_hears_findings(scan_id, t_vendor=None, t_product=None, t_product_version=None):
+    """ Get CVE associated to given vendor/product/product version """
+    # Set up credentials
+    hears_url = this.scans[scan_id]["hears_api"]["url"]
+    hears_token = this.scans[scan_id]["hears_api"]["token"]
+    # Retrieve data
+    api = PatrowlHearsApi(url=hears_url, auth_token=hears_token)
+    json_data = api.search_vulns(cveid=None, monitored=None, search=None,
+                                 vendor_name=t_vendor, product_name=t_product,
+                                 product_version=t_product_version, cpe=None)
+    if json_data["count"] == 0:
+        return None
+    # Handle JSON data
+    cpe = ""
+    vulns = []
+    fdg_max_cvss = 0.0
+    desc = ""
+    for vln in json_data["results"]:
+        # Get CPE
+        if cpe == "":
+            for cpe_version in vln["vulnerable_products"]:
+                if t_product_version+":*" in cpe_version:
+                    cpe = cpe_version
+                    app.logger.debug(cpe)
+                    pass
+        # Get max score
+        if vln["cvss"] > fdg_max_cvss:
+            fdg_max_cvss = vln["cvss"]
+        # Get CVE
+        vulns.append(vln["cveid"])
+        # Update description
+        desc += "\n{} {}".format(vln["cveid"], vln["cvss"])
+
+    vuln_refs = {"CVE": vulns, "CPE": cpe}
+
+    # Return infos
+    return vuln_refs, fdg_max_cvss, desc
+
+
+def _get_cvss_severity(cvss):
+    """
+    Returns severity from given CVSS
+
+    :param cvss: CVSS
+    :type cvss: float
+
+    :returns: Severity
+    :rtype: str
+    """
+    if cvss is None:
+        return None
+    fdg_severity = "info"
+    if cvss >= 7.5:
+        fdg_severity = "high"
+    elif cvss >= 5.0 and cvss < 7.5:
+        fdg_severity = "medium"
+    elif cvss >= 3.0 and cvss < 5.0:
+        fdg_severity = "low"
+    return fdg_severity
 
 
 # Parse Droopescan report
@@ -482,11 +569,13 @@ def _parse_report(filename, scan_id):
     if os.path.isfile(filename):
         # TODO Catch Exception for open() function
         with open(filename, 'r') as file_desc:
-            app.logger.debug('Opened file named {} in mode {}'.format(file_desc.name, file_desc.mode))
+            app.logger.debug('Opened file named {} in mode {}'.format(file_desc.name,
+                                                                      file_desc.mode))
             try:
                 json_data = json.load(file_desc)
             except ValueError:
-                app.logger.debug('Error happened - DecodeJSONError : {}'.format(sys.exc_info()[0]))
+                app.logger.debug('Error happened - DecodeJSONError : {}'.format(
+                    sys.exc_info()[0]))
                 return {"status": "error", "reason": "Decoding JSON failed"}
             except Exception:
                 app.logger.debug('Error happened - {}'.format(sys.exc_info()[0]))
@@ -514,10 +603,11 @@ def _parse_report(filename, scan_id):
                     app.logger.debug('{} - Plugin {} is installed'.format(cms_name, plg_name))
                     desc = ""
                     if hasattr(fd_elt, 'imu'):
-                        desc = 'The scan detected that the plugin {} is installed on this CMS ({}).'.format(
-                            plg_name, fd_elt["imu"]["description"]),
+                        desc = 'The scan detected that the plugin {} is installed on this CMS \
+                                ({}).'.format(plg_name, fd_elt["imu"]["description"])
                     else:
-                        desc = 'The scan detected that the plugin {} is installed on this CMS.'.format(plg_name),
+                        desc = 'The scan detected that the plugin {} is installed on this CMS \
+                                .'.format(plg_name)
                     # Add plugin found to findings
                     res.append(deepcopy(_add_issue(scan_id, target, timestamp,
                                                    '{} - Plugin {} is installed'.format(cms_name, plg_name),
@@ -534,9 +624,9 @@ def _parse_report(filename, scan_id):
                     res.append(deepcopy(
                         _add_issue(scan_id, target, timestamp,
                                    '{} - Theme {} is installed'.format(cms_name, thm_name),
-                                   'The scan detected that the theme {} is installed on {}.'.format(
-                                       thm_name, thm_url),
-                                   type='intalled_theme')))
+                                   'The scan detected that the theme {} is installed on \
+                                    {}.'.format(thm_name, thm_url), type='intalled_theme')))
+
             # Check for interesting URLs
             #has_urls = False
             if json_data["interesting urls"]["is_empty"] is False:
@@ -559,19 +649,39 @@ def _parse_report(filename, scan_id):
             #        "The scan detected that the host was up",
             #        type="host_availability")))
 
-            #has_version = False
             if json_data["version"]["is_empty"] is False:
-                #has_version = True
                 version_list = json_data["version"]["finds"]
                 for ver in version_list:
                     app.logger.debug('Version {} is possibly installed'.format(ver))
+                    # Get vulns from hears
+                    app.logger.debug("Login is {}".format(this.scans[scan_id]["hears_api"]))
+                    if "hears_api" in this.scans[scan_id] and "url" in this.scans[scan_id]["hears_api"]:
+                        try:
+                            t_vuln_refs, t_cvss_score, t_desc = _get_hears_findings(scan_id,
+                                                                                    cms_name,
+                                                                                    cms_name,
+                                                                                    ver)
+                        except Exception:
+                            app.logger.debug("Error while loading Hears API, \
+                                             skipping vulnerability checking")
+                            t_vuln_refs, t_cvss_score, t_desc = None, 0.0, ""
+                            pass
+                    else:
+                        app.logger.debug("Skipping vulnerability checking")
+                        t_vuln_refs, t_cvss_score, t_desc = None, 0.0, ""
                     # Add version found to findings
                     res.append(deepcopy(
                         _add_issue(scan_id, target, timestamp,
                                    '{} - Version {} is possibly installed'.format(cms_name, ver),
-                                   'The scan detected that the version {} is possibly installed.'.format(ver),
-                                   type='intalled_version', confidence='low')))
-
+                                   'The scan detected that the version {} \
+                                   is possibly installed.\n{}'.format(ver, t_desc),
+                                   type='intalled_version',
+                                   confidence='low',
+                                   vuln_refs=t_vuln_refs,
+                                   severity=_get_cvss_severity(t_cvss_score))))
+        # Remove credentials
+        this.scans[scan_id]["hears_api"] = {}
+        # Return results
         return res
     else:
         return {"status": "error", "reason": "An error happened while handling file"}
@@ -652,9 +762,12 @@ def main():
 
 if __name__ == '__main__':
     parser = optparse.OptionParser()
-    parser.add_option("-H", "--host", help="Hostname of the Flask app [default %s]" % APP_HOST, default=APP_HOST)
-    parser.add_option("-P", "--port", help="Port for the Flask app [default %s]" % APP_PORT, default=APP_PORT)
-    parser.add_option("-d", "--debug", action="store_true", dest="debug", help=optparse.SUPPRESS_HELP)
+    parser.add_option("-H", "--host", help="Hostname of the Flask app [default %s]" %
+                      APP_HOST, default=APP_HOST)
+    parser.add_option("-P", "--port", help="Port for the Flask app [default %s]" %
+                      APP_PORT, default=APP_PORT)
+    parser.add_option("-d", "--debug", action="store_true",
+                      dest="debug", help=optparse.SUPPRESS_HELP)
 
     options, _ = parser.parse_args()
     app.run(debug=options.debug, host=options.host, port=int(options.port))

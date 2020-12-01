@@ -6,7 +6,6 @@
   "options": {
      "gmp_host":         { "type": "required", "value": "127.0.0.1"},
      "gmp_port":         { "type": "optional", "value": "9390"},
-     "timeout":          60,
      "gmp_username":     { "type": "optional", "value": "admin"},
      "gmp_password":     { "type": "optional", "value": "admin"},
      "default_credential_name":  { "type": "optional", "value": "SSH Scanner"},

@@ -8,6 +8,7 @@
         "domain"
     ],
     "options": {
+        "ProxyEnabled": false,
         "ThreadsNumber": {
             "type": "required",
             "value": 3
