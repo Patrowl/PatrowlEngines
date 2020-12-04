@@ -17,35 +17,34 @@ def test_generic_features():
     """Generic tests."""
     PET.do_generic_tests()
 
-# TODO: Fix "No PID found" error
-# def test_nmap_vulners():
-#     """Custom tests."""
-#     PET.custom_test(
-#         test_name="nmap_vulners",
-#         assets=[{
-#             "id": "1",
-#             "value": "patrowl.io",
-#             "criticity": "low",
-#             "datatype": "domain"
-#         }],
-#         scan_policy={
-#             "no_ping": 0,
-#             "ports": [
-#                 "80",
-#                 "22",
-#                 "443",
-#                 "56",
-#                 "25"
-#             ],
-#             "detect_service_version": 1,
-#             "script": "libs/vulners.nse",
-#             "show_open_ports": 1
-#         },
-#         is_valid=True
-#     )
+
+def test_nmap_scan_ip():
+    """Custom tests."""
+    PET.custom_test(
+        test_name="nmap_scan_ip",
+        assets=[{
+            "id": "1",
+            "value": "8.8.8.8",
+            "criticity": "low",
+            "datatype": "ip"
+        }],
+        scan_policy={
+            "no_ping": 0,
+            "ports": [
+                "80",
+                "22",
+                "443",
+                "56",
+                "25"
+            ],
+            "detect_service_version": 1,
+            "show_open_ports": 1
+        },
+        is_valid=True,
+        scan_id="3-3"
+    )
 
 
 if __name__ == "__main__":
-    test_generic_features()
-    # TODO: Fix "No PID found" error
-    # test_nmap_vulners()
+    # test_generic_features()
+    test_nmap_scan_ip()

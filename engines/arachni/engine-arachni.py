@@ -19,7 +19,7 @@ app = Flask(__name__)
 APP_DEBUG = False
 APP_HOST = "0.0.0.0"
 APP_PORT = 5005
-APP_MAXSCANS = 10
+APP_MAXSCANS = int(os.environ.get('APP_MAXSCANS', 25))
 
 BASE_DIR = os.path.dirname(os.path.realpath(__file__))
 this = sys.modules[__name__]

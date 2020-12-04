@@ -14,14 +14,14 @@ import datetime
 from shlex import split
 from urllib.parse import urlparse
 from copy import deepcopy
-from flask import Flask, request, jsonify, json, redirect, url_for, send_file
+from flask import Flask, request, jsonify, redirect, url_for, send_file
 import xml.etree.ElementTree as ET
 
 app = Flask(__name__)
 APP_DEBUG = False
 APP_HOST = "0.0.0.0"
 APP_PORT = 5001
-APP_MAXSCANS = 20
+APP_MAXSCANS = int(os.environ.get('APP_MAXSCANS', 25))
 
 BASE_DIR = os.path.dirname(os.path.realpath(__file__))
 this = sys.modules[__name__]
