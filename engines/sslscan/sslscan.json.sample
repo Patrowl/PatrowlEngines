@@ -4,7 +4,7 @@
   "description": "SSL Scanner based on SSLScan",
   "allowed_asset_types": ["domain", "fqdn", "url", "ip"],
   "options": {
-    "bin_path": "/opt/patrowl-engines/sslscan/libs/sslscan/sslscan",
+    "bin_path": "/opt/patrowl-engines/sslscan/external-libs/sslscan/sslscan",
     "show-certificate": { "type": "optional", "value": "--show-certificate"},
 		"no-check-certificate": { "type": "optional", "value": "--no-check-certificate"},
 		"ssl2-only": { "type": "optional", "value": "--ssl2"},
