@@ -19,7 +19,7 @@ COPY droopescan.json.sample droopescan.json
 COPY requirements.txt .
 COPY README.md .
 # Will be moved to requirement.txt fie when repo is set on public
-COPY patrowlhears4py/* ./patrowlhears4py/
+# COPY patrowlhears4py/* ./patrowlhears4py/
 
 # Install any needed packages specified in requirements.txt
 RUN apk add --update --no-cache \
