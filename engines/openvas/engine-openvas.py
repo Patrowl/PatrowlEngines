@@ -7,11 +7,10 @@ from os import makedirs
 from os.path import dirname, exists, isfile, realpath
 from sys import modules
 from json import dump, load, loads
-# from re import search as re_search
 from netaddr import IPNetwork, IPAddress, glob_to_iprange
 from netaddr.core import AddrFormatError
 from threading import Thread
-from time import time
+import time
 from urllib.parse import urlparse
 from uuid import UUID
 import xml.etree.ElementTree as ET
@@ -36,7 +35,7 @@ from PatrowlEnginesUtils.PatrowlEngineExceptions import PatrowlEngineExceptions
 # from pdb import set_trace as st
 
 app = Flask(__name__)
-APP_DEBUG = os.environ.get('APP_DEBUG', '').lower() in ['true', '1', 'on', 'yes']
+APP_DEBUG = os.environ.get('APP_DEBUG', '').lower() in ['true', '1', 'on', 'yes', 'y']
 APP_HOST = "0.0.0.0"
 APP_PORT = 5016
 APP_MAXSCANS = int(os.environ.get('APP_MAXSCANS', 5))
@@ -45,6 +44,7 @@ APP_BASE_DIR = dirname(realpath(__file__))
 DEFAULT_OV_PROFILE = "Full and fast"
 DEFAULT_OV_PORTLIST = "patrowl-all_tcp"
 DEFAULT_TIMEOUT = int(os.environ.get('DEFAULT_TIMEOUT', 600))
+DEFAULT_SCAN_TIMEOUT = int(os.environ.get('DEFAULT_SCAN_TIMEOUT', 21600)) # 6 hours
 
 engine = PatrowlEngine(
     app=app,
@@ -103,7 +103,9 @@ def get_target(target_name, scan_portlist_id=None, alive_test=None):
         timeout=int(engine.scanner["options"].get("timeout", DEFAULT_TIMEOUT))
     )
     with Gmp(connection) as gmp_cnx:
-        gmp_cnx.authenticate(engine.scanner["options"]["gmp_username"]["value"], engine.scanner["options"]["gmp_password"]["value"])
+        gmp_cnx.authenticate(
+            engine.scanner["options"]["gmp_username"]["value"],
+            engine.scanner["options"]["gmp_password"]["value"])
         targets_xml = gmp_cnx.get_targets()
         # print("targets_xml:", targets_xml)
         try:
@@ -190,7 +192,9 @@ def get_scan_config(name=None):
         timeout=int(engine.scanner["options"].get("timeout", DEFAULT_TIMEOUT))
     )
     with Gmp(connection) as gmp_cnx:
-        gmp_cnx.authenticate(engine.scanner["options"]["gmp_username"]["value"], engine.scanner["options"]["gmp_password"]["value"])
+        gmp_cnx.authenticate(
+            engine.scanner["options"]["gmp_username"]["value"],
+            engine.scanner["options"]["gmp_password"]["value"])
         configs_xml = gmp_cnx.get_configs()
         # print("configs_xml:", configs_xml)
         try:
@@ -220,15 +224,15 @@ def get_scan_config(name=None):
 
 
 def create_target(
-    target_name,
-    target_hosts,
-    port_list_id=None,
-    port_list_name=None,
-    ssh_credential_id=None, ssh_credential_port=None,
-    smb_credential_id=None,
-    esxi_credential_id=None,
-    snmp_credential_id=None,
-    alive_test=AliveTest.TCP_SYN_SERVICE_PING):
+        target_name,
+        target_hosts,
+        port_list_id=None,
+        port_list_name=None,
+        ssh_credential_id=None, ssh_credential_port=None,
+        smb_credential_id=None,
+        esxi_credential_id=None,
+        snmp_credential_id=None,
+        alive_test=AliveTest.TCP_SYN_SERVICE_PING):
     """Create a target in OpenVAS and returns its target_id."""
     # app.logger.debug(
     #     "create_target(): {}, {}, {}, {}",
@@ -243,7 +247,9 @@ def create_target(
         timeout=int(engine.scanner["options"].get("timeout", DEFAULT_TIMEOUT))
     )
     with Gmp(connection) as gmp_cnx:
-        gmp_cnx.authenticate(engine.scanner["options"]["gmp_username"]["value"], engine.scanner["options"]["gmp_password"]["value"])
+        gmp_cnx.authenticate(
+            engine.scanner["options"]["gmp_username"]["value"],
+            engine.scanner["options"]["gmp_password"]["value"])
         new_target_xml = gmp_cnx.create_target(
             "{} - {} - {}".format(target_name, port_list_name, alive_test),
             # hosts=[target_name],
@@ -283,7 +289,9 @@ def get_task_by_target_name(target_name, scan_config_id=None):
         timeout=int(engine.scanner["options"].get("timeout", DEFAULT_TIMEOUT))
     )
     with Gmp(connection) as gmp_cnx:
-        gmp_cnx.authenticate(engine.scanner["options"]["gmp_username"]["value"], engine.scanner["options"]["gmp_password"]["value"])
+        gmp_cnx.authenticate(
+            engine.scanner["options"]["gmp_username"]["value"],
+            engine.scanner["options"]["gmp_password"]["value"])
         tasks_xml = gmp_cnx.get_tasks(filter="apply_overrides=1 min_qod=0 rows=-1 levels=hmlg")
         target_id = get_target(target_name)
         if target_id is None:
@@ -316,7 +324,9 @@ def get_scanners(name=None):
         timeout=int(engine.scanner["options"].get("timeout", DEFAULT_TIMEOUT))
     )
     with Gmp(connection) as gmp_cnx:
-        gmp_cnx.authenticate(engine.scanner["options"]["gmp_username"]["value"], engine.scanner["options"]["gmp_password"]["value"])
+        gmp_cnx.authenticate(
+            engine.scanner["options"]["gmp_username"]["value"],
+            engine.scanner["options"]["gmp_password"]["value"])
         scanners_xml = gmp_cnx.get_scanners()
         try:
             scanners = ET.fromstring(scanners_xml)
@@ -349,7 +359,9 @@ def create_task(target_name, target_id, scan_config_id=None, scanner_id=None):
         timeout=int(engine.scanner["options"].get("timeout", DEFAULT_TIMEOUT))
     )
     with Gmp(connection) as gmp_cnx:
-        gmp_cnx.authenticate(engine.scanner["options"]["gmp_username"]["value"], engine.scanner["options"]["gmp_password"]["value"])
+        gmp_cnx.authenticate(
+            engine.scanner["options"]["gmp_username"]["value"],
+            engine.scanner["options"]["gmp_password"]["value"])
         new_task_xml = gmp_cnx.create_task(
             name=target_name + " - {}".format(get_scan_config_name(scan_config_id, gmp=gmp_cnx)),
             config_id=scan_config_id,
@@ -359,12 +371,15 @@ def create_task(target_name, target_id, scan_config_id=None, scanner_id=None):
         try:
             new_task = ET.fromstring(new_task_xml)
         except Exception:
+            connection.disconnect()
             return None
         if not new_task.get("status") == "201":
+            connection.disconnect()
             return None
 
         task_id = new_task.get("id")
         if not is_uuid(task_id):
+            connection.disconnect()
             return None
         connection.disconnect()
         return task_id
@@ -380,7 +395,9 @@ def start_task(task_id):
         timeout=int(engine.scanner["options"].get("timeout", DEFAULT_TIMEOUT))
     )
     with Gmp(connection) as gmp_cnx:
-        gmp_cnx.authenticate(engine.scanner["options"]["gmp_username"]["value"], engine.scanner["options"]["gmp_password"]["value"])
+        gmp_cnx.authenticate(
+            engine.scanner["options"]["gmp_username"]["value"],
+            engine.scanner["options"]["gmp_password"]["value"])
         start_scan_results_xml = gmp_cnx.start_task(task_id)
         # print("start_scan_results_xml:", start_scan_results_xml)
         try:
@@ -415,7 +432,9 @@ def get_last_report(task_id):
         timeout=int(engine.scanner["options"].get("timeout", DEFAULT_TIMEOUT))
     )
     with Gmp(connection) as gmp_cnx:
-        gmp_cnx.authenticate(engine.scanner["options"]["gmp_username"]["value"], engine.scanner["options"]["gmp_password"]["value"])
+        gmp_cnx.authenticate(
+            engine.scanner["options"]["gmp_username"]["value"],
+            engine.scanner["options"]["gmp_password"]["value"])
         task_xml = gmp_cnx.get_task(task_id)
         try:
             task = ET.fromstring(task_xml)
@@ -665,23 +684,41 @@ def status():
     return jsonify(res)
 
 
-def _status_scan(scan_id, gmp_cnx):
+def _status_scan(scan_id, gmp_cnx=None):
     scan_status = "SCANNING"
-    if engine.scans[scan_id]['status'] == "STARTED":
+    if engine.scans[scan_id]['status'] in ["STARTED", "FINISHED"]:
         return scan_status
 
-    scan_assets_status = get_multiple_report_status(engine.scans[scan_id]["info"], gmp_cnx)
+    if gmp_cnx is None:
+        connection = TLSConnection(
+            hostname=engine.scanner["options"]["gmp_host"]["value"],
+            port=engine.scanner["options"]["gmp_port"]["value"],
+            timeout=int(engine.scanner["options"].get("timeout", DEFAULT_TIMEOUT))
+        )
+        with Gmp(connection) as gmp_cnx:
+            gmp_cnx.authenticate(
+                engine.scanner["options"]["gmp_username"]["value"],
+                engine.scanner["options"]["gmp_password"]["value"])
+            scan_assets_status = get_multiple_report_status(engine.scans[scan_id]["info"], gmp_cnx)
+
+        connection.disconnect()
+    else:
+        scan_assets_status = get_multiple_report_status(engine.scans[scan_id]["info"], gmp_cnx)
+
+    print("_status_scan:", scan_assets_status["status"])
+
     if scan_assets_status is None:
-        scan_status = "UNKNOWN"
-        engine.scans[scan_id]['status'] = scan_status
+        engine.scans[scan_id]['status'] = "UNKNOWN"
         return scan_status
 
     if scan_assets_status["status"] == "Done":
-        scan_status = "FINISHED"
-        engine.scans[scan_id]["finished_at"] = int(time() * 1000)
+        if 'report_available' in engine.scans[scan_id].keys() and engine.scans[scan_id]['report_available'] is True:
+            scan_status = "FINISHED"
+            engine.scans[scan_id]["finished_at"] = int(time.time() * 1000)
+        else:
+            scan_status = "SCANNING"
 
     engine.scans[scan_id]['status'] = scan_status
-
     return scan_assets_status
 
 
@@ -697,24 +734,15 @@ def status_scan(scan_id):
         res.update({"status": "error", "reason": engine.scans[scan_id]["reason"]})
         return jsonify(res)
 
-    connection = TLSConnection(
-        hostname=engine.scanner["options"]["gmp_host"]["value"],
-        port=engine.scanner["options"]["gmp_port"]["value"],
-        timeout=int(engine.scanner["options"].get("timeout", DEFAULT_TIMEOUT))
-    )
-    with Gmp(connection) as gmp_cnx:
-        gmp_cnx.authenticate(engine.scanner["options"]["gmp_username"]["value"], engine.scanner["options"]["gmp_password"]["value"])
+    assets_status = _status_scan(scan_id)
+    if engine.scans[scan_id]['status'] in ["SCANNING", "STARTED", "FINISHED"]:
+        res.update({'status': engine.scans[scan_id]['status']})
+        # return jsonify(res)
 
-        assets_status = _status_scan(scan_id, gmp_cnx)
-        if engine.scans[scan_id]['status'] in ["SCANNING", "STARTED", "FINISHED"]:
-            res.update({'status': engine.scans[scan_id]['status']})
-            # return jsonify(res)
+    # assets_status = get_multiple_report_status(engine.scans[scan_id]["info"], gmp_cnx)
+    if assets_status is None:
+        res.update({"status": "error", "reason": "Cannot find any report_status"})
 
-        # assets_status = get_multiple_report_status(engine.scans[scan_id]["info"], gmp_cnx)
-        if assets_status is None:
-            res.update({"status": "error", "reason": "Cannot find any report_status"})
-
-    connection.disconnect()
     return jsonify(res)
 
 
@@ -744,15 +772,19 @@ def stop_scan(scan_id):
                 engine.scanner["options"]["gmp_username"]["value"],
                 engine.scanner["options"]["gmp_password"]["value"])
             gmp_cnx.stop_task(task_id)
+            engine.scans[scan_id]["status"] = "STOPPED"
         connection.disconnect()
     except Exception:
         app.logger.debug("Unable to stop scan '{}'".format(scan_id))
+        engine.scans[scan_id]["status"] = "ERROR"
     return engine.stop_scan(scan_id)
 
 
 @app.route("/engines/openvas/getreport/<scan_id>")
 def getreport(scan_id):
     """Get report on finished scans."""
+    # Remove the scan from the active scan list
+    clean_scan(scan_id)
     return engine.getreport(scan_id)
 
 
@@ -981,7 +1013,7 @@ def start_scan():
         "status":       "STARTED",
         "reason":       "",
         "lock":         False,
-        "started_at":   int(time() * 1000),
+        "started_at":   int(time.time() * 1000),
         "finished_at":  "",
         "findings":     {}
     }
@@ -1080,7 +1112,73 @@ def _scan_assets(scan_id):
         engine.scans[scan_id]['reason'] = "Error when trying to start the scan"
         return False
 
+    # Scan is now running
     engine.scans[scan_id]['status'] = "SCANNING"
+
+    # @todo: Wait max scan timeout
+    max_scan_timeout = DEFAULT_SCAN_TIMEOUT
+    try:
+        if 'max_timeout' in engine.scans[scan_id]['options'].keys() and engine.scans[scan_id]['options']['max_timeout'].isnumeric():
+            max_scan_timeout = int(engine.scans[scan_id]['options']['max_timeout'])
+    except Exception:
+        pass
+    timeout = time.time() + max_scan_timeout
+
+    while True:
+        print(scan_id, 'in-loooop', engine.scans[scan_id]["status"].upper())
+        time.sleep(5)
+        if time.time() > timeout:
+            engine.scans[scan_id]['status'] = "ERROR"
+            engine.scans[scan_id]['reason'] = "Scan timeout exceeded: {} seconds.".format(timeout)
+            break
+
+        scan_assets_status = _status_scan(scan_id)
+
+        if engine.scans[scan_id]["status"].upper() in ["ERROR", "UNKNOWN", "STOPPED", "FINISHED"]:
+            break
+        elif engine.scans[scan_id]["status"].upper() == "STARTED":
+            continue
+        elif engine.scans[scan_id]["status"].upper() == "SCANNING":
+            # if "report_available" not in engine.scans[scan_id].keys():
+            #     continue
+            # if scan_assets_status["status"] == "Done":
+            if scan_assets_status["status"] == "Done" and "report_available" not in engine.scans[scan_id].keys():
+                try:
+                    # Get the report from the OpenVAS instance
+                    print(scan_id, 'before get_report', engine.scans[scan_id]["status"].upper())
+                    engine.scans[scan_id]["findings"] = get_report(scan_id)
+                    print(scan_id, 'after get_report', engine.scans[scan_id]["status"].upper())
+                except Exception as e:
+                    print(e)
+                    engine.scans[scan_id]['status'] = "ERROR"
+                    engine.scans[scan_id]['reason'] = "Unable to get findings from scan '{}'.".format(scan_id)
+                    break
+
+                # Parse the results
+                print(scan_id, 'before _parse_results', engine.scans[scan_id]["status"].upper())
+                issues, summary = _parse_results(scan_id)
+                scan = {
+                    "scan_id": scan_id,
+                    "assets": engine.scans[scan_id]["assets"],
+                    "options": engine.scans[scan_id]["options"],
+                    "status": engine.scans[scan_id]["status"],
+                    "started_at": engine.scans[scan_id]["started_at"],
+                    "finished_at": engine.scans[scan_id]["finished_at"]
+                }
+                print(scan_id, 'after _parse_results', engine.scans[scan_id]["status"].upper())
+
+                # Store the findings in a file
+                with open(APP_BASE_DIR+"/results/openvas_"+scan_id+".json", "w") as rf:
+                    dump({
+                        "scan": scan,
+                        "summary": summary,
+                        "issues": issues
+                    }, rf, default=_json_serial)
+
+                engine.scans[scan_id]["status"] = "FINISHED"
+                engine.scans[scan_id]["finished_at"] = int(time.time() * 1000)
+                engine.scans[scan_id]["report_available"] = True
+
     return True
 
 
@@ -1099,7 +1197,9 @@ def get_report(scan_id):
         timeout=int(engine.scanner["options"].get("timeout", DEFAULT_TIMEOUT))
     )
     with Gmp(connection) as gmp_cnx:
-        gmp_cnx.authenticate(engine.scanner["options"]["gmp_username"]["value"], engine.scanner["options"]["gmp_password"]["value"])
+        gmp_cnx.authenticate(
+            engine.scanner["options"]["gmp_username"]["value"],
+            engine.scanner["options"]["gmp_password"]["value"])
         if not isfile("results/openvas_report_{}_{}.xml".format(scan_id, assets_hash)):
             result = gmp_cnx.get_reports(filter="report_id={} levels=hmlg apply_overrides=0 rows=-1 min_qod=70 sort-reverse=severity notes=1 overrides=1".format(report_id), details=1, override_details=1, note_details=1)
             result_file = open("results/openvas_report_{}_{}.xml".format(scan_id, assets_hash), "w")
@@ -1193,7 +1293,7 @@ def _parse_results(scan_id):
         "high": 0,
         "critical": 0
     }
-    timestamp = int(time() * 1000)
+    timestamp = int(time.time() * 1000)
 
     # No issue
     if engine.scans[scan_id]["findings"] == {}:
@@ -1403,7 +1503,8 @@ def getfindings(scan_id):
         return jsonify(res)
 
     # check if the scan is finished
-    status()
+    # status()
+    _status_scan(scan_id)
     if engine.scans[scan_id]["status"] != "FINISHED":
         res.update({
             "status": "error",
@@ -1411,42 +1512,52 @@ def getfindings(scan_id):
         })
         return jsonify(res)
 
+    # try:
+    #     engine.scans[scan_id]["findings"] = get_report(scan_id)
+    # except Exception as e:
+    #     print(e)
+    #     res.update({
+    #         "status": "error",
+    #         "reason": "Unable to get findings from scan '{}'.".format(scan_id)
+    #     })
+    #     return jsonify(res)
+    #
+    # issues, summary = _parse_results(scan_id)
+    #
+    # scan = {
+    #     "scan_id": scan_id,
+    #     "assets": engine.scans[scan_id]["assets"],
+    #     "options": engine.scans[scan_id]["options"],
+    #     "status": engine.scans[scan_id]["status"],
+    #     "started_at": engine.scans[scan_id]["started_at"],
+    #     "finished_at": engine.scans[scan_id]["finished_at"]
+    # }
+    #
+    # # Store the findings in a file
+    # with open(APP_BASE_DIR+"/results/openvas_"+scan_id+".json", "w") as rf:
+    #     dump({
+    #         "scan": scan,
+    #         "summary": summary,
+    #         "issues": issues
+    #     }, rf, default=_json_serial)
+
+    # # Remove the scan from the active scan list
+    # clean_scan(scan_id)
+
     try:
-        engine.scans[scan_id]["findings"] = get_report(scan_id)
-    except Exception as e:
-        print(e)
+        with open(APP_BASE_DIR+"/results/openvas_"+scan_id+".json", "r") as rf:
+            json_report = load(rf)
+    except Exception:
         res.update({
             "status": "error",
-            "reason": "Unable to get findings from scan '{}'.".format(scan_id)
+            "reason": "Unable to get report and findings from scan '{}'".format(scan_id)
         })
         return jsonify(res)
 
-    issues, summary = _parse_results(scan_id)
-
-    scan = {
-        "scan_id": scan_id,
-        "assets": engine.scans[scan_id]["assets"],
-        "options": engine.scans[scan_id]["options"],
-        "status": engine.scans[scan_id]["status"],
-        "started_at": engine.scans[scan_id]["started_at"],
-        "finished_at": engine.scans[scan_id]["finished_at"]
-    }
-
-    # Store the findings in a file
-    with open(APP_BASE_DIR+"/results/openvas_"+scan_id+".json", "w") as rf:
-        dump({
-            "scan": scan,
-            "summary": summary,
-            "issues": issues
-        }, rf, default=_json_serial)
-
-    # Remove the scan from the active scan list
-    clean_scan(scan_id)
-
     res.update({
-        "scan": scan,
-        "summary": summary,
-        "issues": issues,
+        "scan": json_report['scan'],
+        "summary": json_report['summary'],
+        "issues": json_report['issues'],
         "status": "success"
     })
     return jsonify(res)

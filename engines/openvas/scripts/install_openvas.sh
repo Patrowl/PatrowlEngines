@@ -112,7 +112,7 @@ echo "gvm ALL = NOPASSWD: /opt/gvm/sbin/gsad" >> /etc/sudoers.d/gvm
 
 # Update NVTs
 su - gvm
-greenbone-nvt-sync
+greenbone-nvt-sync --rsync
 sudo openvas --update-vt-info
 
 # Build and Install Greenbone Vulnerability Manager

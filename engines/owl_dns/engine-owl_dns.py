@@ -12,7 +12,8 @@ app = Flask(__name__)
 APP_DEBUG = False
 APP_HOST = "0.0.0.0"
 APP_PORT = 5006
-APP_MAXSCANS = int(os.environ.get('APP_MAXSCANS', 10))
+# APP_MAXSCANS = int(os.environ.get('APP_MAXSCANS', 10))
+APP_MAXSCANS = int(os.environ.get('APP_MAXSCANS', 5))
 APP_TIMEOUT = 3600
 
 BASE_DIR = os.path.dirname(os.path.realpath(__file__))
@@ -127,6 +128,7 @@ def start_scan():
         for asset in data["assets"]:
             if asset["datatype"] == "domain":
                 th = threading.Thread(target=_subdomain_enum, args=(scan_id, asset["value"],))
+                th.daemon = True
                 th.start()
                 this.scans[scan_id]['threads'].append(th)
 
@@ -134,6 +136,7 @@ def start_scan():
         for asset in data["assets"]:
             if asset["datatype"] == "domain":
                 th = threading.Thread(target=_dns_resolve, args=(scan_id, asset["value"], True))
+                th.daemon = True
                 th.start()
                 this.scans[scan_id]['threads'].append(th)
 
@@ -148,6 +151,7 @@ def start_scan():
         for asset in data["assets"]:
             if asset["datatype"] == "domain":
                 th = threading.Thread(target=_subdomain_bruteforce, args=(scan_id, asset["value"],))
+                th.daemon = True
                 th.start()
                 this.scans[scan_id]['threads'].append(th)
 
@@ -348,7 +352,6 @@ def _subdomain_bruteforce(scan_id, asset):
     # @todo: add the subdomain resolve in scan['findings']['subdomains_resolve'] if not exists
     # @todo: mutex on this.scans[scan_id]['findings']['subdomains_resolve']
 
-
     return res
 
 
@@ -402,7 +405,11 @@ def stop_scan(scan_id):
     for t in this.scans[scan_id]['threads']:
         # t._Thread__stop()
         # t.terminate()
-        t.join()
+        try:
+            t.join()
+            this.scans[scan_id]['threads'].remove(t)
+        except Exception:
+            pass
     this.scans[scan_id]['status'] = "STOPPED"
     this.scans[scan_id]['finished_at'] = int(time.time() * 1000)
 
@@ -439,6 +446,30 @@ def clean_scan(scan_id):
         res.update({"status": "error", "reason": "scan_id '{}' not found".format(scan_id)})
         return jsonify(res)
 
+    # Terminate thread if any
+    for t in this.scans[scan_id]['threads']:
+        try:
+            # t._Thread__stop()
+            # t.terminate()
+            # print("{}: clean threads '{}'".format(scan_id, t))
+            t.join()
+            this.scans[scan_id]['threads'].remove(t)
+        except Exception as e:
+            print(e)
+            pass
+    #
+    # for t in this.scans[scan_id]['futures']:
+    #     try:
+    #         # t._Thread__stop()
+    #         # t.terminate()
+    #         print("{}: clean futures '{}'".format(scan_id, t))
+    #         print(dir(t))
+    #         # t.join()
+    #     except Exception as e:
+    #         print(e)
+    #         pass
+
+    # Remove Scan for current scans
     this.scans.pop(scan_id)
     res.update({"status": "removed"})
     return jsonify(res)
@@ -454,11 +485,14 @@ def scan_status(scan_id):
     all_threads_finished = True
 
     for t in this.scans[scan_id]['threads']:
+        # print("scan_status-thread:", t.name, t.native_id)
         if t.is_alive():
             this.scans[scan_id]['status'] = "SCANNING"
             all_threads_finished = False
             break
         else:
+            # Terminate thread
+            t.join()
             this.scans[scan_id]['threads'].remove(t)
 
     for f in this.scans[scan_id]['futures']:
@@ -501,6 +535,10 @@ def status():
         "status": this.scanner['status'],
         "scanner": this.scanner,
         "scans": scans})
+
+    # print("thread-count:", threading.active_count())
+    # for thread in threading.enumerate():
+    #     print("{}:{}".format(thread.name, thread.native_id))
     return jsonify(res)
 
 
@@ -628,17 +666,24 @@ def _parse_results(scan_id):
     # subdomain list
 
     # bad messages replied by Sublist3r
-    bad_str = ["Go to http://PTRarchive.com for best",
-               "Use http://PTRarchive.com, the engine",
-               "Sublist3r recommends"]
+    bad_str = [
+        "Go to http://PTRarchive.com for best",
+        "Use http://PTRarchive.com, the engine",
+        "Sublist3r recommends",
+        "API count exceeded",
+        "Too Many Requests",
+        "<", ">",
+    ]
     if 'subdomains_list' in scan['findings'].keys():
         for asset in scan['findings']['subdomains_list'].keys():
             subdomains_str = ""
             subdomains_list = sorted(set(scan['findings']['subdomains_list'][asset]))
+            subdomains_list_clean = []
             for subdomain in subdomains_list:
-                if any(x in subdomain for x in bad_str):
+                if any(x in subdomain for x in bad_str) or subdomain.replace(' ','') == '':
                     continue
                 s = subdomain.replace("From http://PTRarchive.com: ", "")
+                subdomains_list_clean.append(s)
                 subdomains_str = "".join((subdomains_str, s+"\n"))
 
                 # New issue when a subdomain is found
@@ -663,8 +708,8 @@ def _parse_results(scan_id):
 
             # New issue when on the domain list
             subdomains_hash = hashlib.sha1(subdomains_str.encode("utf-8")).hexdigest()[:6]
-            if len(subdomains_list) == 0:
-                subdomains_list = []
+            if len(subdomains_list_clean) == 0:
+                subdomains_list_clean = []
 
             nb_vulns['info'] += 1
             issues.append({
@@ -675,7 +720,7 @@ def _parse_results(scan_id):
                     "protocol": "domain"
                     },
                 "title": "List of subdomains for '{}' ({} found, HASH: {})".format(
-                    asset, len(subdomains_list), subdomains_hash),
+                    asset, len(subdomains_list_clean), subdomains_hash),
                 "description": "Subdomain list for '{}': \n\n{}".format(
                     asset, subdomains_str),
                 "solution": "n/a",
@@ -683,7 +728,7 @@ def _parse_results(scan_id):
                     "tags": ["domains", "subdomains"]
                 },
                 "type": "subdomains_enum",
-                "raw": subdomains_list,
+                "raw": subdomains_list_clean,
                 "timestamp": ts
             })
 
@@ -946,7 +991,8 @@ def getfindings(scan_id):
         return jsonify(res)
 
     # check if the scan is finished
-    status()
+    # status()
+    scan_status(scan_id)
     if this.scans[scan_id]['status'] != "FINISHED":
         res.update({"status": "error", "reason": "scan_id '{}' not finished (status={})".format(scan_id, this.scans[scan_id]['status'])})
         return jsonify(res)

@@ -1,4 +1,5 @@
-FROM ubuntu:18.04
+# FROM ubuntu:18.04
+FROM ubuntu:20.04
 MAINTAINER Patrowl.io "getsupport@patrowl.io"
 LABEL Name="Patrowl\ DNS\ \(Patrowl engine\)" Version="1.4.5"
 
@@ -44,4 +45,4 @@ RUN pip3 install --trusted-host pypi.python.org -r requirements.txt
 EXPOSE 5006
 
 # Run app.py when the container launches
-CMD ["gunicorn", "engine-owl_dns:app", "-b", "0.0.0.0:5006", "--access-logfile", "-"]
+CMD ["gunicorn", "engine-owl_dns:app", "-b", "0.0.0.0:5006", "--access-logfile", "-", "--threads", "10"]
