@@ -20,7 +20,7 @@ from parser import parse_report
 
 
 app = Flask(__name__)
-APP_DEBUG = os.environ.get('APP_DEBUG', '').lower() in ['true', '1', 'on', 'yes']
+APP_DEBUG = os.environ.get('APP_DEBUG', '').lower() in ['true', '1', 'on', 'yes', 'y']
 APP_HOST = "0.0.0.0"
 APP_PORT = 5002
 APP_MAXSCANS = int(os.environ.get('APP_MAXSCANS', 20))
@@ -396,24 +396,7 @@ def start_scan():
 
         policy_name = post_args['options']['policy'].split(".nessus")[0]
         # Check the policy is already uploaded to the scanner
-        # Todo
-        # tmp_res = requests.post(url_for('_get_custom_policy'), data=request.data)
-
-        # # joke.begin() -- makeitbeautifly()
-        # s = str(tmp_res.response)
-        # s = s.replace('\\n','').replace(' ','').replace('(','').replace('\'','')
-        # s = json.loads(s[:len(s)-2])
-        # # joke.end()
-
-        # if s['status'] == "error":
-        #     res.update({"status": "error", "reason": "error with the policy"})
-        #     return jsonify(res)
-        #
-        # policy_name = s['details']['name'].split(".nessus")[0]
-
-        # if not this.nessscan.policy_exists(name=policy_name):
-        #     this.nessscan.upload(upload_file=s['details']['filename'])
-        #     this.nessscan.policy_import(filename=this.nessscan.res[u'fileuploaded'])
+        # @Todo
 
         # Set the scan policy
         try:
@@ -502,7 +485,7 @@ def stop_scan(scan_id):
         res.update({"status": "error", "reason": this.nessscan.res['error']})
         return jsonify(res)
 
-    db.update({"status": "STOPPED","finished_at": int(time.time() * 1000)}, scan.scan_id == scan_id)
+    db.update({"status": "STOPPED", "finished_at": int(time.time() * 1000)}, scan.scan_id == scan_id)
 
     res.update({"status": "success", "scan": item[0]})
     return jsonify(res)
@@ -564,15 +547,9 @@ def status():
         })
         return jsonify(res)
 
-    # check if the remote service is available
+    # Check if the remote service is available
     try:
         scan = {}
-        # scan = ness6rest.Scanner(
-        #     url="https://{}:{}".format(
-        #         this.scanner['server_host'], this.scanner['server_port']),
-        #     login=this.scanner['server_username'],
-        #     password=this.scanner['server_password'],
-        #     insecure=True)
         if 'access_key' in this.scanner.keys() and 'secret_key' in this.scanner.keys():
             scan = ness6rest.Scanner(
                 url="https://{}:{}".format(this.scanner['server_host'], this.scanner['server_port']),
