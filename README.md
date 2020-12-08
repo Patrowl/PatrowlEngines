@@ -40,7 +40,6 @@ If you need to contact the project team, send an email to <getsupport@patrowl.io
 - [ ] CheckMarx
 - [ ] Tenable.io
 - [ ] Acunetix
-- [x] WPScan - New
 - [ ] Qualys
 
 # Awesome engines from Community
@@ -85,3 +84,4 @@ Copyright (C) 2018-2020 Nicolas MATTIOCCO ([@MaKyOtOx](https://twitter.com/MaKyO
 | ssllabs  | [![Known Vulnerabilities](https://snyk.io/test/github/Patrowl/PatrowlEngines/badge.svg?targetFile=engines%2Fssllabs%2Frequirements.txt)](https://snyk.io/test/github/Patrowl/PatrowlEngines?targetFile=engines%2Fssllabs%2Frequirements.txt)  |
 | urlvoid  | [![Known Vulnerabilities](https://snyk.io/test/github/Patrowl/PatrowlEngines/badge.svg?targetFile=engines%2Furlvoid%2Frequirements.txt)](https://snyk.io/test/github/Patrowl/PatrowlEngines?targetFile=engines%2Furlvoid%2Frequirements.txt)  |
 | virustotal  | [![Known Vulnerabilities](https://snyk.io/test/github/Patrowl/PatrowlEngines/badge.svg?targetFile=engines%2Fvirustotal%2Frequirements.txt)](https://snyk.io/test/github/Patrowl/PatrowlEngines?targetFile=engines%2Fvirustotal%2Frequirements.txt)  |
+| wpscan  | [![Known Vulnerabilities](https://snyk.io/test/github/Patrowl/PatrowlEngines/badge.svg?targetFile=engines%2Fwpscan%2Frequirements.txt)](https://snyk.io/test/github/Patrowl/PatrowlEngines?targetFile=engines%2Fwpscan%2Frequirements.txt)  |
