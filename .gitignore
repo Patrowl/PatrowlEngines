@@ -47,6 +47,7 @@ env3
 venv
 results
 reports
+db.json
 .scannerwork
 *.pyc
 *.swp
