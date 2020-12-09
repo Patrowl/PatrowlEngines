@@ -165,8 +165,10 @@ def _get_code_from_svn_http(scan_id, asset, wd):
             svn_password = engine.scans[scan_id]["options"]["credentials"]["svn_password"]
     else:
         # default engine credentials
-        if "svn_username" in engine.options.keys(): svn_username = engine.options["svn_username"]
-        if "svn_password" in engine.options.keys(): svn_username = engine.options["svn_password"]
+        if "svn_username" in engine.options.keys():
+            svn_username = engine.options["svn_username"]
+        if "svn_password" in engine.options.keys():
+            svn_username = engine.options["svn_password"]
 
     r = svn.remote.RemoteClient(asset, username=svn_username, password=svn_password)
     r.checkout(wd)
@@ -288,12 +290,15 @@ def _scanjs_thread(scan_id, asset_kw):
                     if "CVE" in vuln["identifiers"].keys():
                         item_vuln_refs.update({"CVE": vuln["identifiers"]["CVE"]})
 
+                    vuln_severity = vuln["severity"].lower().replace('moderate','medium').replace('unknown','info')
+
                     new_finding = PatrowlEngineFinding(
                         issue_id=issue_id, type="code_js_missing_update",
                         title=item_title,
                         description=item_description,
                         solution="Check the exploitability of the vulnerability in the application context. If the vulnerability is verified, consider updating the library.",
-                        severity=vuln["severity"], confidence="firm",
+                        severity=vuln_severity,
+                        confidence="firm",
                         raw=item,
                         target_addrs=[asset_value],
                         meta_links=vuln["info"],
@@ -399,14 +404,18 @@ def _scanowaspdc_thread(scan_id, asset_kw):
                     remove_prefix(item["filePath"], scan_wd_asset),
                     item["fileName"],
                     vuln["description"].encode('utf-8').strip(),
-                    "\n".join([vs["software"] for vs in vuln["vulnerableSoftware"]])
+                    "\n".join([vs["software"]["id"] for vs in vuln["vulnerableSoftware"]])
                 )
 
                 vuln_risks = {}
                 if "cvssScore" in vuln.keys() and vuln["cvssScore"] != "":
                     vuln_risks.update({"cvss_base_score": float(vuln["cvssScore"])})
 
-                vuln_links = [v["url"] for v in vuln["references"]]
+                # vuln_links = [v["url"] for v in vuln["references"]]
+                vuln_links = []
+                for v in vuln["references"]:
+                    if "url" in v.keys():
+                        vuln_links.append(v["url"])
 
                 vuln_refs = {}
                 if "cwe" in vuln.keys() and vuln["cwe"] != "":
@@ -414,12 +423,15 @@ def _scanowaspdc_thread(scan_id, asset_kw):
                 if vuln["name"].startswith("CVE-"):
                     vuln_refs.update({"CVE": [vuln["name"]]})
 
+                vuln_severity = vuln["severity"].lower().replace('moderate','medium').replace('unknown','info')
+
                 new_finding = PatrowlEngineFinding(
                     issue_id=issue_id, type="code_ext_jar_missing_update",
                     title=item_title,
                     description=item_description,
                     solution="Check the exploitability of the vulnerability in the application context. If the vulnerability is verified, consider updating the library.",
-                    severity=vuln["severity"].lower(), confidence="firm",
+                    severity=vuln_severity,
+                    confidence="firm",
                     raw=vuln,
                     target_addrs=[asset_value],
                     meta_links=vuln_links,
@@ -428,7 +440,6 @@ def _scanowaspdc_thread(scan_id, asset_kw):
                     meta_vuln_refs=vuln_refs)
                 issue_id += 1
                 findings.append(new_finding)
-
 
         # findings summary per asset (remove the workdir)
         checked_files_str = "\n".join([remove_prefix(ff, scan_wd_asset) for ff in sorted(checked_files)])

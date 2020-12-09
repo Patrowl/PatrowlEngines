@@ -28,7 +28,7 @@ ENV version_url=https://jeremylong.github.io/DependencyCheck/current.txt
 ENV download_url=https://dl.bintray.com/jeremy-long/owasp
 RUN wget -qO- -O /tmp/current.txt ${version_url}                            && \
     version=$(cat /tmp/current.txt)                                         && \
-    file="dependency-check-3.3.2-release.zip"                               && \
+    file="dependency-check-6.0.3-release.zip"                               && \
     # file="dependency-check-${version}-release.zip"                          && \
     wget "$download_url/$file"                                              && \
     unzip ${file}                                                           && \
@@ -49,7 +49,7 @@ COPY owl_code.json.sample owl_code.json
 
 # Install python modules
 RUN pip3 install --upgrade pip
-RUN pip3 install --trusted-host pypi.python.org -r requirements.txt
+RUN pip3 install --trusted-host pypi.python.org --ignore-installed -r requirements.txt
 
 # TCP port exposed by the container (NAT)
 EXPOSE 5013
