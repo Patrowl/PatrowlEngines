@@ -1,5 +1,3 @@
-# DEV STATUS: STILL IN BETA
-
 ## Description
 WPScan engine
 
@@ -7,7 +5,6 @@ WPScan engine
 - Python 3
 - Install wpscan
 - `pip3 install -r requirements.txt`
-
 
 ## Testing URLs
 

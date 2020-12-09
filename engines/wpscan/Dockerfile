@@ -1,6 +1,7 @@
 FROM ruby:2.7.1-alpine AS builder
 
-ENV WP_VERSION v3.8.7
+# ENV WP_VERSION v3.8.7
+ENV WP_VERSION v3.8.10
 RUN echo "install: --no-document --no-post-install-message\nupdate: --no-document --no-post-install-message" > /etc/gemrc
 
 RUN apk add --no-cache git libcurl ruby-dev libffi-dev make gcc musl-dev zlib-dev procps sqlite-dev
@@ -40,7 +41,7 @@ RUN /usr/local/bundle/bin/wpscan --update --verbose
 # -- Patrowl Engine
 FROM alpine:latest
 MAINTAINER Patrowl.io "getsupport@patrowl.io"
-LABEL Name="Wpscan\ \(Patrowl engine\)" Version="1.0.0"
+LABEL Name="Wpscan\ \(Patrowl engine\)" Version="1.4.12"
 
 # Install dependencies
 RUN apk add --update --no-cache \

@@ -35,7 +35,7 @@ RUN apk add --update --no-cache \
 
 RUN pip3 install --upgrade pip
 
-WORKDIR /opt/patrowl-engines/openvas/libs
+# WORKDIR /opt/patrowl-engines/openvas/libs
 # RUN git clone https://github.com/greenbone/python-gvm.git
 # RUN wget https://raw.githubusercontent.com/greenbone/python-gvm/v1.3.0/setup.py -O python-gvm/setup.py
 # RUN pip3 install -e python-gvm
