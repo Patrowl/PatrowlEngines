@@ -17,7 +17,7 @@ pathlib2==2.3.2
 PatrowlEnginesUtils>=0.0.12
 pluggy==0.7.1
 psutil==5.6.7
-py==1.6.0
+py==1.10.0
 pytest==3.8.1
 requests==2.25.0
 scandir==1.9.0
