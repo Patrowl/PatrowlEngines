@@ -108,13 +108,13 @@ def start_scan():
 
     scan_id = res["details"]["scan_id"]
 
-    if "scan_js" in engine.scans[scan_id]["options"].keys() and engine.scans[scan_id]["options"]["scan_js"] == True:
+    if "scan_js" in engine.scans[scan_id]["options"].keys() and engine.scans[scan_id]["options"]["scan_js"] is True:
         for asset in engine.scans[scan_id]["assets"]:
             th = threading.Thread(target=_scanjs_thread, args=(scan_id, asset["value"],))
             th.start()
             engine.scans[scan_id]['threads'].append(th)
 
-    if "scan_owaspdc" in engine.scans[scan_id]["options"].keys() and engine.scans[scan_id]["options"]["scan_owaspdc"] == True:
+    if "scan_owaspdc" in engine.scans[scan_id]["options"].keys() and engine.scans[scan_id]["options"]["scan_owaspdc"] is True:
         for asset in engine.scans[scan_id]["assets"]:
             th = threading.Thread(
                 target=_scanowaspdc_thread,
@@ -147,8 +147,6 @@ def _get_code_from_git_http(asset, wd):
         origin = repo.create_remote('origin', asset)
         origin.fetch()
         origin.pull(origin.refs[0].remote_head)
-
-    # git.Repo.clone_from(asset, wd+"/src", depth=1)
 
     return True
 
@@ -244,7 +242,6 @@ def _scanjs_thread(scan_id, asset_kw):
         report_filename = "{}/oc_{}.json".format(scan_wd_asset, scan_id)
         cmd = 'retire -j --path="{}" --outputformat json --outputpath="{}" -v'.format(
             scan_wd_asset, report_filename)
-        # p = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE)
         p = subprocess.Popen(cmd, shell=True, stdout=open("/dev/null", "w"), stderr=None)
 
         # Wait a little to ensure the report file is completely writen
@@ -254,8 +251,6 @@ def _scanjs_thread(scan_id, asset_kw):
             print("report file '{}' not found.".format(report_filename))
             engine.scans[scan_id]["status"] = "ERROR"
             os.killpg(os.getpgid(p.pid), signal.SIGTERM)
-            # if psutil.pid_exists(p):
-            #     psutil.Process(p).terminate()
             return
 
         scan_results = json.load(open(report_filename))
@@ -411,7 +406,6 @@ def _scanowaspdc_thread(scan_id, asset_kw):
                 if "cvssScore" in vuln.keys() and vuln["cvssScore"] != "":
                     vuln_risks.update({"cvss_base_score": float(vuln["cvssScore"])})
 
-                # vuln_links = [v["url"] for v in vuln["references"]]
                 vuln_links = []
                 for v in vuln["references"]:
                     if "url" in v.keys():

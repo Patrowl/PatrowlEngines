@@ -41,8 +41,8 @@ APP_PORT = 5016
 APP_MAXSCANS = int(os.environ.get('APP_MAXSCANS', 5))
 APP_ENGINE_NAME = "openvas"
 APP_BASE_DIR = dirname(realpath(__file__))
-# DEFAULT_OV_PROFILE = "Full and fast"
-# DEFAULT_OV_PORTLIST = "patrowl-all_tcp"
+DEFAULT_OV_PROFILE = "Full and fast"
+DEFAULT_OV_PORTLIST = "patrowl-all_tcp"
 DEFAULT_TIMEOUT = int(os.environ.get('DEFAULT_TIMEOUT', 600))
 DEFAULT_SCAN_TIMEOUT = int(os.environ.get('DEFAULT_SCAN_TIMEOUT', 21600)) # 6 hours
 
@@ -625,19 +625,13 @@ def status():
         assets_map = None
         if "assets_map" in engine.scans[scan_id].keys():
             assets_map = engine.scans[scan_id]['assets_map']
-
-        scan_data = {
+        scans.append({scan_id: {
             "status": engine.scans[scan_id]['status'],
             "started_at": engine.scans[scan_id]['started_at'],
             "finished_at": engine.scans[scan_id]['finished_at'],
             "assets": engine.scans[scan_id]['assets'],
             "assets_map": assets_map
-        }
-        if "info" in engine.scans[scan_id].keys():
-            scan_data.update({
-                "info": engine.scans[scan_id]['info'],
-            })
-        scans.append({scan_id: scan_data})
+        }})
 
     res.update({
         "nb_scans": len(engine.scans),
@@ -696,13 +690,7 @@ def status_scan(scan_id):
 
     assets_status = _status_scan(scan_id)
     if engine.scans[scan_id]['status'] in ["SCANNING", "STARTED", "FINISHED"]:
-        res.update({
-            'status': engine.scans[scan_id]['status']
-        })
-        if 'info' in engine.scans[scan_id].keys():
-            res.update({
-                'info': engine.scans[scan_id]['info'],
-            })
+        res.update({'status': engine.scans[scan_id]['status']})
 
     if assets_status is None:
         res.update({"status": "error", "reason": "Cannot find any report_status"})
@@ -1064,14 +1052,7 @@ def _scan_assets(scan_id):
                     break
 
                 # Parse the results
-                try:
-                    issues, summary = _parse_results(scan_id)
-                except Exception as e:
-                    print(e)
-                    engine.scans[scan_id]['status'] = "ERROR"
-                    engine.scans[scan_id]['reason'] = "Unable to parse findings from scan '{}'.".format(scan_id)
-                    break
-
+                issues, summary = _parse_results(scan_id)
                 scan = {
                     "scan_id": scan_id,
                     "assets": engine.scans[scan_id]["assets"],
@@ -1099,7 +1080,6 @@ def _scan_assets(scan_id):
 def get_report(scan_id):
     """Get report."""
     report_id = engine.scans[scan_id]["info"]["report_id"]
-    task_id = engine.scans[scan_id]["info"]["task_id"]
     issues = []
 
     assets_hash = engine.scans[scan_id]["assets_hash"]
@@ -1114,39 +1094,14 @@ def get_report(scan_id):
             engine.scanner["options"]["gmp_username"]["value"],
             engine.scanner["options"]["gmp_password"]["value"])
         if not isfile("results/openvas_report_{}_{}.xml".format(scan_id, assets_hash)):
-            # # result = gmp_cnx.get_reports(filter="report_id={} levels=hmlg apply_overrides=0 rows=-1 min_qod=70 sort-reverse=severity notes=1 overrides=1".format(report_id), details=1, override_details=1, note_details=1)
-            # # result = gmp_cnx.get_reports(filter="task_id={} levels=hmlg apply_overrides=0 rows=-1 min_qod=70 sort-reverse=severity notes=1 overrides=1".format(task_id), details=1, override_details=1, note_details=1)
-            # result = gmp_cnx.get_reports(filter="report_id={} task_id={} levels=hmlg apply_overrides=0 rows=-1 min_qod=70 sort-reverse=severity notes=1 overrides=1".format(report_id, task_id), details=1, override_details=1, note_details=1)
-            # result = gmp_cnx.get_reports(
-            #     filter="report_id={} levels=hmlg apply_overrides=0 rows=-1 min_qod=70 sort-reverse=severity notes=1 overrides=1".format(report_id),
-            #     report_filter="task_id={}".format(task_id),
-            #     details=1,
-            #     override_details=1,
-            #     note_details=1
-            # )
-            result = gmp_cnx.get_report(
-                report_id=report_id,
-                filter="levels=hmlg apply_overrides=0 rows=-1 min_qod=70 sort-reverse=severity notes=1 overrides=1",
-                details=1,
-                ignore_pagination=1
-            )
-
-            # result = gmp_cnx.get_results(filter="task_id={} levels=hmlg apply_overrides=0 rows=-1 min_qod=70 sort-reverse=severity notes=1 overrides=1".format(task_id), details=1, override_details=1, note_details=1)
-            # result = gmp_cnx.get_results(filter="report_id={} task_id={} levels=hmlg apply_overrides=0 rows=-1 min_qod=70 sort-reverse=severity notes=1 overrides=1".format(report_id, task_id), details=1, override_details=1, note_details=1)
-            # result = gmp_cnx.get_results(
-            #     # filter="report_id={} task_id={} levels=hmlg apply_overrides=0 rows=-1 min_qod=70 sort-reverse=severity notes=1 overrides=1".format(report_id, task_id),
-            #     filter="report_id={} levels=hmlg apply_overrides=0 rows=-1 min_qod=70 sort-reverse=severity notes=1 overrides=1".format(report_id),
-            #     task_id=task_id,
-            #     details=1,
-            #     override_details=1,
-            #     note_details=1
-            # )
+            result = gmp_cnx.get_reports(filter="report_id={} levels=hmlg apply_overrides=0 rows=-1 min_qod=70 sort-reverse=severity notes=1 overrides=1".format(report_id), details=1, override_details=1, note_details=1)
             result_file = open("results/openvas_report_{}_{}.xml".format(scan_id, assets_hash), "w")
             result_file.write(result)
             result_file.close()
 
         try:
-            tree = ET.parse("results/openvas_report_{}_{}.xml".format(scan_id, assets_hash))
+            # tree = ET.parse("results/openvas_report_{}_{}.xml".format(scan_id, assets_hash))
+            tree = ET.parse("results/openvas_report_1435_269f3ad4b67cc67860d1bcb0e5212c5eb05365c4.xml")
         except Exception as e:
             # No Element found in XML file
             app.logger.error(e)
@@ -1189,12 +1144,9 @@ def get_report(scan_id):
 
         engine.scans[scan_id]['assets_map'] = assets_map
 
-        report = tree.getroot().find("report")  # Use with get_reports
-        # report = tree.getroot()  # Use with get_results
+        report = tree.getroot().find("report")
         for result in report.findall('.//result'):
             try:
-                if result.find("host") is None:
-                    continue
                 host_ip = result.find("host").text
                 host_name = result.find("host").find("hostname")
 
@@ -1213,6 +1165,85 @@ def get_report(scan_id):
 
     connection.disconnect()
     return issues
+
+
+def get_report_debug():
+    """Get report."""
+    issues = []
+    try:
+        # tree = ET.parse("results/openvas_report_{}_{}.xml".format(scan_id, assets_hash))
+        tree = ET.parse("results/openvas_report_1435_269f3ad4b67cc67860d1bcb0e5212c5eb05365c4.xml")
+    except Exception as e:
+        # No Element found in XML file
+        app.logger.error(e)
+
+    # Build the asset mapping
+    assets_map = {}
+    for asset in ["140.77.167.64"]:
+        asset_datatype = "fqdn"
+        siblings = [asset]
+        if is_domain(asset):
+            asset_datatype = "domain"
+        elif is_ip(asset):
+            asset_datatype = "ip"
+        elif is_ip_subnet(asset):
+            asset_datatype = "ip-subnet"
+            siblings += subnet_ips(asset)
+        elif is_ip_range(asset):
+            asset_datatype = "ip-range"
+            siblings += range_ips(asset)
+        else:
+            # Let's suppose it's a fqdn then...
+            try:
+                records = query(asset).response.answer[0].items
+                for record in records:
+                    siblings.append(record.address)
+            except Exception as e:
+                # What is that thing ?
+                app.logger.error(e)
+                pass
+
+        assets_map.update({
+            asset: {
+                'siblings': list(set(siblings)),
+                'datatype': asset_datatype,
+                'has_issues': False
+            }
+        })
+
+    print("assets_map:", assets_map)
+    # engine.scans[scan_id]['assets_map'] = assets_map
+
+    report = tree.getroot().find("report")
+    for result in report.findall('.//result'):
+        print(result)
+        try:
+            host_ip = result.find("host").text
+            host_name = result.find("host").find("hostname")
+
+            for a in assets_map.keys():
+                print("host_ip:", host_ip, "host_name:", host_name, "siblings:", assets_map[a]['siblings'])
+                if host_ip in assets_map[a]['siblings']:
+                    issues.append(result)
+                    # engine.scans[scan_id]['assets_map'][a]['has_issues'] = True
+                    assets_map[a]['has_issues'] = True
+                    # print("engine.scans[scan_id]['assets_map'][a]['has_issues'] = True")
+                elif host_name is not None and host_name.text in assets_map[a]['siblings']:
+                    issues.append(result)
+                    # engine.scans[scan_id]['assets_map'][a]['has_issues'] = True
+                    assets_map[a]['has_issues'] = True
+                    # print("engine.scans[scan_id]['assets_map'][a]['has_issues'] = True")
+
+        except Exception as e:
+            # probably unknown issue's host, skip it
+            app.logger.error("Warning: failed to process issue: {}".format(ET.tostring(result, encoding='utf8', method='xml')))
+            app.logger.error(e)
+
+    print("issues:", issues)
+    print("assets_map:", assets_map)
+
+    # connection.disconnect()
+    return issues, ["140.77.167.64"], assets_map
 
 
 def _parse_results(scan_id):
@@ -1266,26 +1297,20 @@ def _parse_results(scan_id):
     titles = []
     for result in engine.scans[scan_id]["findings"]:
         try:
-            if result.find("nvt") is None:
-                continue
             # Do not report an outdated or end-of-life scan engine
-            if result.find("nvt") is not None and "Report outdated" in result.find("nvt").find("name").text:
+            if "Report outdated" in result.find("nvt").find("name").text:
                 continue
-            if result.find("nvt") is not None and "Important Announcement" in result.find("nvt").find("name").text:
+            if "Important Announcement" in result.find("nvt").find("name").text:
                 continue
 
-            if result.find("severity") is not None:
-                severity = float(result.find("severity").text)
-            else:
-                severity = 'info'
-            cve = []
+            severity = float(result.find("severity").text)
+            cve = "NOCVE"
             if result.find("nvt").find("cve") is not None:
-                cve = [result.find("nvt").find("cve").text]
+                cve = result.find("nvt").find("cve").text
             threat = result.find("threat").text
             cvss_base = result.find("nvt").find("cvss_base").text
             name = result.find("nvt").find("name").text
             tags = result.find("nvt").find("tags").text
-            refs = result.find("nvt").find("refs")
             xmlDesc = result.find("description").text
             asset_port = result.find("port").text
             asset_port_number, asset_port_protocol = split_port(asset_port)
@@ -1334,16 +1359,11 @@ def _parse_results(scan_id):
             # update vulns counters
             nb_vulns[criticity] += 1
 
-            # CVE
-            if (refs):
-                for ref in refs.findall('ref'):
-                    if ref.attrib['type'] == 'cve':
-                        cve.append(ref.attrib['id'])
-
             # form description
-            description = "[{}] CVSS: {}\n\n".format(threat, severity)
-            if len(cve) > 0:
-                description += "Associated CVE: {}\n\n".format(", ".join(cve))
+            description = "[{threat}] CVSS: {severity} - Associated CVE: {cve}".format(
+                threat=threat,
+                severity=severity,
+                cve=cve) + "\n\n"
 
             if (xmlDesc):
                 description += xmlDesc + "\n\n"
@@ -1361,9 +1381,9 @@ def _parse_results(scan_id):
                 "vuln_refs": {}
             }
             # CVE
-            if len(cve) > 0:
+            if cve != "NOCVE":
                 finding_metadata.update({
-                    "vuln_refs": {"CVE": cve}
+                    "vuln_refs": {"CVE": [cve]}
                 })
 
             # CPE
@@ -1417,8 +1437,220 @@ def _parse_results(scan_id):
             # probably unknown issue's host, skip it
             app.logger.error("Warning: failed to process issue: {}".format(ET.tostring(result, encoding='utf8', method='xml')))
             app.logger.error(e)
-            if hasattr(e, 'message'):
-                app.logger.error(e.message)
+
+    summary = {
+        "nb_issues": len(issues),
+        "nb_info": nb_vulns["info"],
+        "nb_low": nb_vulns["low"],
+        "nb_medium": nb_vulns["medium"],
+        "nb_high": nb_vulns["high"],
+        "nb_critical": nb_vulns["critical"],
+        "engine_name": "openvas",
+        "engine_version": engine.scanner["version"]
+    }
+
+    return issues, summary
+
+
+def _parse_results_debug(findings, assets, assets_map):
+    issues = []
+    summary = {}
+
+    nb_vulns = {
+        "info": 0,
+        "low": 0,
+        "medium": 0,
+        "high": 0,
+        "critical": 0
+    }
+    timestamp = int(time.time() * 1000)
+
+    # No issue
+    if findings == {}:
+        # for asset in engine.scans[scan_id]['assets']:
+        for asset in assets:
+            issues.append({
+                "issue_id": len(issues)+1,
+                "severity": "info", "confidence": "certain",
+                "target": {
+                    "addr": [asset],
+                    "protocol": "tcp"
+                },
+                "title": "No results found.",
+                "solution": "n/a",
+                "metadata": {},
+                "type": "openvas_report",
+                "timestamp": timestamp,
+                "description": "No results found during the scan.",
+            })
+
+    # for asset in engine.scans[scan_id]['assets_map'].keys():
+    for asset in assets_map.keys():
+        # if engine.scans[scan_id]['assets_map'][asset]['has_issues'] is False:
+        if assets_map[asset]['has_issues'] is False:
+            issues.append({
+                "issue_id": len(issues)+1,
+                "severity": "info", "confidence": "certain",
+                "target": {
+                    "addr": [asset],
+                    "protocol": "tcp"
+                },
+                "title": "No results found.",
+                "solution": "n/a",
+                "metadata": {},
+                "type": "openvas_report",
+                "timestamp": timestamp,
+                "description": "No results found during the scan.",
+            })
+
+    titles = []
+    # for result in engine.scans[scan_id]["findings"]:
+    for result in findings:
+        try:
+            # Do not report an outdated or end-of-life scan engine
+            if "Report outdated" in result.find("nvt").find("name").text:
+                continue
+            if "Important Announcement" in result.find("nvt").find("name").text:
+                continue
+
+            severity = float(result.find("severity").text)
+            cve = "NOCVE"
+            if result.find("nvt").find("cve") is not None:
+                cve = result.find("nvt").find("cve").text
+            threat = result.find("threat").text
+            cvss_base = result.find("nvt").find("cvss_base").text
+            name = result.find("nvt").find("name").text
+            tags = result.find("nvt").find("tags").text
+            xmlDesc = result.find("description").text
+            asset_port = result.find("port").text
+            asset_port_number, asset_port_protocol = split_port(asset_port)
+            solution = "n/a"
+            title = "{port} - {name}".format(port=asset_port, name=name)
+
+            # Remove duplicates
+            if title not in titles:
+                titles.append(title)
+            else:
+                continue
+
+            asset_name = result.find("host").text
+            asset_hostname = result.find("host").find("hostname")
+            asset_names = []
+            # for a in engine.scans[scan_id]['assets_map'].keys():
+            for a in assets_map.keys():
+                # if asset_name in engine.scans[scan_id]['assets_map'][a]['siblings']:
+                if asset_name in assets_map[a]['siblings']:
+                    # if engine.scans[scan_id]['assets_map'][a]['datatype'] in ['ip-range', 'ip-subnet']:
+                    if assets_map[a]['datatype'] in ['ip-range', 'ip-subnet']:
+                        asset_names.append(asset_name)
+                    else:
+                        asset_names.append(a)
+
+                # if asset_hostname is not None and asset_hostname.text in engine.scans[scan_id]['assets_map'][a]['siblings']:
+                if asset_hostname is not None and asset_hostname.text in assets_map[a]['siblings']:
+                    asset_names.append(asset_hostname.text)
+                    asset_names.append(asset_name)
+
+            if len(asset_names) == 0:
+                asset_names = [asset_name]
+
+            # Remove duplicates
+            asset_names = list(set(asset_names))
+
+            if name == "Services":
+                name = "Services - {}".format(xmlDesc)
+
+            if severity >= 0:
+                # form criticity
+                criticity = "high"
+                if severity == 0:
+                    criticity = "info"
+                elif severity < 4.0:
+                    criticity = "low"
+                elif severity < 7.0:
+                    criticity = "medium"
+
+            # update vulns counters
+            nb_vulns[criticity] += 1
+
+            # form description
+            description = "[{threat}] CVSS: {severity} - Associated CVE: {cve}".format(
+                threat=threat,
+                severity=severity,
+                cve=cve) + "\n\n"
+
+            if (xmlDesc):
+                description += xmlDesc + "\n\n"
+            if (tags):
+                description += tags.replace('|', '\n') + "\n\n"
+
+            # Solution
+            solution_data = re.search('\|solution=(.+?)\|', tags)
+            if solution_data and solution_data[0] != "|":
+                solution = solution_data.group(1)
+
+            #  metadata
+            finding_metadata = {
+                "risk": {"cvss_base_score": cvss_base},
+                "vuln_refs": {}
+            }
+            # CVE
+            if cve != "NOCVE":
+                finding_metadata.update({
+                    "vuln_refs": {"CVE": [cve]}
+                })
+
+            # CPE
+            try:
+                if name == "CPE Inventory":
+                    finding_metadata.update({
+                        "vuln_refs": {"CPE": [c.split("|")[1] for c in xmlDesc.split("\n")]}
+                    })
+            except Exception:
+                pass
+
+            try:
+                if name == "CPE Inventory":
+                    finding_metadata.update({
+                        "vuln_refs": {"CPE": [c.split("|")[1] for c in xmlDesc.split("\n\n")]}
+                    })
+            except Exception:
+                pass
+
+            # if (xmlDesc) and "CPE:" in str(xmlDesc):
+            #     print(xmlDesc)
+                # cpe_list = finding_metadata["vuln_refs"]["CPE"]
+                # for desc_line in xmlDesc.split("\n"):
+                #     if desc_line.startswith("CPE:"):
+                #         cpe_list.append(desc_line.split("\t")[1])
+                #
+                # finding_metadata.update({
+                #     "vuln_refs": {"CPE": cpe_list}
+                # })
+
+            # create issue
+            issues.append({
+                "issue_id": len(issues)+1,
+                "severity": criticity, "confidence": "certain",
+                "target": {
+                    "addr": asset_names,
+                    "protocol": asset_port_protocol
+                },
+                "title": title,
+                "solution": solution,
+                "metadata": finding_metadata,
+                "type": "openvas_report",
+                "timestamp": timestamp,
+                "description": description,
+            })
+            # print("new_issue", issues[-1])
+
+            xmlDesc = ""
+
+        except Exception as e:
+            # probably unknown issue's host, skip it
+            app.logger.error("Warning: failed to process issue: {}".format(ET.tostring(result, encoding='utf8', method='xml')))
+            app.logger.error(e)
 
     summary = {
         "nb_issues": len(issues),
@@ -1478,6 +1710,10 @@ def main():
     if not exists(APP_BASE_DIR+"/results"):
         makedirs(APP_BASE_DIR+"/results")
     _loadconfig()
+    findings, assets, assets_map = get_report_debug()
+    issues, summary = _parse_results_debug(findings, assets, assets_map)
+    print(summary)
+
     # resetcnx()
 #
 #
