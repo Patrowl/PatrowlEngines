@@ -41,7 +41,7 @@ APP_BASE_DIR = dirname(realpath(__file__))
 # UP_DOMAIN_CVSS = 7
 # PARENT_ASSET_CREATE_FINDING_CVSS = 1
 # PARENT_ASSET_CREATE_FINDING_CEIL = 0
-VERSION = "1.4.12"
+VERSION = "1.4.14"
 
 engine = PatrowlEngine(
     app=app,
@@ -447,7 +447,7 @@ def _parse_results(scan_id):
                 "issue_id": len(issues)+1,
                 "severity": get_criticity(0), "confidence": "certain",
                 "target": {"addr": [asset], "protocol": "http", "parent": asset},
-                "title": "Scan error: {}".format(content["scan_aborted"]),
+                "title": "Scan error: {}".format(content["scan_aborted"]).rstrip(),
                 "solution": "n/a",
                 "metadata": {"risk": {"cvss_base_score": 0}},
                 "type": "wpscan_report",
@@ -468,12 +468,11 @@ def _parse_results(scan_id):
                                 "issue_id": len(issues)+1,
                                 "severity": get_criticity(0), "confidence": "certain",
                                 "target": {"addr": [asset], "protocol": "http", "parent": asset},
-                                "title": "Header: {}".format(interesting_entry),
+                                "title": "Header: {}".format(interesting_entry).rstrip(),
                                 "solution": "n/a",
                                 "metadata": {"risk": {"cvss_base_score": 0}},
                                 "type": "wpscan_report",
                                 "timestamp": timestamp,
-                                # "description": json.dumps(interesting_finding, indent=4, sort_keys=True),
                                 "description": _parse_description(interesting_finding),
                             })
                             nb_vulns[get_criticity(0)] += 1
@@ -488,7 +487,6 @@ def _parse_results(scan_id):
                         "metadata": {"risk": {"cvss_base_score": 0}},
                         "type": "wpscan_report",
                         "timestamp": timestamp,
-                        # "description": json.dumps(interesting_finding, indent=4, sort_keys=True),
                         "description": _parse_description(interesting_finding),
                     })
                     nb_vulns[get_criticity(5)] += 1
@@ -498,12 +496,11 @@ def _parse_results(scan_id):
                         "issue_id": len(issues)+1,
                         "severity": get_criticity(0), "confidence": "certain",
                         "target": {"addr": [asset], "protocol": "http", "parent": asset},
-                        "title": "Interesting finding: {}".format(interesting_finding['type']),
+                        "title": "Interesting finding: {}".format(interesting_finding['type']).rstrip(),
                         "solution": "n/a",
                         "metadata": {"risk": {"cvss_base_score": 0}},
                         "type": "wpscan_report",
                         "timestamp": timestamp,
-                        # "description": json.dumps(interesting_finding, indent=4, sort_keys=True),
                         "description": _parse_description(interesting_finding),
                     })
                     nb_vulns[get_criticity(0)] += 1
@@ -514,12 +511,11 @@ def _parse_results(scan_id):
                 "issue_id": len(issues)+1,
                 "severity": get_criticity(0), "confidence": "certain",
                 "target": {"addr": [asset], "protocol": "http", "parent": asset},
-                "title": "Theme: {}".format(content["main_theme"]["slug"]),
+                "title": "Theme: {}".format(content["main_theme"]["slug"]).rstrip(),
                 "solution": "n/a",
                 "metadata": {"risk": {"cvss_base_score": 0}},
                 "type": "wpscan_report",
                 "timestamp": timestamp,
-                # "description": json.dumps(content["main_theme"], indent=4, sort_keys=True),
                 "description": _parse_description(content["main_theme"]),
             })
             nb_vulns[get_criticity(0)] += 1
@@ -531,12 +527,11 @@ def _parse_results(scan_id):
                     "issue_id": len(issues)+1,
                     "severity": get_criticity(8), "confidence": "certain",
                     "target": {"addr": [asset], "protocol": "http", "parent": asset},
-                    "title": "Theme {} vulnerability: {}".format(content["main_theme"]["slug"], vulnerability['title']),
+                    "title": "Theme {} vulnerability: {}".format(content["main_theme"]["slug"], vulnerability['title']).rstrip(),
                     "solution": "n/a",
                     "metadata": metadata,
                     "type": "wpscan_report",
                     "timestamp": timestamp,
-                    # "description": json.dumps(vulnerability, indent=4, sort_keys=True),
                     "description": _parse_description(vulnerability),
                 })
                 nb_vulns[get_criticity(8)] += 1
@@ -545,12 +540,11 @@ def _parse_results(scan_id):
                     "issue_id": len(issues)+1,
                     "severity": get_criticity(0), "confidence": "certain",
                     "target": {"addr": [asset], "protocol": "http", "parent": asset},
-                    "title": "Theme: {}".format(parent["slug"]),
+                    "title": "Theme: {}".format(parent["slug"]).rstrip(),
                     "solution": "n/a",
                     "metadata": {"risk": {"cvss_base_score": 0}},
                     "type": "wpscan_report",
                     "timestamp": timestamp,
-                    # "description": json.dumps(parent, indent=4, sort_keys=True),
                     "description": _parse_description(parent),
                 })
                 nb_vulns[get_criticity(0)] += 1
@@ -562,12 +556,11 @@ def _parse_results(scan_id):
                         "issue_id": len(issues)+1,
                         "severity": get_criticity(8), "confidence": "certain",
                         "target": {"addr": [asset], "protocol": "http", "parent": asset},
-                        "title": "Theme {} vulnerability: {}".format(parent["slug"], vulnerability['title']),
+                        "title": "Theme {} vulnerability: {}".format(parent["slug"], vulnerability['title']).rstrip(),
                         "solution": "n/a",
                         "metadata": metadata,
                         "type": "wpscan_report",
                         "timestamp": timestamp,
-                        # "description": json.dumps(vulnerability, indent=4, sort_keys=True),
                         "description": _parse_description(vulnerability),
                     })
                     nb_vulns[get_criticity(8)] += 1
@@ -579,12 +572,11 @@ def _parse_results(scan_id):
                     "issue_id": len(issues)+1,
                     "severity": get_criticity(0), "confidence": "certain",
                     "target": {"addr": [asset], "protocol": "http", "parent": asset},
-                    "title": "Plugin: {}".format(plugin_name),
+                    "title": "Plugin: {}".format(plugin_name).rstrip(),
                     "solution": "n/a",
                     "metadata": {"risk": {"cvss_base_score": 0}},
                     "type": "wpscan_report",
                     "timestamp": timestamp,
-                    # "description": json.dumps(content["plugins"][plugin_name], indent=4, sort_keys=True),
                     "description": _parse_description(content["plugins"][plugin_name]),
                 })
                 nb_vulns[get_criticity(0)] += 1
@@ -596,12 +588,11 @@ def _parse_results(scan_id):
                         "issue_id": len(issues)+1,
                         "severity": get_criticity(8), "confidence": "certain",
                         "target": {"addr": [asset], "protocol": "http", "parent": asset},
-                        "title": "Plugin {} vulnerability: {}".format(plugin_name, vulnerability['title']),
+                        "title": "Plugin {} vulnerability: {}".format(plugin_name, vulnerability['title']).rstrip(),
                         "solution": "n/a",
                         "metadata": metadata,
                         "type": "wpscan_report",
                         "timestamp": timestamp,
-                        # "description": json.dumps(vulnerability, indent=4, sort_keys=True),
                         "description": _parse_description(vulnerability),
                     })
                     nb_vulns[get_criticity(8)] += 1
@@ -613,12 +604,11 @@ def _parse_results(scan_id):
                     "issue_id": len(issues)+1,
                     "severity": get_criticity(0), "confidence": "certain",
                     "target": {"addr": [asset], "protocol": "http", "parent": asset},
-                    "title": "User: {}".format(user_name),
+                    "title": "User: {}".format(user_name).rstrip(),
                     "solution": "n/a",
                     "metadata": {"risk": {"cvss_base_score": 0}},
                     "type": "wpscan_report",
                     "timestamp": timestamp,
-                    # "description": json.dumps(content["users"][user_name], indent=4, sort_keys=True),
                     "description": _parse_description(content["users"][user_name]),
                 })
                 nb_vulns[get_criticity(0)] += 1
@@ -629,12 +619,11 @@ def _parse_results(scan_id):
                 "issue_id": len(issues)+1,
                 "severity": get_criticity(0), "confidence": "certain",
                 "target": {"addr": [asset], "protocol": "http", "parent": asset},
-                "title": "Version: {} [{}]".format(content["version"]["number"], content["version"]["release_date"]),
+                "title": "Version: {} [{}]".format(content["version"]["number"], content["version"]["release_date"]).rstrip(),
                 "solution": "n/a",
                 "metadata": {"risk": {"cvss_base_score": 0}},
                 "type": "wpscan_report",
                 "timestamp": timestamp,
-                # "description": json.dumps(content["version"], indent=4, sort_keys=True),
                 "description": _parse_description(content["version"]),
             })
             nb_vulns[get_criticity(0)] += 1
@@ -643,12 +632,11 @@ def _parse_results(scan_id):
                     "issue_id": len(issues)+1,
                     "severity": get_criticity(5), "confidence": "certain",
                     "target": {"addr": [asset], "protocol": "http", "parent": asset},
-                    "title": "Version {} [{}] is {}".format(content["version"]["number"], content["version"]["release_date"], content["version"]["status"]),
+                    "title": "Version {} [{}] is {}".format(content["version"]["number"], content["version"]["release_date"], content["version"]["status"]).rstrip(),
                     "solution": "n/a",
                     "metadata": {"risk": {"cvss_base_score": 0}},
                     "type": "wpscan_report",
                     "timestamp": timestamp,
-                    # "description": json.dumps(content["version"], indent=4, sort_keys=True),
                     "description": _parse_description(content["version"]),
                 })
                 nb_vulns[get_criticity(5)] += 1
@@ -660,12 +648,11 @@ def _parse_results(scan_id):
                     "issue_id": len(issues)+1,
                     "severity": get_criticity(8), "confidence": "certain",
                     "target": {"addr": [asset], "protocol": "http", "parent": asset},
-                    "title": "Wordpress version {} vulnerability: {}".format(content["version"]["number"], vulnerability['title']),
+                    "title": "Wordpress version {} vulnerability: {}".format(content["version"]["number"], vulnerability['title']).rstrip(),
                     "solution": "n/a",
                     "metadata": metadata,
                     "type": "wpscan_report",
                     "timestamp": timestamp,
-                    # "description": json.dumps(vulnerability, indent=4, sort_keys=True),
                     "description": _parse_description(vulnerability),
                 })
                 nb_vulns[get_criticity(8)] += 1
