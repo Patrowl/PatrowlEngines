@@ -2,7 +2,7 @@
 """
 WPSCAN PatrOwl engine application
 
-Copyright (C) 2020 Nicolas Mattiocco - @MaKyOtOx
+Copyright (C) 2021 Nicolas Mattiocco - @MaKyOtOx
 Licensed under the AGPLv3 License
 Written by Nicolas BEGUIER (nicolas.beguier@adevinta.com)
 """
@@ -24,6 +24,7 @@ from flask import Flask, request, jsonify
 from PatrowlEnginesUtils.PatrowlEngine import _json_serial
 from PatrowlEnginesUtils.PatrowlEngine import PatrowlEngine
 from PatrowlEnginesUtils.PatrowlEngineExceptions import PatrowlEngineExceptions
+from requests import Session
 
 # Debug
 # from pdb import set_trace as st
@@ -37,11 +38,8 @@ APP_PORT = 5023
 APP_MAXSCANS = int(os.environ.get('APP_MAXSCANS', 5))
 APP_ENGINE_NAME = "wpscan"
 APP_BASE_DIR = dirname(realpath(__file__))
-# CREATED_CERT_CVSS = 5
-# UP_DOMAIN_CVSS = 7
-# PARENT_ASSET_CREATE_FINDING_CVSS = 1
-# PARENT_ASSET_CREATE_FINDING_CEIL = 0
-VERSION = "1.4.14"
+SESSION = Session()
+VERSION = "1.4.16"
 
 engine = PatrowlEngine(
     app=app,
@@ -82,6 +80,29 @@ def get_criticity(score):
     elif score < 7.0:
         criticity = "medium"
     return criticity
+
+def get_api_token(api_token_list):
+    """
+    Returns the API key with the most credits
+    """
+    top_api_token = None
+    top_api_token_credits = 0
+    for api_token in api_token_list:
+        if not re.fullmatch("[a-zA-Z0-9]+", api_token):
+            continue
+        token_status_req = SESSION.get(
+            "https://wpscan.com/api/v3/status",
+            headers={"Authorization": f"Token token={api_token}"})
+        if token_status_req.status_code != 200:
+            continue
+        try:
+            requests_remaining = json.loads(token_status_req.text)["requests_remaining"]
+        except:
+            requests_remaining = 0
+        if requests_remaining > top_api_token_credits:
+            top_api_token = api_token
+            top_api_token_credits = requests_remaining
+    return top_api_token
 
 
 @app.errorhandler(404)
@@ -363,9 +384,10 @@ def _scan_urls(scan_id, asset):
     wpscan_cmd += " --output '{}'".format(engine.scans[scan_id]["reports"][asset]["report_path"])
     wpscan_cmd += " --format json"
 
-    # Add API Token if valid
-    if re.fullmatch("[a-zA-Z0-9]+", engine.scanner["options"]["APIToken"]["value"]):
-        wpscan_cmd += " --api-token '{}'".format(engine.scanner["options"]["APIToken"]["value"])
+    # Add API Token if credits remaining
+    api_token = get_api_token(engine.scanner["options"]["APIToken"]["value"])
+    if api_token is not None:
+        wpscan_cmd += " --api-token '{}'".format(api_token)
 
     # Extra args
     extra_args = engine.scanner["options"]["extra_args"]

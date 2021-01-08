@@ -1,5 +1,6 @@
 flask==1.1.2
 gunicorn==20.0.4
-PatrowlEnginesUtils>=0.0.12
-wheel
-psutil==5.7.2
+PatrowlEnginesUtils>=1.0.0
+psutil==5.8.0
+requests>=2.25.1
+wheel>=0.36.2
