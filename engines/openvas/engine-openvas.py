@@ -44,7 +44,7 @@ APP_BASE_DIR = dirname(realpath(__file__))
 # DEFAULT_OV_PROFILE = "Full and fast"
 # DEFAULT_OV_PORTLIST = "patrowl-all_tcp"
 DEFAULT_TIMEOUT = int(os.environ.get('DEFAULT_TIMEOUT', 600))
-DEFAULT_SCAN_TIMEOUT = int(os.environ.get('DEFAULT_SCAN_TIMEOUT', 21600)) # 6 hours
+DEFAULT_SCAN_TIMEOUT = int(os.environ.get('DEFAULT_SCAN_TIMEOUT', 432000)) # 2 days
 
 engine = PatrowlEngine(
     app=app,
@@ -1099,7 +1099,7 @@ def _scan_assets(scan_id):
 def get_report(scan_id):
     """Get report."""
     report_id = engine.scans[scan_id]["info"]["report_id"]
-    task_id = engine.scans[scan_id]["info"]["task_id"]
+    # task_id = engine.scans[scan_id]["info"]["task_id"]
     issues = []
 
     assets_hash = engine.scans[scan_id]["assets_hash"]
