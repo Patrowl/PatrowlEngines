@@ -1,10 +1,16 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""CertStream PatrOwl engine application."""
+"""
+CertStream PatrOwl engine application
+
+Copyright (C) 2021 Nicolas Mattiocco - @MaKyOtOx
+Licensed under the AGPLv3 License
+Written by Nicolas BEGUIER (nicolas.beguier@adevinta.com)
+"""
 
 from json import dump, dumps, load, loads
 from logging import getLogger
-from os import makedirs
+import os
 from os.path import dirname, exists, isfile, realpath
 from sys import argv, modules, path
 from threading import Thread
@@ -43,6 +49,7 @@ CREATED_CERT_CVSS = 5
 UP_DOMAIN_CVSS = 7
 PARENT_ASSET_CREATE_FINDING_CVSS = 1
 PARENT_ASSET_CREATE_FINDING_CEIL = 0
+VERSION = "1.4.15"
 
 engine = PatrowlEngine(
     app=app,
@@ -577,7 +584,7 @@ def getfindings(scan_id):
 def main():
     """First function called."""
     if not exists(APP_BASE_DIR+"/results"):
-        makedirs(APP_BASE_DIR+"/results")
+        os.makedirs(APP_BASE_DIR+"/results")
     _loadconfig()
     LOG.debug("Run engine")
 

@@ -1,10 +1,16 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""EyeWitness PatrOwl engine application."""
+"""
+EyeWitness PatrOwl engine application
+
+Copyright (C) 2021 Nicolas Mattiocco - @MaKyOtOx
+Licensed under the AGPLv3 License
+Written by Nicolas BEGUIER (nicolas.beguier@adevinta.com)
+"""
 
 from json import dump, load, loads
 from logging import getLogger
-from os import makedirs, listdir, walk
+import os
 from os.path import dirname, exists, realpath
 from re import search
 from subprocess import check_output, CalledProcessError, STDOUT
@@ -32,6 +38,7 @@ APP_ENGINE_NAME = "eyewitness"
 APP_BASE_DIR = dirname(realpath(__file__))
 COMPARE_CEIL = 25
 LOG = getLogger("werkzeug")
+VERSION = "1.4.15"
 
 ENGINE = PatrowlEngine(
     app=app,
@@ -77,9 +84,9 @@ def eyewitness_cmd(list_url, asset_id, scan_id, extra_opts):
     base_path = ENGINE.scanner["options"]["ScreenshotsDirectory"]["value"] + scan_id
     asset_base_path = base_path + "/" + str(asset_id)
     if not exists(base_path):
-        makedirs(base_path, mode=0o755)
+        os.makedirs(base_path, mode=0o755)
     if not exists(asset_base_path):
-        makedirs(asset_base_path, mode=0o755)
+        os.makedirs(asset_base_path, mode=0o755)
     count = 0
     for url in list_url:
         screenshot_base_path = asset_base_path + "/" + str(count)
@@ -88,7 +95,7 @@ def eyewitness_cmd(list_url, asset_id, scan_id, extra_opts):
         except Exception as err_msg:
             LOG.warning(err_msg)
             continue
-        screenshot_files = listdir(screenshot_base_path + "/screens")
+        screenshot_files = os.listdir(screenshot_base_path + "/screens")
         # Retry screenshot capture if previous fail
         if not screenshot_files:
             try:
@@ -117,7 +124,7 @@ def get_last_screenshot(current_path, asset_id, scan_id):
     last_scan_id = 0
     last_scan_path = current_path
     last_scan_url = ''
-    for root, _, files in walk(ENGINE.scanner["options"]["ScreenshotsDirectory"]["value"]):
+    for root, _, files in os.walk(ENGINE.scanner["options"]["ScreenshotsDirectory"]["value"]):
         if current_path.split("/")[-1] in files:
             _scan_id = int(root.split("/")[4])
             # Get the latest scan_id valid
@@ -154,10 +161,10 @@ def is_forsale(report_sources_path):
     Returns True if domain is for sale
     """
     if not exists(report_sources_path) or \
-        not listdir(report_sources_path) or \
+        not os.listdir(report_sources_path) or \
         "RulesForSale" not in ENGINE.scanner["options"]:
         return False
-    report_file_path = report_sources_path + listdir(report_sources_path)[0]
+    report_file_path = report_sources_path + os.listdir(report_sources_path)[0]
     report_file = open(report_file_path, 'r')
     report_content = report_file.read()
     report_file.close()
@@ -655,7 +662,7 @@ def getfindings(scan_id):
 def main():
     """First function called."""
     if not exists(APP_BASE_DIR+"/results"):
-        makedirs(APP_BASE_DIR+"/results")
+        os.makedirs(APP_BASE_DIR+"/results")
     _loadconfig()
     LOG.warning("Run engine")
 
