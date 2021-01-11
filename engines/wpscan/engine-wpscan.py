@@ -38,7 +38,6 @@ APP_PORT = 5023
 APP_MAXSCANS = int(os.environ.get('APP_MAXSCANS', 5))
 APP_ENGINE_NAME = "wpscan"
 APP_BASE_DIR = dirname(realpath(__file__))
-SESSION = Session()
 VERSION = "1.4.16"
 
 engine = PatrowlEngine(
@@ -85,14 +84,18 @@ def get_api_token(api_token_list):
     """
     Returns the API key with the most credits
     """
+    SESSION = Session()
     top_api_token = None
     top_api_token_credits = 0
     for api_token in api_token_list:
         if not re.fullmatch("[a-zA-Z0-9]+", api_token):
             continue
-        token_status_req = SESSION.get(
-            "https://wpscan.com/api/v3/status",
-            headers={"Authorization": f"Token token={api_token}"})
+        try:
+           token_status_req = SESSION.get(
+               "https://wpscan.com/api/v3/status",
+               headers={"Authorization": f"Token token={api_token}"})
+        except:
+            continue
         if token_status_req.status_code != 200:
             continue
         try:
@@ -386,6 +389,7 @@ def _scan_urls(scan_id, asset):
 
     # Add API Token if credits remaining
     api_token = get_api_token(engine.scanner["options"]["APIToken"]["value"])
+    LOG.warning(f"Token used is {api_token}")
     if api_token is not None:
         wpscan_cmd += " --api-token '{}'".format(api_token)
 
