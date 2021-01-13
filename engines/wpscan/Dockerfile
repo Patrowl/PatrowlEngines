@@ -34,14 +34,16 @@ RUN chown -R wpscan:wpscan /wpscan
 RUN apk add --no-cache libcurl procps sqlite-libs
 WORKDIR /wpscan
 
-USER wpscan
+# USER wpscan
 
 RUN /usr/local/bundle/bin/wpscan --update --verbose
 
 # -- Patrowl Engine
-FROM alpine:latest
-MAINTAINER Patrowl.io "getsupport@patrowl.io"
-LABEL Name="Wpscan\ \(Patrowl engine\)" Version="1.4.12"
+# FROM alpine:latest
+# MAINTAINER Patrowl.io "getsupport@patrowl.io"
+# LABEL Name="Wpscan\ \(Patrowl engine\)" Version="1.4.12"
+#
+# COPY --from=builderruby /usr/local/bundle/bin/wpscan /usr/bin/wpscan
 
 # Install dependencies
 RUN apk add --update --no-cache \
