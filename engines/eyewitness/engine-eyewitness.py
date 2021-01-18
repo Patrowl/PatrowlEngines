@@ -8,6 +8,7 @@ Licensed under the AGPLv3 License
 Written by Nicolas BEGUIER (nicolas.beguier@adevinta.com)
 """
 
+from datetime import datetime
 from json import dump, load, loads
 from logging import getLogger
 import os
@@ -38,7 +39,7 @@ APP_ENGINE_NAME = "eyewitness"
 APP_BASE_DIR = dirname(realpath(__file__))
 COMPARE_CEIL = 25
 LOG = getLogger("werkzeug")
-VERSION = "1.4.15"
+VERSION = "1.4.17"
 
 ENGINE = PatrowlEngine(
     app=app,
@@ -539,7 +540,7 @@ def _parse_results(scan_id):
         "medium": 0,
         "high": 0
     }
-    timestamp = int(time() * 1000)
+    timestamp = datetime.now()
 
     for asset in ENGINE.scans[scan_id]["findings"]:
         cvss_max = float(0)
