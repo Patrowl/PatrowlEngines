@@ -10,5 +10,5 @@ MarkupSafe==1.1.1
 requests==2.20.0
 urllib3>=1.23
 werkzeug>=0.15.6
-PatrowlEnginesUtils>=0.0.12
+PatrowlEnginesUtils>=1.0.1
 pythonping==1.0.5

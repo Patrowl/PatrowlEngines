@@ -49,13 +49,14 @@ CREATED_CERT_CVSS = 5
 UP_DOMAIN_CVSS = 7
 PARENT_ASSET_CREATE_FINDING_CVSS = 1
 PARENT_ASSET_CREATE_FINDING_CEIL = 0
-VERSION = "1.4.15"
+VERSION = "1.4.18"
 
 engine = PatrowlEngine(
     app=app,
     base_dir=APP_BASE_DIR,
     name=APP_ENGINE_NAME,
-    max_scans=APP_MAXSCANS
+    max_scans=APP_MAXSCANS,
+    version=VERSION
 )
 
 this = modules[__name__]

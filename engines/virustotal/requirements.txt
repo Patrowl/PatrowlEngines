@@ -11,4 +11,4 @@ requests==2.25.0
 urllib3>=1.25
 virustotal-api==1.1.7
 werkzeug>=0.15.6
-PatrowlEnginesUtils>=0.0.12
+PatrowlEnginesUtils>=1.0.1

@@ -1,6 +1,6 @@
 {
   "name": "EyeWitness API",
-  "version": "1.4.17",
+  "version": "1.4.18",
   "description": "EyeWitness API",
   "allowed_asset_types": ["fqdn", "ip", "domain"],
   "options": {
