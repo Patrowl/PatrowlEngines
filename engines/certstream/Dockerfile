@@ -1,6 +1,6 @@
 FROM alpine:latest
 MAINTAINER Patrowl.io "getsupport@patrowl.io"
-LABEL Name="CertStream\ \(Patrowl engine\)" Version="1.4.15"
+LABEL Name="CertStream\ \(Patrowl engine\)" Version="1.4.18"
 
 # Install dependencies
 RUN apk add --update \

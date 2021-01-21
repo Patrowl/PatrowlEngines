@@ -1,6 +1,6 @@
 FROM alpine:latest
 MAINTAINER Patrowl.io "getsupport@patrowl.io"
-LABEL Name="URLVoid\ \(Patrowl engine\)" Version="1.0.0"
+LABEL Name="URLVoid\ \(Patrowl engine\)" Version="1.4.18"
 
 # Create the target repo
 RUN mkdir -p /opt/patrowl-engines/urlvoid

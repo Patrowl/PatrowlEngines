@@ -33,12 +33,14 @@ APP_PORT = 5016
 APP_MAXSCANS = 5
 APP_ENGINE_NAME = "openvas"
 APP_BASE_DIR = dirname(realpath(__file__))
+VERSION = "1.4.18"
 
 engine = PatrowlEngine(
     app=app,
     base_dir=APP_BASE_DIR,
     name=APP_ENGINE_NAME,
-    max_scans=APP_MAXSCANS
+    max_scans=APP_MAXSCANS,
+    version=VERSION
 )
 
 this = modules[__name__]

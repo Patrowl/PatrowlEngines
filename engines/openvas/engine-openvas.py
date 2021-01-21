@@ -45,12 +45,14 @@ APP_BASE_DIR = dirname(realpath(__file__))
 # DEFAULT_OV_PORTLIST = "patrowl-all_tcp"
 DEFAULT_TIMEOUT = int(os.environ.get('DEFAULT_TIMEOUT', 600))
 DEFAULT_SCAN_TIMEOUT = int(os.environ.get('DEFAULT_SCAN_TIMEOUT', 432000)) # 2 days
+VERSION = "1.4.18"
 
 engine = PatrowlEngine(
     app=app,
     base_dir=APP_BASE_DIR,
     name=APP_ENGINE_NAME,
-    max_scans=APP_MAXSCANS
+    max_scans=APP_MAXSCANS,
+    version=VERSION
 )
 
 this = modules[__name__]

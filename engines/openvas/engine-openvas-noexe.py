@@ -33,12 +33,14 @@ APP_ENGINE_NAME = "openvas"
 APP_BASE_DIR = os.path.dirname(os.path.realpath(__file__))
 DEFAULT_OV_PROFILE = "Full and fast"
 DEFAULT_OV_PORTLIST = "patrowl-all_tcp"
+VERSION = "1.4.18"
 
 engine = PatrowlEngine(
     app=app,
     base_dir=APP_BASE_DIR,
     name=APP_ENGINE_NAME,
-    max_scans=APP_MAXSCANS
+    max_scans=APP_MAXSCANS,
+    version=VERSION
 )
 
 this = sys.modules[__name__]

@@ -39,13 +39,14 @@ APP_ENGINE_NAME = "eyewitness"
 APP_BASE_DIR = dirname(realpath(__file__))
 COMPARE_CEIL = 25
 LOG = getLogger("werkzeug")
-VERSION = "1.4.17"
+VERSION = "1.4.18"
 
 ENGINE = PatrowlEngine(
     app=app,
     base_dir=APP_BASE_DIR,
     name=APP_ENGINE_NAME,
-    max_scans=APP_MAXSCANS
+    max_scans=APP_MAXSCANS,
+    version=VERSION
 )
 
 def get_options(payload):

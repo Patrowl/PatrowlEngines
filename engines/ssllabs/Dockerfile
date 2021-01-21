@@ -1,6 +1,6 @@
 FROM alpine:latest
 MAINTAINER Patrowl.io "getsupport@patrowl.io"
-LABEL Name="SSL-Labs\ \(Patrowl engine\)" Version="1.0.1"
+LABEL Name="SSL-Labs\ \(Patrowl engine\)" Version="1.4.18"
 
 # Install dependencies
 RUN apk add --update --no-cache \

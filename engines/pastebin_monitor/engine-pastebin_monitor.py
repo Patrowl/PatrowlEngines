@@ -25,13 +25,15 @@ APP_MAXSCANS = int(os.environ.get('APP_MAXSCANS', 5))
 APP_ENGINE_NAME = 'pastebin_monitor'
 APP_DBNAME = 'database.db'
 APP_BASE_DIR = os.path.dirname(os.path.realpath(__file__))
+VERSION = "1.4.18"
 
 app = Flask(__name__)
 engine = PatrowlEngine(
     app=app,
     base_dir=APP_BASE_DIR,
     name=APP_ENGINE_NAME,
-    max_scans=APP_MAXSCANS
+    max_scans=APP_MAXSCANS,
+    version=VERSION
 )
 
 

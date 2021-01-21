@@ -8,4 +8,4 @@ PyGithub==1.37
 PyJWT==1.6.0
 twitter==1.18.0
 werkzeug>=0.15.6
-PatrowlEnginesUtils>=0.0.12
+PatrowlEnginesUtils>=1.0.1

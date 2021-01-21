@@ -1,6 +1,6 @@
 {
     "name": "PastebinMonitor",
-    "version": "0.0.3",
+    "version": "1.4.18",
     "description": "PastebinMonitor PatrOwl engine to crawl pastebin with or without API key with a proxy list.",
     "allowed_asset_types": [
         "fqdn",
