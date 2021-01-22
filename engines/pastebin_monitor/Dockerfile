@@ -1,7 +1,7 @@
 FROM alpine:latest
 MAINTAINER Patrowl.io "getsupport@patrowl.io"
 
-LABEL Name="PastebinMonitor\ \(Patrowl engine\)" Version="1.4.18"
+LABEL Name="PastebinMonitor\ \(Patrowl engine\)" Version="1.4.19"
 
 # Install dependencies
 RUN apk add --update --no-cache \
