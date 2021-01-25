@@ -223,7 +223,6 @@ def start_scan():
     database.exec('DELETE FROM patrowl_assets;')
 
     for asset in engine.scans[scan_id]['assets']:
-        engine.scanner['assets'].update({asset['value']: asset['criticity']})
         database.exec('INSERT INTO patrowl_assets(asset, criticity) \
                         VALUES (?, ?);', (asset['value'], asset['criticity']))
 

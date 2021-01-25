@@ -36,23 +36,27 @@ def find_assets(link):
     if len(SCRAPPED_URLS) > 5000:
         SCRAPPED_URLS.clear()
 
-    html_source = crawler.get_source(link)
     assets = database.fetchall('SELECT id, asset, criticity from patrowl_assets')
-    for asset in assets:
-        criticity = asset[2]
-        search = re.findall(f"{asset.lower()}", html_source.lower())
-        if len(search) > 0:
-            data = database.fetchall('SELECT id from findings WHERE link = ?', (link,))
-            if not data:
-                logging.info(f"ALERT FOUND ON: {link} / Criticity: {criticity}")
-                logging.info(f"=== Content: ===\r\n{html_source}")
+    if assets:
+        html_source = crawler.get_source(link)
+        for asset in assets:
+            criticity = asset[2]
+            asset_name = asset[1].lower()
+            html = str(html_source).lower()
+            search = re.findall("{}".format(asset_name), html)
+            if len(search) > 0:
+                data = database.fetchall('SELECT id from findings WHERE link = ?', (link,))
+                if not data:
+                    logging.info("ALERT FOUND ON: {} / Criticity: {}".format(link, criticity))
+                    logging.info("=== Content: ===\r\n{}".format(html))
 
-                database.exec('INSERT INTO findings(asset, link, content, criticity, \
-                            is_new, date_found, date_updated) \
-                            VALUES (?, ?, ?, ?, ?, ?, ?);',
-                            (asset, link, html_source, criticity, 1,
-                            datetime.datetime.now(), datetime.datetime.now(),))
-    SCRAPPED_URLS.append(link)
+                    database.exec('INSERT INTO findings(asset, link, content, criticity, \
+                                is_new, date_found, date_updated) \
+                                VALUES (?, ?, ?, ?, ?, ?, ?);',
+                                (asset_name, link, html, criticity, 1,
+                                datetime.datetime.now(), datetime.datetime.now(),))
+
+        SCRAPPED_URLS.append(link)
 
 def crawl_ideone():
     '''Crawl ideone.com'''
@@ -70,7 +74,6 @@ def crawl_kpaste():
     '''Crawl kpaste.net'''
     src = crawler.get_source('https://kpaste.net/')
     data = src.find('div', attrs={'class': 'p'}).findAll('a')
-    print(data)
     for link in data:
         link = link['href']
         if link != '/':

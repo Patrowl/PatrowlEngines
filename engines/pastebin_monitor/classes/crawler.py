@@ -59,13 +59,11 @@ class Crawler():
         '''Perform GET request.'''
         try:
             self.logger.info(f"url: {url}")
-
             data = SESSION.get(url,
                headers={'user-agent': f"{self.get_random_user_agent()}"},
                proxies=self.proxy,
                verify=False,
                timeout=self.timeout, allow_redirects=False)
-            self.logger.debug(data)
             return data
         except (requests.exceptions.ConnectTimeout, requests.exceptions.ReadTimeout):
             if self.proxy is not None:
