@@ -1,67 +1,44 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""
+'''
 PastebinMonitor PatrOwl engine to crawl pastebin with or without API key
 with a proxy list.
-"""
+
+MIT License
+
+Copyright (c) 2020 Yann Faure - Leboncoin
+'''
 
 import os
 import sys
 import json
 import time
-import sqlite3
 import datetime
 import logging
 from flask import Flask, request, jsonify, redirect, url_for
 from PatrowlEnginesUtils.PatrowlEngine import PatrowlEngine
 from PatrowlEnginesUtils.PatrowlEngineExceptions import PatrowlEngineExceptions
 
-logging.basicConfig(level=logging.INFO)
+from classes.database import Database
+
+logging.basicConfig(level=logging.DEBUG)
+
+database = Database('database.db')
 
 APP_DEBUG = False
 APP_HOST = '0.0.0.0'
 APP_PORT = 3000
 APP_MAXSCANS = int(os.environ.get('APP_MAXSCANS', 5))
 APP_ENGINE_NAME = 'pastebin_monitor'
-APP_DBNAME = 'database.db'
 APP_BASE_DIR = os.path.dirname(os.path.realpath(__file__))
-VERSION = "1.4.18"
 
 app = Flask(__name__)
 engine = PatrowlEngine(
     app=app,
     base_dir=APP_BASE_DIR,
     name=APP_ENGINE_NAME,
-    max_scans=APP_MAXSCANS,
-    version=VERSION
+    max_scans=APP_MAXSCANS
 )
-
-
-def sql_exec(req, args=None):
-    '''Execute a sql request'''
-    conn = sqlite3.connect(APP_DBNAME)
-    sql = conn.cursor()
-    if args is None:
-        sql.execute(req)
-    else:
-        sql.execute(req, args)
-    conn.commit()
-    conn.close()
-
-
-def sql_fetchall(req, args=None):
-    '''Execute a sql request and fetchall'''
-    conn = sqlite3.connect(APP_DBNAME)
-    sql = conn.cursor()
-    if args is None:
-        sql.execute(req)
-    else:
-        sql.execute(req, args)
-    conn.commit()
-    data = sql.fetchall()
-    conn.close()
-    return data
-
 
 @app.errorhandler(404)
 def page_not_found(error):
@@ -80,48 +57,61 @@ def handle_invalid_usage(error):
 
 @app.route('/')
 def default():
+    '''default'''
     return redirect(url_for('index'))
 
 
 @app.route('/engines/pastebin_monitor/')
 def index():
+    '''index'''
     return jsonify({"page": "index"})
 
 
 @app.route('/engines/pastebin_monitor/liveness')
 def liveness():
+    '''liveness'''
     return engine.liveness()
 
 
 @app.route('/engines/pastebin_monitor/readiness')
 def readiness():
+    '''readiness'''
     return engine.readiness()
-
 
 @app.route('/engines/pastebin_monitor/test')
 def test():
+    '''test'''
     return engine.test()
-
 
 @app.route('/engines/pastebin_monitor/info')
 def info():
+    '''info'''
     return engine.info()
-
 
 @app.route('/engines/pastebin_monitor/clean')
 def clean():
+    '''clean'''
     return engine.clean()
-
 
 @app.route('/engines/pastebin_monitor/clean/<scan_id>')
 def clean_scan(scan_id):
+    '''clean_scan'''
     return engine.clean_scan(scan_id)
-
 
 @app.route('/engines/pastebin_monitor/status')
 def status():
+    '''status'''
     return engine.getstatus()
 
+@app.route('/engines/pastebin_monitor/stopscans')
+def stop():
+    '''stop'''
+    return engine.stop()
+
+@app.route('/engines/pastebin_monitor/stop/<scan_id>')
+def stop_scan(scan_id):
+    '''stop_scan'''
+    return engine.stop_scan(scan_id)
 
 @app.route('/engines/pastebin_monitor/status/<scan_id>')
 def status_scan(scan_id):
@@ -134,19 +124,7 @@ def status_scan(scan_id):
 
     res.update({'status': 'FINISHED'})
     engine.scans[scan_id]['status'] = 'FINISHED'
-
     return jsonify(res)
-
-
-@app.route('/engines/pastebin_monitor/stopscans')
-def stop():
-    return engine.stop()
-
-
-@app.route('/engines/pastebin_monitor/stop/<scan_id>')
-def stop_scan(scan_id):
-    return engine.stop_scan(scan_id)
-
 
 @app.route('/engines/pastebin_monitor/getreport/<scan_id>')
 def getreport(scan_id):
@@ -161,13 +139,13 @@ def getreport(scan_id):
         return jsonify(result)
     return jsonify(res)
 
-
 @app.route('/engines/pastebin_monitor/getfindings/<scan_id>')
 def getfindings(scan_id):
     '''Get findings on finished scans.'''
     res = {'page': 'getfindings', 'scan_id': scan_id}
 
-    data = sql_fetchall('SELECT id, asset, link, content, criticity, is_new, date_found, date_updated FROM findings')
+    data = database.fetchall('SELECT id, asset, link, content, criticity, \
+                                is_new, date_found, date_updated FROM findings')
 
     issues = []
     links = []
@@ -184,11 +162,13 @@ def getfindings(scan_id):
                 "metadata": {"risk": {"criticity": row[4]}, "links": links},
                 "type": "pastebin_monitor_report",
                 "timestamp": int(time.time() * 1000),
-                "description": "[{}] The asset '{}' is available on this pastebin link: {}\n\nContent:\n\n{}"
+                "description": "[{}] The asset '{}' is available on this link: {}\n\nContent:\n\n{}"
                                .format(row[6], row[1], row[2], row[3]),
             })
 
-            sql_exec('UPDATE findings SET is_new = ?, date_updated = ? WHERE id = ?', (0, datetime.datetime.now(), row[0]))
+            database.exec('UPDATE findings \
+                SET is_new = ?, date_updated = ? WHERE id = ?',
+                (0, datetime.datetime.now(), row[0]))
 
     nb_vulns = {
         "info": 0,
@@ -227,7 +207,6 @@ def getfindings(scan_id):
 
     return jsonify(res)
 
-
 @app.route('/engines/pastebin_monitor/startscan', methods=['POST'])
 def start_scan():
     '''Start a new scan.'''
@@ -241,17 +220,15 @@ def start_scan():
 
     engine.scans[scan_id]['status'] = 'SCANNING'
 
-    for asset in engine.scans[scan_id]['assets']:
-        engine.scanner['assets'].update({asset['value']: asset['criticity']})
+    database.exec('DELETE FROM patrowl_assets;')
 
-    file = open('pastebin_monitor.json', 'w')
-    file.write(json.dumps(engine.scanner, indent=4))
-    file.close()
+    for asset in engine.scans[scan_id]['assets']:
+        database.exec('INSERT INTO patrowl_assets(asset, criticity) \
+                        VALUES (?, ?);', (asset['value'], asset['criticity']))
 
     res.update({'status': 'accepted', 'details': {'scan_id': scan_id}})
 
     return jsonify(res)
-
 
 def _loadconfig():
     '''Load the Engine configuration.'''
@@ -265,14 +242,13 @@ def _loadconfig():
         return {"status": "success"}
     return {"status": "error", "reason": "config file not found"}
 
-
 @app.route('/engines/pastebin_monitor/reloadconfig')
 def reloadconfig():
+    '''reloadconfig'''
     res = {"page": "reloadconfig"}
     _loadconfig()
     res.update({"config": engine.scanner})
     return jsonify(res)
-
 
 if __name__ == '__main__':
     engine.run_app(app_debug=APP_DEBUG, app_host=APP_HOST, app_port=APP_PORT)
