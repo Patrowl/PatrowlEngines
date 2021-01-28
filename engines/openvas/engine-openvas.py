@@ -973,12 +973,19 @@ def _scan_assets(scan_id):
         scan_config_name = engine.scans[scan_id]["options"]["profile"]
 
     scan_config_id = get_scan_config(name=scan_config_name)
-    scan_portlist_id = this.openvas_portlists["OpenVAS Default"]
+    scan_portlist_id = None
+    if "OpenVAS Default" in this.openvas_portlists.keys():
+        scan_portlist_id = this.openvas_portlists["OpenVAS Default"]
     scan_portlist_name = ""
     if 'port_list' in scan["options"].keys():
         scan_portlist_name = scan["options"]["port_list"]
         if scan_portlist_name in this.openvas_portlists.keys():
             scan_portlist_id = this.openvas_portlists[scan_portlist_name]
+
+    if scan_portlist_id is None:
+        engine.scans[scan_id]['status'] = "ERROR"
+        engine.scans[scan_id]['reason'] = "Port list unknown ('OpenVAS Default' ?)"
+        return False
 
     options = get_options(scan)
 

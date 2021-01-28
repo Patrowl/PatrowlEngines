@@ -211,6 +211,7 @@ def status_scan(scan_id):
                         "cmd": engine.scans[scan_id]["reports"][asset]["proc_cmd"]}
                     }
             })
+
         elif psutil.pid_exists(proc.pid) and psutil.Process(proc.pid).status() == "zombie":
             psutil.Process(proc.pid).terminate()
 
