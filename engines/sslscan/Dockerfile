@@ -16,7 +16,7 @@ COPY sslscan.json.sample sslscan.json
 COPY requirements.txt .
 COPY README.md .
 
-WORKDIR /opt/patrowl-engines/sslscan/libs
+WORKDIR /opt/patrowl-engines/sslscan/external-libs
 RUN apk add --update --no-cache \
       build-base \
       linux-headers \
