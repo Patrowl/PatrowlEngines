@@ -24,4 +24,4 @@ RUN pip3 install --no-cache-dir --trusted-host pypi.python.org -r requirements.t
 EXPOSE 5004
 
 # Run the application when the container launches
-CMD ["gunicorn", "engine-ssllabs:app", "-b", "0.0.0.0:5004", "--timeout", "120", "--graceful-timeout", "60"]
+CMD ["gunicorn", "engine-ssllabs:app", "-b", "0.0.0.0:5004", "--timeout", "600", "--graceful-timeout", "60","--access-logfile", "-", "--log-file", "/opt/patrowl-engines/ssllabs/patrowlengine.ssllabs.log", "--log-level", "$LOGLEVEL", "--capture-output", "--log-syslog"]

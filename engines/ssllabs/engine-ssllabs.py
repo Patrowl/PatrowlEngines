@@ -382,21 +382,25 @@ def getfindings(scan_id):
     nb_vulns = {"info": 0, "low": 0, "medium": 0, "high": 0, "critical": 0}
 
     for host in scan["assets"]:
-        try:
-            r = requests.get(url=host["url"]+"&all=done", verify=False)
-            if r.status_code != 200:
+        tmp_status = "pending"
+        while tmp_status !="READY":
+            try:
+                r = requests.get(url=host["url"]+"&all=done", verify=False)
+                if r.status_code != 200:
+                    res.update({
+                        "status": "error",
+                        "reason": "something wrong with the API invokation"
+                    })
+                    return jsonify(res)
+            except Exception:
                 res.update({
                     "status": "error",
                     "reason": "something wrong with the API invokation"
                 })
                 return jsonify(res)
-        except Exception:
-            res.update({
-                "status": "error",
-                "reason": "something wrong with the API invokation"
-            })
-            return jsonify(res)
-
+            if "status" in json.loads(r.text):
+                tmp_status =json.loads(r.text)["status"]
+            time.sleep(20)
         tmp_issues, tmp_summary = _parse_report(
             results=json.loads(r.text),
             asset_name=host["host"],
