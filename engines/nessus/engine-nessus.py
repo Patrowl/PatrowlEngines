@@ -2,7 +2,8 @@
 # -*- coding: utf-8 -*-
 
 from nessrest import ness6rest, credentials
-from tinydb import TinyDB, Query
+from tinydb import TinyDB, Query, where
+from tinyrecord import transaction
 from flask import Flask, request, jsonify, redirect, url_for, send_from_directory
 from werkzeug.utils import secure_filename
 from urllib.parse import urlparse
@@ -29,7 +30,7 @@ BASE_DIR = os.path.dirname(os.path.realpath(__file__))
 UPLOAD_FOLDER = BASE_DIR + '/tmp'
 POLICY_FOLDER = BASE_DIR + '/etc'
 this = sys.modules[__name__]
-db = TinyDB('db.json')
+table = TinyDB('db.json').table('table')
 this.nessscan = None
 this.scanner = {}
 this.scans = {}
@@ -122,8 +123,7 @@ def getfindings(scan_id):
     res = {"page": "getfindings", "scan_id": scan_id}
     scan_id = str(scan_id)
 
-    scan = Query()
-    item = db.search(scan.scan_id == scan_id)
+    item = table.search(Query().scan_id == scan_id)
 
     if not item:
         res.update({"status": "error", "reason": "scan_id '{}' not found".format(scan_id)})
@@ -286,10 +286,9 @@ def start_scan():
     # @todo: validate parameters and options format
     res = {"page": "startscan"}
 
-    scan_q = Query()
 
     # check the scanner is ready to start a new scan
-    if db.count(scan_q.status == 'SCANNING') == APP_MAXSCANS:
+    if table.count(Query().status == 'SCANNING') == APP_MAXSCANS:
         res.update({
             "status": "error",
             "details": {
@@ -372,7 +371,8 @@ def start_scan():
         #         "findings": {}
         #     }
         # })
-        db.insert({
+        with transaction(table) as tr:
+            tr.insert({
                 "scan_id": scan_id,
                 "scan_name": scan_name,
                 "nessscan_id": this.nessscan.res["info"]["object_id"],
@@ -446,19 +446,21 @@ def start_scan():
         #         "findings": {}
         #     }
         # })
-        db.insert({
-                "scan_id": scan_id,
-                "scan_name": nessscan_name,
-                "nessscan_id": nessscan_id,
-                "nessus_scan_hid": nessus_scan_hid,
-                "nessscan_uuid": this.nessscan.res['scan_uuid'],
-                "options": post_args['options'],
-                "policy_name": policy_name,
-                "assets": post_args['assets'],
-                "status": "STARTED",
-                "started_at": int(time.time() * 1000),
-                "findings": {}
-        })
+
+        with transaction(table) as tr:
+            tr.insert({
+                    "scan_id": scan_id,
+                    "scan_name": nessscan_name,
+                    "nessscan_id": nessscan_id,
+                    "nessus_scan_hid": nessus_scan_hid,
+                    "nessscan_uuid": this.nessscan.res['scan_uuid'],
+                    "options": post_args['options'],
+                    "policy_name": policy_name,
+                    "assets": post_args['assets'],
+                    "status": "STARTED",
+                    "started_at": int(time.time() * 1000),
+                    "findings": {}
+            })
     res.update({"status": "accepted", "details": scan})
     return jsonify(res)
 
@@ -468,8 +470,7 @@ def stop_scan(scan_id):
     res = {"page": "stopscan"}
     scan_id = str(scan_id)
 
-    scan = Query()
-    item = db.search(scan.scan_id == scan_id)
+    item = table.search(Query().scan_id == scan_id)
 
     # todo: use this.scans and nessus_scan_id
     if not item:
@@ -484,8 +485,8 @@ def stop_scan(scan_id):
     if this.nessscan.res != {}:
         res.update({"status": "error", "reason": this.nessscan.res['error']})
         return jsonify(res)
-
-    db.update({"status": "STOPPED", "finished_at": int(time.time() * 1000)}, scan.scan_id == scan_id)
+    with transaction(table) as tr:
+            tr.update({"status": "STOPPED", "finished_at": int(time.time() * 1000)}, where('scan_id') == scan_id )
 
     res.update({"status": "success", "scan": item[0]})
     return jsonify(res)
@@ -507,7 +508,7 @@ def stop():
 @app.route('/engines/nessus/clean', methods=['GET'])
 def clean():
     res = {"page": "clean"}
-    db.truncate()
+    table.truncate()
     _loadconfig()
     return jsonify(res)
 
@@ -518,8 +519,7 @@ def clean_scan(scan_id):
     scan_id = str(scan_id)
     res.update({"scan_id": scan_id})
 
-    scan = Query()
-    item = db.search(scan.scan_id == scan_id)
+    item = table.search(Query().scan_id == scan_id)
 
     if not item:
         res.update({
@@ -528,18 +528,18 @@ def clean_scan(scan_id):
         return jsonify(res)
 
     #this.scans.pop(scan_id)
-    db.remove(scan.scan_id == scan_id)
+    with transaction(table) as tr:
+        tr.remove(where('scan_id') == scan_id)
     res.update({"status": "removed"})
     return jsonify(res)
 
 
 @app.route('/engines/nessus/status', methods=['GET'])
 def status():
-    scan_q = Query()
 
     res = {'page': 'status', "scans": this.scans}
 
-    if db.count(scan_q.status == 'SCANNING') == APP_MAXSCANS:
+    if table.count(Query().status == 'SCANNING') == APP_MAXSCANS:
         this.scanner['status'] = "BUSY"
         res.update({
             "status": "BUSY",
@@ -597,8 +597,7 @@ def status():
 def scan_status(scan_id):
     scan_id = str(scan_id)
 
-    scan = Query()
-    item = db.search(scan.scan_id == scan_id)
+    item = table.search(Query().scan_id == scan_id)
 
     if not item:
         return jsonify({
@@ -606,33 +605,33 @@ def scan_status(scan_id):
             "details": {"reason": "scan_id '{}' not found".format(scan_id)}})
 
     # @todo: directly access to the right entry
+    with transaction(table) as tr:
+        try:
+            this.nessscan.action(
+                action="scans/"+str(item[0]["nessscan_id"]),
+                method="GET")
 
-    try:
-        this.nessscan.action(
-            action="scans/"+str(item[0]["nessscan_id"]),
-            method="GET")
+            scan_status = this.nessscan.res
+            nessus_scan_status = 'unknown'
 
-        scan_status = this.nessscan.res
-        nessus_scan_status = 'unknown'
+            if 'info' in scan_status.keys():
+                nessus_scan_status = this.nessscan.res['info']['status']
+            elif 'status' in scan_status.keys():
+                nessus_scan_status = scan_status['status']
 
-        if 'info' in scan_status.keys():
-            nessus_scan_status = this.nessscan.res['info']['status']
-        elif 'status' in scan_status.keys():
-            nessus_scan_status = scan_status['status']
+            if item[0]['nessus_scan_hid'] is not None:
+                tr.update({'status': 'FINISHED'}, where('scan_id') == scan_id)
+            elif nessus_scan_status == 'completed':
+                tr.update({'status': 'FINISHED'}, where('scan_id') == scan_id)
+            elif nessus_scan_status in ['running', 'loading']:
+                tr.update({'status': 'SCANNING'}, where('scan_id') == scan_id)
+            elif nessus_scan_status == 'canceled':
+                tr.update({'status': 'STOPPED'}, where('scan_id') == scan_id)
+            else:
+                tr.update({'status': nessus_scan_status.upper()}, where('scan_id') == scan_id)
 
-        if item[0]['nessus_scan_hid'] is not None:
-            db.update({'status': 'FINISHED'}, scan.scan_id == scan_id)
-        elif nessus_scan_status == 'completed':
-            db.update({'status': 'FINISHED'}, scan.scan_id == scan_id)
-        elif nessus_scan_status in ['running', 'loading']:
-            db.update({'status': 'SCANNING'}, scan.scan_id == scan_id)
-        elif nessus_scan_status == 'canceled':
-            db.update({'status': 'STOPPED'}, scan.scan_id == scan_id)
-        else:
-            db.update({'status': nessus_scan_status.upper()}, scan.scan_id == scan_id)
-
-    except Exception:
-        db.update({'status': 'ERROR'}, scan.scan_id == scan_id)
+        except Exception:
+            tr.update({'status': 'ERROR'}, where('scan_id') == scan_id)
 
     return jsonify({
         "status": item[0]['status'],
@@ -656,8 +655,7 @@ def genreport(scan_id=None, report_format="html"):
     res = {"page": "genreport"}
     scan_id = str(scan_id)
 
-    scan = Query()
-    item = db.search(scan.scan_id == scan_id)
+    item = table.search(Query().scan_id == scan_id)
 
     if not item:
         return jsonify({
@@ -703,8 +701,7 @@ def getrawreports(scan_id=None, report_format="html"):
     res = {"page": "getreport"}
     scan_id = str(scan_id)
 
-    scan = Query()
-    item = db.search(scan.scan_id == scan_id)
+    item = table.search(Query().scan_id == scan_id)
 
     if not scan_id and not request.args.get("scan_id"):
         res.update({"status": "error", "details": {"reason": "'scan_id' arg is missing"}})
@@ -822,4 +819,4 @@ if __name__ == '__main__':
         default=APP_DEBUG)
 
     options, _ = parser.parse_args()
-    app.run(debug=options.debug, host=options.host, port=int(options.port))
+    app.run(debug=options.debug, host=options.host, port=int(options.port),processes=1)
