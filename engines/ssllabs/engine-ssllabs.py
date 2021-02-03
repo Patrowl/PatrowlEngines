@@ -532,8 +532,11 @@ def _parse_report(results, asset_name, asset_port):
         return issues, summary
 
     # validity / expiration dates
-    valid_from = datetime.datetime.fromtimestamp(endpoint["details"]["cert"]["notBefore"]/1000)
-    valid_to = datetime.datetime.fromtimestamp(endpoint["details"]["cert"]["notAfter"]/1000)
+    _cert = results["certs"][0]
+    # valid_from = datetime.datetime.fromtimestamp(endpoint["details"]["cert"]["notBefore"]/1000)
+    valid_from = datetime.datetime.fromtimestamp(_cert["notBefore"]/1000)
+    # valid_to = datetime.datetime.fromtimestamp(endpoint["details"]["cert"]["notAfter"]/1000)
+    valid_to = datetime.datetime.fromtimestamp(_cert["notAfter"]/1000)
     six_month_later = datetime.datetime.now() + datetime.timedelta(days=365/2)
     three_month_later = datetime.datetime.now() + datetime.timedelta(days=90)
     two_weeks_later = datetime.datetime.now() + datetime.timedelta(days=15)
@@ -556,7 +559,8 @@ def _parse_report(results, asset_name, asset_port):
             "metadata": {
                 "tags": ["ssl", "certificate", "tls", "validity"]
             },
-            "raw": endpoint["details"]["cert"]["notBefore"]
+            # "raw": endpoint["details"]["cert"]["notBefore"]
+            "raw": _cert["notBefore"]
         })
     elif today_date > valid_to:
         nb_vulns['high'] += 1
@@ -575,7 +579,8 @@ def _parse_report(results, asset_name, asset_port):
                 "tags": ["ssl", "certificate", "tls", "validity", "expiration"],
                 "links": [direct_link]
             },
-            "raw": endpoint["details"]["cert"]["notAfter"]
+            # "raw": endpoint["details"]["cert"]["notAfter"]
+            "raw": _cert["notAfter"]
         })
     elif valid_to < six_month_later:
         nb_vulns['low'] += 1
@@ -594,7 +599,8 @@ def _parse_report(results, asset_name, asset_port):
                 "tags": ["ssl", "certificate", "tls", "validity", "expiration"],
                 "links": [direct_link]
             },
-            "raw": endpoint["details"]["cert"]["notAfter"]
+            # "raw": endpoint["details"]["cert"]["notAfter"]
+            "raw": _cert["notAfter"]
         })
     elif valid_to < three_month_later:
         nb_vulns['medium'] += 1
@@ -613,7 +619,8 @@ def _parse_report(results, asset_name, asset_port):
                 "tags": ["ssl", "certificate", "tls", "validity", "expiration"],
                 "links": [direct_link]
             },
-            "raw": endpoint["details"]["cert"]["notAfter"]
+            # "raw": endpoint["details"]["cert"]["notAfter"]
+            "raw": _cert["notAfter"]
         })
     elif valid_to < two_weeks_later:
         nb_vulns['high'] += 1
@@ -632,7 +639,8 @@ def _parse_report(results, asset_name, asset_port):
                 "tags": ["ssl", "certificate", "tls", "validity", "expiration"],
                 "links": [direct_link]
             },
-            "raw": endpoint["details"]["cert"]["notAfter"]
+            # "raw": endpoint["details"]["cert"]["notAfter"]
+            "raw": _cert["notAfter"]
         })
 
     # grade
@@ -703,7 +711,8 @@ def _parse_report(results, asset_name, asset_port):
 
     # certificate_keysize
     details = endpoint["details"]
-    certificate_keysize = details["key"]["alg"] + " " + str(details["key"]["size"]) + " bits (strength = " + str(details["key"]["strength"]) + " bits)"
+    # certificate_keysize = details["key"]["alg"] + " " + str(details["key"]["size"]) + " bits (strength = " + str(details["key"]["strength"]) + " bits)"
+    certificate_keysize = _cert["keyAlg"] + " " + str(_cert["keySize"]) + " bits (strength = " + str(_cert["keyStrength"]) + " bits)"
     nb_vulns['info'] += 1
     issues.append({
         "issue_id": len(issues)+1,
@@ -718,27 +727,27 @@ def _parse_report(results, asset_name, asset_port):
             "tags": ["ssl", "certificate", "tls", "key", "keysize"],
             "links": [direct_link]
         },
-        "raw": details["key"]
+        "raw": _cert
     })
 
     # certificate_debianflaw
-    if "debianFlaw" in details["key"].keys() and details["key"]["debianFlaw"] is True:
-        nb_vulns['high'] += 1
-        issues.append({
-            "issue_id": len(issues)+1,
-            "severity": "high", "confidence": "certain",
-            "target": {"addr": [asset_name], "port_id": asset_port, "port_type": 'tcp'},
-            "title": "Certificate using a flawed key (bad SSL/SSH Debian keys)",
-            "description": "The provided certificate use a flawed key. See https://www.debian.org/security/2008/dsa-1571",
-            "type": "tls_certificate_debianflaw",
-            "solution": "Renew the RSA keys",
-            "timestamp": ts,
-            "metadata": {
-                "tags": ["ssl", "certificate", "tls", "key", "debian"],
-                "links": [direct_link]
-            },
-            "raw": details["key"]
-        })
+    # if "debianFlaw" in details["key"].keys() and details["key"]["debianFlaw"] is True:
+    #     nb_vulns['high'] += 1
+    #     issues.append({
+    #         "issue_id": len(issues)+1,
+    #         "severity": "high", "confidence": "certain",
+    #         "target": {"addr": [asset_name], "port_id": asset_port, "port_type": 'tcp'},
+    #         "title": "Certificate using a flawed key (bad SSL/SSH Debian keys)",
+    #         "description": "The provided certificate use a flawed key. See https://www.debian.org/security/2008/dsa-1571",
+    #         "type": "tls_certificate_debianflaw",
+    #         "solution": "Renew the RSA keys",
+    #         "timestamp": ts,
+    #         "metadata": {
+    #             "tags": ["ssl", "certificate", "tls", "key", "debian"],
+    #             "links": [direct_link]
+    #         },
+    #         "raw": details["key"]
+    #     })
 
     # supported_protocols
     protocols = [p["name"]+"/"+p["version"]for p in list(details["protocols"])]
@@ -798,15 +807,19 @@ def _parse_report(results, asset_name, asset_port):
     #    })
 
     ciphersuites_str = ""
-    for suite in list(details["suites"]["list"]):
-        ciphersuites_str = "".join((ciphersuites_str, "{} (Strength: {})\n".format(suite["name"], suite["cipherStrength"])))
+    # for suite in list(details["suites"]["list"]):
+    ciphersuites_cnt = 0
+    for suite in details["suites"]:
+        for suite_list in suite["list"]:
+            ciphersuites_str = "".join((ciphersuites_str, "{} (Strength: {})\n".format(suite_list["name"], suite_list["cipherStrength"])))
+            ciphersuites_cnt += 1
     ciphersuites_hash = hashlib.sha1(str(ciphersuites_str).encode('utf-8')).hexdigest()[:6]
     nb_vulns['info'] += 1
     issues.append({
         "issue_id": len(issues)+1,
         "severity": "info", "confidence": "certain",
         "target": {"addr": [asset_name], "port_id": asset_port, "port_type": 'tcp'},
-        "title": "Supported ciphersuites for '{}' (#: {}, HASH: {})".format(asset_name, len(details["suites"]["list"]), ciphersuites_hash),
+        "title": "Supported ciphersuites for '{}' (#: {}, HASH: {})".format(asset_name, ciphersuites_cnt, ciphersuites_hash),
         "description": "The following ciphersuites are accepted for securing SSL/TLS communication: \n{}".format(ciphersuites_str),
         "type": "tls_accepted_ciphersuites",
         "solution": "n/a",
@@ -815,7 +828,7 @@ def _parse_report(results, asset_name, asset_port):
             "tags": ["ssl", "certificate", "tls", "ciphersuites"],
             "links": [direct_link]
         },
-        "raw": details["suites"]["list"]
+        "raw": details["suites"]
     })
 
     summary = {
