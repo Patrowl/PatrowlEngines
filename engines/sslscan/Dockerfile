@@ -7,6 +7,7 @@ ENV CFLAGS "-D__USE_GNU"
 # Set the working directory
 RUN mkdir -p /opt/patrowl-engines/sslscan
 RUN mkdir -p /opt/patrowl-engines/sslscan/results
+# RUN mkdir -p /opt/patrowl-engines/sslscan/external-libs
 WORKDIR /opt/patrowl-engines/sslscan
 
 # Copy the current directory contents into the container at /
