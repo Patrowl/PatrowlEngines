@@ -12,3 +12,5 @@ urllib3>=1.25
 werkzeug>=0.15.6
 netaddr==0.7.19
 tinydb
+tinyrecord
+tinyrecord
