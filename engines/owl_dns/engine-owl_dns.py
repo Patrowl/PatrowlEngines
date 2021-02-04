@@ -571,8 +571,6 @@ def _parse_results(scan_id):
                 nb_vulns[dnstwist_issue['severity']] += 1
                 issues.append(dnstwist_issue)
 
-        #@todo: update nb_vulns
-
     # dns resolve
     if 'dns_resolve' in scan['findings'].keys():
         for asset in scan['findings']['dns_resolve'].keys():
