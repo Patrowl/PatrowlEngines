@@ -1,6 +1,6 @@
 ## Description
-Openvas REST API engine\
-v1.1.0-beta1
+Openvas REST API engine
+
 
 ## Dependencies
 - Python 3 + pip
@@ -8,8 +8,7 @@ v1.1.0-beta1
 - Install Python-gvm\
   `mkdir -p libs ; cd libs ; git clone git://github.com/greenbone/python-gvm ; pip3 install -e python-gvm`
 - You have to create a new task on OpenVAS and configure the task_id in openvas.json
-- OpenVAS instance. \
-  Eg: `docker run -d -p 443:443 -p 9390:9390 -e PUBLIC_HOSTNAME=<my_hostname> --name openvas mikesplain/openvas`
+- OpenVAS instance 20.08 (recommended): https://makyotox.medium.com/install-openvas-greenbone-20-08-on-ubuntu-20-04-8082c7eab67c
 
 ## Testing URLs
 
