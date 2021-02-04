@@ -9,7 +9,7 @@ future==0.17.1
 gunicorn==20.0.4
 idna==2.5
 itsdangerous==0.24
-Jinja2==2.10.1
+Jinja2==2.11.3
 MarkupSafe==1.1.1
 PatrowlEnginesUtils>=0.0.12
 python-whois==0.7.1
