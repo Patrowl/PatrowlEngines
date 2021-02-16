@@ -463,6 +463,15 @@ def _parse_report(filename, scan_id):
             "addr_type": addr_type,
         }
 
+        if has_hostnames:
+            for hostnames in host.findall('hostnames'):
+                for hostname in list(hostnames):
+                    res.append(deepcopy(_add_issue(scan_id, target, ts,
+                        "Host '{}' has ip: '{}'".format(hostname.get('name'),host.find('address').get('addr')),
+                        "The scan detected that the host {} has IP '{}'".format(hostname.get('name'), host.find('address').get('addr')),
+                        type="host_availability")))
+
+
         # Add the addr_list to identified_assets (post exec: spot unresolved assets)
         unidentified_assets = unidentified_assets.difference(set(addr_list))
 
@@ -492,6 +501,7 @@ def _parse_report(filename, scan_id):
 
         # get ports status - generate issues
         if host.find('ports') is not None:
+            openports = False
             for port in host.find('ports'):
                 # for port in host.find('ports'):
                 if port.tag == 'extraports':
@@ -505,7 +515,9 @@ def _parse_report(filename, scan_id):
                     "port_id": portid,
                     "port_state": port_state})
 
-                res.append(deepcopy(_add_issue(scan_id, target, ts,
+                if port_state not in ["filtered", "closed"]:
+                    openports = True
+                    res.append(deepcopy(_add_issue(scan_id, target, ts,
                     "Port '{}/{}' is {}".format(proto, portid, port_state),
                     "The scan detected that the port '{}/{}' was {}".format(
                         proto, portid, port_state),
@@ -574,6 +586,11 @@ def _parse_report(filename, scan_id):
                                 .format(script_id, script_output),
                             type="port_script",
                             tags=[script_id])))
+            if not openports:
+                res.append(deepcopy(_add_issue(scan_id, target, ts,
+                "All Ports are closed",
+                "The scan detected that all ports are closed or filtered",
+                type="port_status")))
 
         # get script results - generate issues
         if host.find('hostscript') is not None:
