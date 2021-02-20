@@ -208,6 +208,10 @@ def _scan_thread(scan_id):
                     with open(hosts_filename, 'a') as hosts_file:
                         for line in f:
                             hosts_file.write(line)
+        if opt_key == "min-rate":  # /!\ @todo / Security issue: Sanitize parameters here
+            cmd += " --min-rate {}".format(options.get(opt_key))
+        if opt_key == "max-rtt-timeout":  # /!\ @todo / Security issue: Sanitize parameters here
+            cmd += " --max-rtt-timeout {}".format(options.get(opt_key))
 
     cmd += " -iL " + hosts_filename
     app.logger.debug('cmd: %s', cmd)
