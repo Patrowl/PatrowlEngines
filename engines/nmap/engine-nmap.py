@@ -428,7 +428,10 @@ def _parse_report(filename, scan_id):
     else:
         ts = tree.getroot().get("start")
 
-    unidentified_assets = set([a["value"] for a in this.scans[scan_id]["assets"]])
+    unresolved_domains = set()
+    for a in this.scans[scan_id]["assets"]:
+        if a["datatype"] == "domain":
+            unresolved_domains.add(a["value"])
 
     for host in tree.findall('host'):
         #  get startdate of the host scan
@@ -473,7 +476,7 @@ def _parse_report(filename, scan_id):
 
 
         # Add the addr_list to identified_assets (post exec: spot unresolved assets)
-        unidentified_assets = unidentified_assets.difference(set(addr_list))
+        unresolved_domains = unresolved_domains.difference(set(addr_list))
 
         # get host status
         status = host.find('status').get('state')
@@ -612,14 +615,14 @@ def _parse_report(filename, scan_id):
                                     .format(script.get('id'), elem.get("key"), elem.text),
                                 type="host_script_advanced")))
 
-    for unidentified_asset in unidentified_assets:
+    for unresolved_domain in unresolved_domains:
         target = {
-            "addr": [unidentified_asset],
+            "addr": [unresolved_domain],
             "addr_type": "tcp",
         }
         res.append(deepcopy(_add_issue(scan_id, target, ts,
-            "Failed to resolve '{}'".format(unidentified_asset),
-            "The asset '{}' was not resolved by the engine.".format(unidentified_asset),
+            "Failed to resolve '{}'".format(unresolved_domain),
+            "The asset '{}' was not resolved by the engine.".format(unresolved_domain),
             type="nmap_error_unresolved")))
     return res
 
