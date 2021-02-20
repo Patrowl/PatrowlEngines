@@ -589,7 +589,7 @@ def _parse_report(filename, scan_id):
                                 .format(script_id, script_output),
                             type="port_script",
                             tags=[script_id])))
-            if not openports:
+            if not openports and this.scans[scan_id]["options"]["ports"] in ["-",'1-65535']: #only if all ports were scanned you can add the finding
                 res.append(deepcopy(_add_issue(scan_id, target, ts,
                 "All Ports are closed",
                 "The scan detected that all ports are closed or filtered",
