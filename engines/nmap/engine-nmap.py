@@ -484,12 +484,13 @@ def _parse_report(filename, scan_id):
 
         # get host status
         status = host.find('status').get('state')
-        if status and status == "up" and "no_ping" not in this.scans[scan_id]["options"].keys(): #if no_ping (-Pn) is used all hosts are always up even if they are not
-            res.append(deepcopy(_add_issue(scan_id, target, ts,
-                "Host '{}' is up".format(addr),
-                "The scan detected that the host {} was up".format(addr),
-                type="host_availability")))
-        elif "no_ping" not in this.scans[scan_id]["options"].keys():
+        if status and status == "up": #if no_ping (-Pn) is used all hosts are always up even if they are not
+            if "no_ping" in this.scans[scan_id]["options"].keys() and this.scans[scan_id]["options"]["no_ping"]=='0':
+                res.append(deepcopy(_add_issue(scan_id, target, ts,
+                    "Host '{}' is up".format(addr),
+                    "The scan detected that the host {} was up".format(addr),
+                    type="host_availability")))
+        else:
             res.append(deepcopy(_add_issue(scan_id, target, ts,
                 "Host '{}' is down".format(addr),
                 "The scan detected that the host {} was down".format(addr),
