@@ -135,7 +135,7 @@ def parse_report(report_filename, nessus_prefix, resolvefqdn=False):
 
                                 if param.tag == 'plugin_output':
                                     finding['raw'] = param.text
-                                    plugin_output = str(re.sub('\nDate:.*\n', '\n', str(param.text)))
+                                    plugin_output = str(re.sub('Scan Start Date:.*\n', '\n', str(param.text)))
                                     finding['description'] = finding['description'] + "\n\nScanner output:\n\n" + plugin_output
 
                             finding_hash = hashlib.sha1(str(finding['description']).encode("utf-8")).hexdigest()[:6]
