@@ -9,6 +9,6 @@ jsonschema==2.6.0
 MarkupSafe==1.1.1
 mistune==0.8.4
 PatrowlEnginesUtils>=1.0.1
-PyYAML==5.1.1
+PyYAML==5.4
 six==1.11.0
 werkzeug>=0.15.6
