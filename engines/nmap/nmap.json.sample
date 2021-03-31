@@ -26,6 +26,8 @@
 		"script": 	{ "type": "optional", "value": "--script"},
 		"script_args": 	{ "type": "optional", "value": "--script-args"},
 		"perfs": 	{ "type": "optional", "value": "--defeat-rst-ratelimit"},
+		"min-rate": { "type": "optional", "value": "--min-rate"},
+		"max-rtt-timeout": { "type": "optional", "value": "--max-rtt-timeout"},
 		"script_output_fields": {"type": "optional", "value": [""]}
 	}
 }

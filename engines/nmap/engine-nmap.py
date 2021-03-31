@@ -208,6 +208,10 @@ def _scan_thread(scan_id):
                     with open(hosts_filename, 'a') as hosts_file:
                         for line in f:
                             hosts_file.write(line)
+        if opt_key == "min-rate":  # /!\ @todo / Security issue: Sanitize parameters here
+            cmd += " --min-rate {}".format(options.get(opt_key))
+        if opt_key == "max-rtt-timeout":  # /!\ @todo / Security issue: Sanitize parameters here
+            cmd += " --max-rtt-timeout {}".format(options.get(opt_key))
 
     cmd += " -iL " + hosts_filename
     app.logger.debug('cmd: %s', cmd)
@@ -428,7 +432,14 @@ def _parse_report(filename, scan_id):
     else:
         ts = tree.getroot().get("start")
 
-    unidentified_assets = set([a["value"] for a in this.scans[scan_id]["assets"]])
+    unresolved_domains = set()
+    for a in this.scans[scan_id]["assets"]:
+        if a["datatype"] == "domain":
+            unresolved_domains.add(a["value"])
+    down_ips = set()
+    for a in this.scans[scan_id]["assets"]:
+        if a["datatype"] == "ip":
+            down_ips.add(a["value"])
 
     for host in tree.findall('host'):
         #  get startdate of the host scan
@@ -472,21 +483,10 @@ def _parse_report(filename, scan_id):
                         type="host_availability")))
 
 
-        # Add the addr_list to identified_assets (post exec: spot unresolved assets)
-        unidentified_assets = unidentified_assets.difference(set(addr_list))
-
-        # get host status
-        status = host.find('status').get('state')
-        if status and status == "up":
-            res.append(deepcopy(_add_issue(scan_id, target, ts,
-                "Host '{}' is up".format(addr),
-                "The scan detected that the host {} was up".format(addr),
-                type="host_availability")))
-        else:
-            res.append(deepcopy(_add_issue(scan_id, target, ts,
-                "Host '{}' is down".format(addr),
-                "The scan detected that the host {} was down".format(addr),
-                type="host_availability")))
+        # Add the addr_list to identified_assets (post exec: spot unresolved domains)
+        unresolved_domains = unresolved_domains.difference(set(addr_list))
+        # Add the addr_list to identified_assets (post exec: spot ips that are down. Not added to nmap xml if --open is used)
+        down_ips = down_ips.difference(set(addr_list))
 
         # get OS information
         if host.find('os') is not None:
@@ -499,9 +499,9 @@ def _parse_report(filename, scan_id):
                     type="host_osinfo",
                     confidence="undefined")))
 
+        openports = False
         # get ports status - generate issues
         if host.find('ports') is not None:
-            openports = False
             for port in host.find('ports'):
                 # for port in host.find('ports'):
                 if port.tag == 'extraports':
@@ -586,11 +586,30 @@ def _parse_report(filename, scan_id):
                                 .format(script_id, script_output),
                             type="port_script",
                             tags=[script_id])))
-            if not openports:
+            if not openports and "ports" in this.scans[scan_id]["options"].keys() and this.scans[scan_id]["options"]["ports"][0] in ["-",'1-65535']: #only if all ports were scanned you can add the finding
                 res.append(deepcopy(_add_issue(scan_id, target, ts,
                 "All Ports are closed",
                 "The scan detected that all ports are closed or filtered",
                 type="port_status")))
+
+        # get host status
+        status = host.find('status').get('state')
+        if openports: # There are open ports so it must be up
+            res.append(deepcopy(_add_issue(scan_id, target, ts,
+                                           "Host '{}' is up".format(addr),
+                                           "The scan detected that the host {} was up".format(addr),
+                                           type="host_availability")))
+        elif status and status == "up" and  "no_ping" in this.scans[scan_id]["options"].keys() and this.scans[scan_id]["options"]["no_ping"]=='0': #if no_ping (-Pn) is used all hosts are always up even if they are not
+            if "no_ping" in this.scans[scan_id]["options"].keys() and this.scans[scan_id]["options"]["no_ping"]=='0':
+                res.append(deepcopy(_add_issue(scan_id, target, ts,
+                    "Host '{}' is up".format(addr),
+                    "The scan detected that the host {} was up".format(addr),
+                    type="host_availability")))
+        else:
+            res.append(deepcopy(_add_issue(scan_id, target, ts,
+                "Host '{}' is down".format(addr),
+                "The scan detected that the host {} was down".format(addr),
+                type="host_availability")))
 
         # get script results - generate issues
         if host.find('hostscript') is not None:
@@ -612,15 +631,25 @@ def _parse_report(filename, scan_id):
                                     .format(script.get('id'), elem.get("key"), elem.text),
                                 type="host_script_advanced")))
 
-    for unidentified_asset in unidentified_assets:
+    for unresolved_domain in unresolved_domains:
         target = {
-            "addr": [unidentified_asset],
+            "addr": [unresolved_domain],
             "addr_type": "tcp",
         }
         res.append(deepcopy(_add_issue(scan_id, target, ts,
-            "Failed to resolve '{}'".format(unidentified_asset),
-            "The asset '{}' was not resolved by the engine.".format(unidentified_asset),
+            "Failed to resolve '{}'".format(unresolved_domain),
+            "The asset '{}' was not resolved by the engine.".format(unresolved_domain),
             type="nmap_error_unresolved")))
+    if "ports" in this.scans[scan_id]["options"].keys() and this.scans[scan_id]["options"]["ports"][0] in ["-",'1-65535']:
+        for down_ip in down_ips:
+            target = {
+                "addr": [down_ip],
+                "addr_type": "tcp",
+            }
+            res.append(deepcopy(_add_issue(scan_id, target, ts,
+                                           "Host '{}' is down".format(down_ip),
+                                           "The scan detected that the host {} was down".format(down_ip),
+                                           type="host_availability")))
     return res
 
 
@@ -750,7 +779,7 @@ def page_not_found(e):
 def main():
     if os.getuid() != 0:
         app.logger.error("Start the NMAP engine using root privileges !")
-        sys.exit(-1)
+#        sys.exit(-1)
     if not os.path.exists(BASE_DIR+"/results"):
         os.makedirs(BASE_DIR+"/results")
     if not os.path.exists(BASE_DIR+"/tmp"):
