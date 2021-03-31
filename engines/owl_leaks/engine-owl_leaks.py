@@ -8,6 +8,7 @@ Known ratio:
 """
 
 import os
+import time
 import threading
 from flask import Flask, request, jsonify
 from github import Github
@@ -201,10 +202,14 @@ def _search_github_thread(scan_id, asset_kw):
     #             except:
     #                 print "bad datetime format"
 
-    g = Github(engine.options["github_username"], engine.options["github_password"])  # rate limit = 30 requests/min
-    # g = Github(engine.options["github_api_token"])
+    # g = Github(engine.options["github_username"], engine.options["github_password"])  # rate limit = 30 requests/min
+    g = Github(engine.options["github_api_token"])
+    print(g.search_code("\'"+asset_kw+"\'", sort="indexed", order="desc").totalCount)
+    print(dir(g.search_code("\'"+asset_kw+"\'", sort="indexed", order="desc")))
 
+    loops = 0
     for git_code in g.search_code("\'"+asset_kw+"\'", sort="indexed", order="desc"):
+    # for git_code in g.search_commits("\'"+asset_kw+"\'", sort="committer-date", order="desc"):
         ititle = "File found in Github public repo (code): {}/{} (HASH: {})".format(
             git_code.name,
             git_code.repository.name, git_code.sha[:6])
@@ -229,6 +234,11 @@ def _search_github_thread(scan_id, asset_kw):
             confidence="firm", raw=git_code.raw_data, target_addrs=asset_values,
             meta_links=[git_code.html_url])
         findings.append(new_finding)
+
+        loops += 1
+        if loops % 20 == 0:
+            print("sleep !")
+            time.sleep(3)
 
     # for git_commit in g.search_commits("\'"+asset_kw+"\'", sort="indexed", order="desc"):
     #     print dir(git_commit)
@@ -255,7 +265,6 @@ def _search_github_thread(scan_id, asset_kw):
             confidence="firm", raw=git_issue.raw_data, target_addrs=asset_values,
             meta_links=[git_issue.html_url])
         findings.append(new_finding)
-
 
     for git_repo in g.search_repositories("\'"+asset_kw+"\'", sort="updated", order="desc"):
         ititle = "Matching public Github repo: {} (HASH: {})".format(

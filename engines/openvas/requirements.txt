@@ -12,7 +12,7 @@ gunicorn==20.0.4
 gvm-tools==20.10.1
 idna==2.5
 itsdangerous==0.24
-Jinja2==2.10.1
+Jinja2==2.11.3
 lxml==4.6.2
 MarkupSafe==1.1.1
 #openvas-lib==1.1.8
@@ -26,7 +26,7 @@ python-gvm==20.11.3
 requests==2.25.0
 six==1.12.0
 tomlkit==0.5.11
-urllib3==1.26.2
+urllib3==1.26.3
 Werkzeug==1.0.1
 netaddr==0.8.0
 validators
