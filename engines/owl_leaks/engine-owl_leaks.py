@@ -235,9 +235,9 @@ def _search_github_thread(scan_id, asset_kw):
             meta_links=[git_code.html_url])
         findings.append(new_finding)
 
+        # Ratio limit trick: wait 3 seconds each 20 iters
         loops += 1
         if loops % 20 == 0:
-            print("sleep !")
             time.sleep(3)
 
     # for git_commit in g.search_commits("\'"+asset_kw+"\'", sort="indexed", order="desc"):
