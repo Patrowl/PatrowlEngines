@@ -63,7 +63,7 @@ def reloadconfig():
 
 @app.route('/engines/owl_dns/startscan', methods=['POST'])
 def start_scan():
-    #@todo: validate parameters and options format
+    # @todo: validate parameters and options format
     res = {"page": "startscan"}
 
     # check the scanner is ready to start a new scan
@@ -677,8 +677,14 @@ def _parse_results(scan_id):
             subdomains_str = ""
             subdomains_list = sorted(set(scan['findings']['subdomains_list'][asset]))
             subdomains_list_clean = []
+
+            # Associate these findings to the asset or create new assets
+            create_new_assets = False
+            if 'subdomain_as_new_asset' in scan['options'].keys() and scan['options']['subdomain_as_new_asset']:
+                create_new_assets = True
+
             for subdomain in subdomains_list:
-                if any(x in subdomain for x in bad_str) or subdomain.replace(' ','') == '':
+                if any(x in subdomain for x in bad_str) or subdomain.replace(' ', '') == '':
                     continue
                 s = subdomain.replace("From http://PTRarchive.com: ", "")
                 subdomains_list_clean.append(s)
@@ -686,23 +692,42 @@ def _parse_results(scan_id):
 
                 # New issue when a subdomain is found
                 nb_vulns['info'] += 1
-                issues.append({
-                    "issue_id": len(issues)+1,
-                    "severity": "info", "confidence": "certain",
-                    "target": {
-                        "addr": [asset],
-                        "protocol": "domain"
+                if create_new_assets:
+                    issues.append({
+                        "issue_id": len(issues)+1,
+                        "severity": "info", "confidence": "certain",
+                        "target": {
+                            "addr": [s],
+                            "protocol": "domain"
                         },
-                    "title": "Subdomain found: {}".format(s),
-                    "description": "Subdomain found:\n\n{}".format(s),
-                    "solution": "n/a",
-                    "metadata": {
-                        "tags": ["domains", "subdomain"]
-                    },
-                    "type": "subdomain",
-                    "raw": s,
-                    "timestamp": ts
-                })
+                        "title": "Subdomain found: {}".format(s),
+                        "description": "Subdomain found:\n\n{}".format(s),
+                        "solution": "n/a",
+                        "metadata": {
+                            "tags": ["domains", "subdomain"]
+                        },
+                        "type": "subdomain",
+                        "raw": s,
+                        "timestamp": ts
+                    })
+                else:
+                    issues.append({
+                        "issue_id": len(issues)+1,
+                        "severity": "info", "confidence": "certain",
+                        "target": {
+                            "addr": [asset],
+                            "protocol": "domain"
+                        },
+                        "title": "Subdomain found: {}".format(s),
+                        "description": "Subdomain found:\n\n{}".format(s),
+                        "solution": "n/a",
+                        "metadata": {
+                            "tags": ["domains", "subdomain"]
+                        },
+                        "type": "subdomain",
+                        "raw": s,
+                        "timestamp": ts
+                    })
 
             # New issue when on the domain list
             subdomains_hash = hashlib.sha1(subdomains_str.encode("utf-8")).hexdigest()[:6]
