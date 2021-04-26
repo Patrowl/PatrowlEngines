@@ -204,12 +204,9 @@ def _search_github_thread(scan_id, asset_kw):
 
     # g = Github(engine.options["github_username"], engine.options["github_password"])  # rate limit = 30 requests/min
     g = Github(engine.options["github_api_token"])
-    print(g.search_code("\'"+asset_kw+"\'", sort="indexed", order="desc").totalCount)
-    print(dir(g.search_code("\'"+asset_kw+"\'", sort="indexed", order="desc")))
 
     loops = 0
     for git_code in g.search_code("\'"+asset_kw+"\'", sort="indexed", order="desc"):
-    # for git_code in g.search_commits("\'"+asset_kw+"\'", sort="committer-date", order="desc"):
         ititle = "File found in Github public repo (code): {}/{} (HASH: {})".format(
             git_code.name,
             git_code.repository.name, git_code.sha[:6])

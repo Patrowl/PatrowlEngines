@@ -25,17 +25,12 @@ APP_MAXSCANS = int(os.environ.get('APP_MAXSCANS', 25))
 
 BASE_DIR = os.path.dirname(os.path.realpath(__file__))
 this = sys.modules[__name__]
-this.proc = None  # to delete
 this.scanner = {}
 this.scan_id = 1
 this.scans = {}
 
 
 # Generic functions
-def shellquote(s):
-    return "'" + s.replace("'", "'\\''") + "'"
-
-
 def _json_serial(obj):
     if isinstance(obj, datetime.datetime):
         serial = obj.isoformat()
@@ -62,11 +57,9 @@ def loadconfig():
         this.scanner['status'] = "READY"
     else:
         this.scanner['status'] = "ERROR"
-        # print ("Error: config file '{}' not found".format(conf_file))
         return {"status": "ERROR", "reason": "config file not found."}
     if not os.path.isfile(this.scanner['path']):
         this.scanner['status'] = "ERROR"
-        # print ("Error: path to nmap '{}' not found".format(this.scanner['path']))
         return {"status": "ERROR", "reason": "path to nmap binary not found."}
 
 
@@ -482,7 +475,6 @@ def _parse_report(filename, scan_id):
                         "The scan detected that the host {} has IP '{}'".format(hostname.get('name'), host.find('address').get('addr')),
                         type="host_availability")))
 
-
         # Add the addr_list to identified_assets (post exec: spot unresolved domains)
         unresolved_domains = unresolved_domains.difference(set(addr_list))
         # Add the addr_list to identified_assets (post exec: spot ips that are down. Not added to nmap xml if --open is used)
@@ -538,10 +530,16 @@ def _parse_report(filename, scan_id):
                         cpe_info = "\n The following CPE vector has been identified: {}".format(cpe_vector)
                         cpe_refs = {"CPE": [cpe_vector]}
 
+                    # <service name="http" product="Pulse Secure VPN gateway http config" devicetype="security-misc" tunnel="ssl" method="probed" conf="10"/>
+                    try:
+                        product = "\nProduct: {}".format(port.find('service').get('product'))
+                    except Exception:
+                        product = ""
+
                     res.append(deepcopy(_add_issue(scan_id, target, ts,
                         "Service '{}' is running on port '{}/{}'".format(svc_name, proto, portid),
-                        "The scan detected that the service '{}' is running on port '{}/{}'. {}"
-                            .format(svc_name, proto, portid, cpe_info),
+                        "The scan detected that the service '{}' is running on port '{}/{}'. {}\n{}"
+                            .format(svc_name, proto, portid, cpe_info, product),
                         type="port_info",
                         links=[cpe_link],
                         vuln_refs=cpe_refs)))
