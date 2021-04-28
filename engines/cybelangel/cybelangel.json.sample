@@ -1,0 +1,18 @@
+{
+    "name": "CybelAngel API",
+    "version": "1.0.0",
+    "description": "CybelAngel API",
+    "allowed_asset_types": [
+        "domain"
+    ],
+    "options": {
+        "api_client_id": {
+            "type": "required",
+            "value": ""
+        },
+        "api_client_secret": {
+            "type": "required",
+            "value": ""
+        }
+    }
+}
