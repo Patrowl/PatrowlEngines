@@ -37,10 +37,11 @@ If you need to contact the project team, send an email to <getsupport@patrowl.io
 - [ ] WhatWeb
 - [ ] CLAIR (Container Security)
 - [ ] AquaSecurity
-- [ ] CheckMarx
+- [P] CheckMarx
 - [ ] Tenable.io
 - [ ] Acunetix
 - [ ] Qualys
+- [ ] CyberWatch
 
 # Awesome engines from Community
 - [PingCastle](https://github.com/vletoux/PingCastlePatrOwl) by @vletoux (see https://www.pingcastle.com/)
@@ -52,6 +53,10 @@ A commercial Pro Edition is available and officially supported by the PatrOwl co
 - [x] Microsoft Cloud App Security (CASB alerts)
 - [x] CloudSploit (Cloud security assessment for AWS, GCP and Azure)
 - [x] SonarQube (Code quality and security)
+- [x] Checkmarx (Code quality and security)
+- [x] TFSec (Terraform security)
+- [x] Nuclei (Vulnerability scanner)
+- [x] Git-leaks (Secret leaks finder in GIT repositories)
 
 This version is also available on the official SaaS platform.
 See: https://patrowl.io/get-started
@@ -85,3 +90,4 @@ Copyright (C) 2018-2021 Nicolas MATTIOCCO ([@MaKyOtOx](https://twitter.com/MaKyO
 | urlvoid  | [![Known Vulnerabilities](https://snyk.io/test/github/Patrowl/PatrowlEngines/badge.svg?targetFile=engines%2Furlvoid%2Frequirements.txt)](https://snyk.io/test/github/Patrowl/PatrowlEngines?targetFile=engines%2Furlvoid%2Frequirements.txt)  |
 | virustotal  | [![Known Vulnerabilities](https://snyk.io/test/github/Patrowl/PatrowlEngines/badge.svg?targetFile=engines%2Fvirustotal%2Frequirements.txt)](https://snyk.io/test/github/Patrowl/PatrowlEngines?targetFile=engines%2Fvirustotal%2Frequirements.txt)  |
 | wpscan  | [![Known Vulnerabilities](https://snyk.io/test/github/Patrowl/PatrowlEngines/badge.svg?targetFile=engines%2Fwpscan%2Frequirements.txt)](https://snyk.io/test/github/Patrowl/PatrowlEngines?targetFile=engines%2Fwpscan%2Frequirements.txt)  |
+| cybelangel  | [![Known Vulnerabilities](https://snyk.io/test/github/Patrowl/PatrowlEngines/badge.svg?targetFile=engines%2Fcybelangel%2Frequirements.txt)](https://snyk.io/test/github/Patrowl/PatrowlEngines?targetFile=engines%2Fcybelangel%2Frequirements.txt)  |

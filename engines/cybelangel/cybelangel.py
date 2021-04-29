@@ -80,6 +80,7 @@ class CybelAngel():
     def process(self):
         if not self.get_token():
             return False
+        # Python3.8+
         if not (reports := self.get_open_reports()):
             return False
         reports_malicious_website = list()

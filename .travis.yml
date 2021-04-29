@@ -27,6 +27,7 @@ env:
 - PATROWL_ENGINE=droopescan ENGINE_PORT=5021
 - PATROWL_ENGINE=apivoid ENGINE_PORT=5022
 - PATROWL_ENGINE=wpscan ENGINE_PORT=5023
+- PATROWL_ENGINE=cybelangel ENGINE_PORT=5024
 before_install:
 - cd engines
 install:

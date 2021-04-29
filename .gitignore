@@ -42,6 +42,7 @@ engines/droopescan/logs/*
 engines/droopescan/tmp/*
 engines/apivoid/apivoid.json
 engines/wpscan/wpscan.json
+engines/cybelangel/cybelangel.json
 env
 env3
 venv

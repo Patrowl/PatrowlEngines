@@ -9,7 +9,7 @@ The assets used must be the asset groups from patrowl and the keywords from cybe
 
 
 ## Dependencies
-- Python 3
+- Python 3.8+
 - `pip3 install -r requirements.txt`
 - Copy `cybelangel.json.sample` to `cybelangel.json` and configure it
 
