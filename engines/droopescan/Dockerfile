@@ -33,4 +33,4 @@ RUN python3 -m pip install --trusted-host pypi.python.org -r requirements.txt
 EXPOSE 5021
 
 # Run app.py when the container launches
-CMD ["gunicorn", "engine-droopescan:app", "-b", "0.0.0.0:5021", "--access-logfile", "-"]
+CMD ["gunicorn", "engine-droopescan:app", "-b", "0.0.0.0:5021", "--access-logfile", "-", "--timeout", "300"]
