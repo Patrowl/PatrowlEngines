@@ -1,0 +1,17 @@
+{
+    "name": "SHHGit",
+    "version": "1.0.0",
+    "description": "Check your repositories with shhgit",
+    "allowed_asset_types": [
+        "keyword"
+    ],
+    "options": {
+        "github_accounts": [{
+            "patrowl_group": "YOUR_GROUP",
+            "base_url": "",
+            "organization": "shhgit",
+            "github_key": "YOUR_GITHUB_KEY",
+            "is_internal": false
+        }]
+    }
+}
