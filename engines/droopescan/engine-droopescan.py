@@ -639,7 +639,7 @@ def _parse_report(filename, scan_id):
                 for fd_elt in json_data["interesting urls"]["finds"]:
                     url_name = fd_elt["url"]
                     url_desc = fd_elt["description"]
-                    app.logger.debug('Found interesting url : {}'.format(url_name))
+                    app.logger.debug('Found interesting url: {}'.format(url_name))
                     # Add intesresting url found to findings
                     res.append(deepcopy(
                         _add_issue(scan_id, target, timestamp,

@@ -1,6 +1,6 @@
 #!/usr/bin/python3
 # -*- coding: utf-8 -*-
-import os, sys, json, time, urllib, hashlib, threading, datetime, copy, dns.resolver, socket, optparse
+import os, sys, json, time, urllib, hashlib, threading, datetime, copy, dns.resolver, socket, optparse, random, string
 from flask import Flask, request, jsonify, redirect, url_for, send_from_directory
 import validators
 import whois
@@ -26,6 +26,10 @@ this.resolver = dns.resolver.Resolver()
 this.resolver.lifetime = this.resolver.timeout = 5.0
 
 this.pool = ThreadPoolExecutor(4)
+
+
+def get_random_string(n=32):
+    return ''.join(random.choices(string.ascii_letters + string.digits, k=n))
 
 
 @app.route('/')
@@ -327,6 +331,13 @@ def _subdomain_bruteforce(scan_id, asset):
         "store", "feeds", "rss", "files",
         "mantis", "nagios", "outlook", "zabbix"
     ]
+
+    # Check wildcard domain
+    w_domain = "{}.{}".format(
+        get_random_string(), asset
+    )
+    if len(__dns_resolve_asset(w_domain)) > 0:
+        return res
 
     valid_sudoms = []
     for sub in SUB_LIST:

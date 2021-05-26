@@ -23,7 +23,7 @@ echo "[+] Install external deps"
 cd external-libs
 git clone https://github.com/Patrowl/Sublist3r
 pip3 install --trusted-host pypi.python.org -r Sublist3r/requirements.txt
-RUN git clone https://github.com/elceef/dnstwist
+git clone https://github.com/elceef/dnstwist
 cd ..
 
 echo "[+] Create config file from sample"
