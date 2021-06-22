@@ -1,6 +1,6 @@
 FROM alpine:latest
 MAINTAINER Patrowl.io "getsupport@patrowl.io"
-LABEL Name="Nessus\ \(Patrowl engine\)" Version="1.4.6"
+LABEL Name="Nessus\ \(Patrowl engine\)" Version="1.4.26"
 
 ENV LOGLEVEL info
 

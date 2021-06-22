@@ -37,7 +37,6 @@ If you need to contact the project team, send an email to <getsupport@patrowl.io
 - [ ] WhatWeb
 - [ ] CLAIR (Container Security)
 - [ ] AquaSecurity
-- [P] CheckMarx
 - [ ] Tenable.io
 - [ ] Acunetix
 - [ ] Qualys
@@ -83,6 +82,7 @@ Copyright (C) 2018-2021 Nicolas MATTIOCCO ([@MaKyOtOx](https://twitter.com/MaKyO
 | cortex  | [![Known Vulnerabilities](https://snyk.io/test/github/Patrowl/PatrowlEngines/badge.svg?targetFile=engines%2Fcortex%2Frequirements.txt)](https://snyk.io/test/github/Patrowl/PatrowlEngines?targetFile=engines%2Fcortex%2Frequirements.txt)  |
 | nessus  | [![Known Vulnerabilities](https://snyk.io/test/github/Patrowl/PatrowlEngines/badge.svg?targetFile=engines%2Fnessus%2Frequirements.txt)](https://snyk.io/test/github/Patrowl/PatrowlEngines?targetFile=engines%2Fnessus%2Frequirements.txt)  |
 | nmap  | [![Known Vulnerabilities](https://snyk.io/test/github/Patrowl/PatrowlEngines/badge.svg?targetFile=engines%2Fnmap%2Frequirements.txt)](https://snyk.io/test/github/Patrowl/PatrowlEngines?targetFile=engines%2Fnmap%2Frequirements.txt)  |
+| openvas  | [![Known Vulnerabilities](https://snyk.io/test/github/Patrowl/PatrowlEngines/badge.svg?targetFile=engines%2Fopenvas%2Frequirements.txt)](https://snyk.io/test/github/Patrowl/PatrowlEngines?targetFile=engines%2Fopenvas%2Frequirements.txt)  |
 | owl_code  | [![Known Vulnerabilities](https://snyk.io/test/github/Patrowl/PatrowlEngines/badge.svg?targetFile=engines%2Fowl_code%2Frequirements.txt)](https://snyk.io/test/github/Patrowl/PatrowlEngines?targetFile=engines%2Fowl_code%2Frequirements.txt)  |
 | owl_dns  | [![Known Vulnerabilities](https://snyk.io/test/github/Patrowl/PatrowlEngines/badge.svg?targetFile=engines%2Fowl_dns%2Frequirements.txt)](https://snyk.io/test/github/Patrowl/PatrowlEngines?targetFile=engines%2Fowl_dns%2Frequirements.txt)  |
 | owl_leaks  | [![Known Vulnerabilities](https://snyk.io/test/github/Patrowl/PatrowlEngines/badge.svg?targetFile=engines%2Fowl_leaks%2Frequirements.txt)](https://snyk.io/test/github/Patrowl/PatrowlEngines?targetFile=engines%2Fowl_leaks%2Frequirements.txt)  |

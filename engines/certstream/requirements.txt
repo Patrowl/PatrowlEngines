@@ -1,5 +1,5 @@
-certstream==1.10
-flask==1.1.2
-gunicorn==20.0.4
+certstream==1.12
+flask==2.0.1
+gunicorn
 PatrowlEnginesUtils>=1.0.1
 wheel

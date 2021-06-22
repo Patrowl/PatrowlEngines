@@ -30,7 +30,7 @@ APP_MAXSCANS = int(os.environ.get('APP_MAXSCANS', 25))
 APP_ENGINE_NAME = "virustotal"
 APP_BASE_DIR = os.path.dirname(os.path.realpath(__file__))
 LOG = logging.getLogger("werkzeug")
-VERSION = "1.4.18"
+VERSION = "1.4.26"
 
 this = sys.modules[__name__]
 this.vts = []
@@ -43,11 +43,13 @@ engine = PatrowlEngine(
     version=VERSION
 )
 
+
 def get_result_ratelimit(asset_name, asset_type):
     """
     This function get the virustotal result and try randomly each apikeys
     In case of error, generally a 204, it retries.
     """
+
     # Shuffle the virustotal apikeys
     random.shuffle(this.vts)
 
@@ -365,7 +367,7 @@ def _scan_url(scan_id):
         if asset not in engine.scans[scan_id]["findings"].keys():
             engine.scans[scan_id]["findings"][asset] = {}
         try:
-            this.vts[random.randint(0,len(this.vts)-1)].scan_url(this_url=asset)
+            this.vts[random.randint(0, len(this.vts)-1)].scan_url(this_url=asset)
             time.sleep(5)
             engine.scans[scan_id]["findings"][asset]['scan_url'] = get_result_ratelimit(asset, "url")
         except Exception as e:
@@ -577,7 +579,7 @@ def _parse_results(scan_id):
                         "timestamp": ts
                     })
 
-                #whois
+                # whois
                 domain_whois = ""
                 if 'whois' in results.keys() and results['whois'] is not None:
                     nb_vulns['info'] += 1
@@ -989,7 +991,6 @@ def _parse_results(scan_id):
                     "timestamp": ts
                 })
 
-
         # URL SCAN
         asset_findings = engine.scans[scan_id]["findings"][asset]
         if "scan_url" in asset_findings and "results" in asset_findings["scan_url"]:
@@ -1070,7 +1071,7 @@ def _parse_results(scan_id):
 
 @app.route('/engines/virustotal/getfindings/<scan_id>')
 def getfindings(scan_id):
-    res = {    "page": "getfindings", "scan_id": scan_id}
+    res = {"page": "getfindings", "scan_id": scan_id}
 
     # check if the scan_id exists
     if scan_id not in engine.scans.keys():

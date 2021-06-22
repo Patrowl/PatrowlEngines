@@ -1,6 +1,6 @@
 FROM alpine:latest
 MAINTAINER Patrowl.io "getsupport@patrowl.io"
-LABEL Name="Patrowl\ Data\ Leaks\ \(Patrowl engine\)" Version="1.4.18"
+LABEL Name="Patrowl\ Data\ Leaks\ \(Patrowl engine\)" Version="1.4.26"
 
 # Install dependencies
 RUN apk add --update \

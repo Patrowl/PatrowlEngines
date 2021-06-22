@@ -26,7 +26,7 @@ APP_PORT = 5008
 APP_MAXSCANS = int(os.environ.get('APP_MAXSCANS', 25))
 APP_ENGINE_NAME = "urlvoid"
 APP_BASE_DIR = os.path.dirname(os.path.realpath(__file__))
-VERSION = "1.4.18"
+VERSION = "1.4.26"
 
 engine = PatrowlEngine(
     app=app,
