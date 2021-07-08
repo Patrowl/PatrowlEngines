@@ -601,7 +601,7 @@ def _parse_results(scan_id):
                 "target": {
                     "addr": [asset],
                     "protocol": "domain"
-                    },
+                },
                 "title": "DNS Resolution entries for '{}' (HASH: {})".format(
                     asset, dns_resolve_hash),
                 "description": "DNS Resolution entries for '{}':\n\n{}".format(asset, dns_resolve_str),

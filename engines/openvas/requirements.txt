@@ -8,7 +8,7 @@ defusedxml
 dnspython
 flask==2.0.1
 gunicorn
-gvm-tools
+gvm-tools==20.10.1
 idna
 itsdangerous
 Jinja2
@@ -20,7 +20,7 @@ PatrowlEnginesUtils>=1.0.1
 pycparser
 PyNaCl
 pyparsing
-python-gvm
+python-gvm==20.11.3
 requests
 six
 tomlkit

@@ -38,7 +38,7 @@ APP_PORT = 5023
 APP_MAXSCANS = int(os.environ.get('APP_MAXSCANS', 5))
 APP_ENGINE_NAME = "wpscan"
 APP_BASE_DIR = dirname(realpath(__file__))
-VERSION = "1.4.18"
+VERSION = "1.4.25"
 
 engine = PatrowlEngine(
     app=app,
@@ -207,8 +207,8 @@ def status_scan(scan_id):
                 "status": "SCANNING",
                 "info": {
                     asset: {
-                        "pid": proc.pid,
-                        "cmd": engine.scans[scan_id]["reports"][asset]["proc_cmd"]}
+                        # "pid": proc.pid,
+                        # "cmd": engine.scans[scan_id]["reports"][asset]["proc_cmd"]}
                     }
             })
 

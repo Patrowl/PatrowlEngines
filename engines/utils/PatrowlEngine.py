@@ -9,6 +9,7 @@ DEFAULT_APP_PORT = 5000
 DEFAULT_APP_DEBUG = False
 DEFAULT_APP_MAXSCANS = 25
 
+
 def _json_serial(obj):
     """
         JSON serializer for objects not serializable by default json code
@@ -17,7 +18,7 @@ def _json_serial(obj):
     if isinstance(obj, datetime.datetime) or isinstance(obj, datetime.date):
         serial = obj.isoformat()
         return serial
-    raise TypeError ("Type not serializable")
+    raise TypeError("Type not serializable")
 
 
 class PatrowlEngine:
@@ -33,7 +34,6 @@ class PatrowlEngine:
         self.max_scans = max_scans
         self.status = "INIT"
 
-
     def __str__(self):
         return "%s - %s" % (self.name, self.version)
 
@@ -48,8 +48,7 @@ class PatrowlEngine:
             "nb_scans": len(self.scans.keys()),
         }
 
-
-    def run_app(self, app_debug = DEFAULT_APP_DEBUG, app_host = DEFAULT_APP_HOST, app_port = DEFAULT_APP_PORT):
+    def run_app(self, app_debug=DEFAULT_APP_DEBUG, app_host=DEFAULT_APP_HOST, app_port=DEFAULT_APP_PORT):
         if not os.path.exists(self.base_dir+"/results"):
             os.makedirs(self.base_dir+"/results")
 
@@ -60,7 +59,6 @@ class PatrowlEngine:
         parser.add_option("-d", "--debug", action="store_true", dest="debug", help=optparse.SUPPRESS_HELP)
         options, _ = parser.parse_args()
         self.app.run(debug=options.debug, host=options.host, port=int(options.port), threaded=True)
-
 
     def test(self):
         res = "<h2>Test Page (DEBUG):</h2>"
@@ -90,10 +88,10 @@ class PatrowlEngine:
             self.status = "READY"
         else:
             self.status = "ERROR"
-            return { "status": "ERROR", "reason": "config file not found" }
+            return {"status": "ERROR", "reason": "config file not found" }
 
     def reloadconfig(self):
-        res = { "page": "reloadconfig" }
+        res = {"page": "reloadconfig"}
         self._loadconfig()
         res.update({"config": {
             "status": self.status
