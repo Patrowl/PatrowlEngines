@@ -266,7 +266,7 @@ def start_scan():
 def check_repositories(scan_id):
     repositories_to_check = []
     for github_account in engine.scanner['options']['github_accounts']:
-        repositories = get_github_repositories(github_account)
+        repositories = get_github_repositories(LOGGER, github_account)
         if not repositories:
             continue
         else:

@@ -10,29 +10,25 @@ import logging
 from github import Github
 
 
-logging.basicConfig(level=logging.INFO)
-LOGGER = logging.getLogger('shhgit')
-
-
-def get_repositories(github_account, organization):
+def get_repositories(logger, github_account, organization):
     try:
         repositories = github_account.get_organization(organization).get_repos()
     except Exception as e:
-        LOGGER.error(f'Unable to get repositories: {e}')
+        logger.error(f'Unable to get repositories: {e}')
         return False
     return repositories
 
 
-def get_github_repositories(github_account):
+def get_github_repositories(logger, github_account):
     github = Github(github_account['github_key'])
     if github_account['is_internal']:
         github = Github(
             base_url=github_account['base_url'],
             login_or_token=github_account['github_key']
         )
-    raw_repositories = get_repositories(github, github_account['organization'])
+    raw_repositories = get_repositories(logger, github, github_account['organization'])
     if raw_repositories is False:
-        LOGGER.error('Error while getting repositories.')
+        logger.error('Error while getting repositories.')
         return False
     repositories = []
     for raw_repository in raw_repositories:
