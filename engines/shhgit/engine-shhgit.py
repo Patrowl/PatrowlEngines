@@ -38,7 +38,7 @@ DATA_BASE_PATH = APP_BASE_DIR / 'data'
 REPO_BASE_PATH = DATA_BASE_PATH / 'repositories'
 OUTPUT_BASE_PATH = DATA_BASE_PATH / 'results'
 
-VERSION = "1.0.0"
+VERSION = "1.1.0"
 
 logging.basicConfig(level=(logging.DEBUG if APP_DEBUG else logging.INFO))
 LOGGER = logging.getLogger('shhgit')
