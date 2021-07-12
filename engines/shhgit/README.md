@@ -20,7 +20,7 @@ It will scan them with shhgit and try to find any potential secret (AWS, Google 
 ## Testing URLs
 
 ```bash
-SHHGIT_ENGINE_URL=http://localhost:5024/engines/shhgit
+SHHGIT_ENGINE_URL=http://localhost:5025/engines/shhgit
 
 # Start scan
 curl "${shhgit_ENGINE_URL}/startscan" -XPOST -H 'Accept: application/json' -H 'Content-type: application/json' -d "{\"scan_id\": 1, \"options\": {\"since\": \"9999\"}, \"assets\": [], \"engine_id\": 42}"

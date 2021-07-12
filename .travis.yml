@@ -28,6 +28,7 @@ env:
 - PATROWL_ENGINE=apivoid ENGINE_PORT=5022
 - PATROWL_ENGINE=wpscan ENGINE_PORT=5023
 - PATROWL_ENGINE=cybelangel ENGINE_PORT=5024
+- PATROWL_ENGINE=shhgit ENGINE_PORT=5025
 before_install:
 - cd engines
 install:

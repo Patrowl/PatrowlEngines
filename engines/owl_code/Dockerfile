@@ -1,13 +1,13 @@
 FROM alpine:latest
 MAINTAINER Patrowl.io "getsupport@patrowl.io"
-LABEL Name="Patrowl\ Code\ Security\ review\ \(Patrowl engine\)" Version="1.4.26"
+LABEL Name="Patrowl\ Code\ Security\ review\ \(Patrowl engine\)" Version="1.4.27"
 
 # Install dependencies
 RUN apk add --update --no-cache \
     wget unzip openjdk8-jre \
     git subversion \
     python3 python3-dev py3-pip \
-    nodejs nodejs-npm \
+    npm nodejs \
   && rm -rf /var/cache/apk/* \
   && rm -rf /tmp/*
 
@@ -25,18 +25,21 @@ RUN npm install -g retire
 
 # Install OWASP-DC
 ENV version_url=https://jeremylong.github.io/DependencyCheck/current.txt
-ENV download_url=https://dl.bintray.com/jeremy-long/owasp
+# ENV download_url=https://dl.bintray.com/jeremy-long/owasp
+ENV download_url=https://github.com/jeremylong/DependencyCheck/releases/download/
 RUN wget -qO- -O /tmp/current.txt ${version_url}                            && \
     version=$(cat /tmp/current.txt)                                         && \
-    file="dependency-check-6.0.3-release.zip"                               && \
+    # version="6.0.3"                                         && \
+    # file="dependency-check-6.0.3-release.zip"                               && \
     # file="dependency-check-${version}-release.zip"                          && \
-    wget "$download_url/$file"                                              && \
+    file="dependency-check-${version}-release.zip"                          && \
+    wget "$download_url/v${version}/$file"                                  && \
     unzip ${file}                                                           && \
     rm ${file}                                                              && \
     mv dependency-check /opt/patrowl-engines/owl_code/libs                  && \
     cd /opt/patrowl-engines/owl_code/libs                                   && \
-    chmod +x dependency-check/bin/dependency-check.sh                       && \
-    dependency-check/bin/dependency-check.sh --updateonly
+    chmod +x dependency-check/bin/dependency-check.sh
+RUN dependency-check/bin/dependency-check.sh --updateonly ; exit 0
 
 # Set the working directory to /opt/<engine_name>
 WORKDIR /opt/patrowl-engines/owl_code

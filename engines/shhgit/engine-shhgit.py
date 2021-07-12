@@ -30,7 +30,7 @@ from libs.git_leaks import clone_repository, get_leaks_from_repository
 app = Flask(__name__)
 APP_DEBUG = False
 APP_HOST = "0.0.0.0"
-APP_PORT = 5024
+APP_PORT = 5025
 APP_MAXSCANS = int(os.environ.get('APP_MAXSCANS', 1))
 APP_ENGINE_NAME = "shhgit"
 APP_BASE_DIR = Path(__file__).parent

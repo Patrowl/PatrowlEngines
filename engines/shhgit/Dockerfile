@@ -1,6 +1,6 @@
 FROM alpine:latest
 MAINTAINER Patrowl.io "getsupport@patrowl.io"
-LABEL Name="SHHGit\ \(Patrowl engine\)" Version="1.4.27"
+LABEL Name="SHHGit\ \(Patrowl engine\)" Version="1.4.28"
 
 # Create the target repo
 RUN mkdir -p /opt/patrowl-engines/shhgit
@@ -21,15 +21,14 @@ COPY README.md .
 RUN mkdir -p results
 RUN mkdir -p data
 RUN apk add --update --no-cache \
-    python3 \
-    python3-dev \
-    py3-pip \
+    python3 python3-dev py3-pip \
+    gcc libc-dev libffi-dev make \
   && rm -rf /var/cache/apk/*
 RUN pip3 install --upgrade pip
 RUN pip3 install --trusted-host pypi.python.org -r requirements.txt
 
 # TCP port exposed by the container (NAT)
-EXPOSE 5024
+EXPOSE 5025
 
 # Run app.py when the container launches
-CMD ["gunicorn", "engine-shhgit:app", "-b", "0.0.0.0:5024", "--access-logfile", "-"]
+CMD ["gunicorn", "engine-shhgit:app", "-b", "0.0.0.0:5025", "--access-logfile", "-"]

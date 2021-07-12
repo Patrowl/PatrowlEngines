@@ -1,6 +1,6 @@
 #!/usr/bin/python3
 # -*- coding: utf-8 -*-
-""" Droopescan Patrowl engine application """
+"""Droopescan Patrowl engine application."""
 
 import os
 import subprocess
@@ -29,7 +29,7 @@ APP_HOST = "0.0.0.0"
 APP_PORT = 5021
 APP_MAXSCANS = int(os.environ.get('APP_MAXSCANS', 25))
 APP_ENGINE_NAME = "patrowl-droopescan"
-VERSION = "1.4.18"
+VERSION = "1.4.27"
 
 BASE_DIR = os.path.dirname(os.path.realpath(__file__))
 this = sys.modules[__name__]
@@ -66,6 +66,7 @@ def default():
 def index():
     """Return index page."""
     return engine.index()
+
 
 @app.route('/engines/droopescan/liveness')
 def liveness():
@@ -132,7 +133,9 @@ def status():
 
     if not os.path.exists(BASE_DIR+'/droopescan.json'):
         this.scanner['status'] = "ERROR"
-        res.update({"status": "error", "reason": "Config file droopescan.json not found"})
+        res.update({
+            "status": "error",
+            "reason": "Config file droopescan.json not found"})
         app.logger.error("Config file droopescan.json not found")
 #    if not os.path.isfile(this.scanner['path']):
 #        this.scanner['status'] = "ERROR"
@@ -178,7 +181,7 @@ def getreport(scan_id):
 
 
 def loadconfig():
-    """ Load engine configuration """
+    """Load engine configuration."""
     conf_file = BASE_DIR+'/droopescan.json'
     if os.path.exists(conf_file):
         json_data = open(conf_file)
@@ -191,7 +194,7 @@ def loadconfig():
 
 @app.route('/engines/droopescan/reloadconfig')
 def reloadconfig():
-    """ Reload engine configuration """
+    """Reload engine configuration."""
     res = {"page": "reloadconfig"}
     loadconfig()
     res.update({"config": this.scanner})
@@ -270,7 +273,7 @@ def scan_status(scan_id):
 def _add_issue(scan_id, target, timestamp, title, desc, type,
                severity="info", confidence="certain",
                vuln_refs=None, links=None, tags=None, risk=None):
-    """ Add findings to results """
+    """Add findings to results."""
     this.scans[scan_id]["nb_findings"] = this.scans[scan_id]["nb_findings"] + 1
     if (vuln_refs is None and links is None and tags is None and risk is None):
         issue = {
@@ -346,7 +349,7 @@ def stop_scan(scan_id):
 ##########################
 @app.route('/engines/droopescan/startscan', methods=['POST'])
 def start():
-    """ Start scan. """
+    """Start a scan."""
     res = {"page": "startscan"}
 
     # check the scanner is ready to start a new scan
@@ -412,7 +415,7 @@ def start():
 
 
 def _scan_thread(scan_id):
-    """ Attribute scan to a thread and launch it. """
+    """Attribute scan to a thread and launch it."""
     hosts = []
 
     for asset in this.scans[scan_id]['assets']:
@@ -504,7 +507,7 @@ def _scan_thread(scan_id):
 
 
 def _get_hears_findings(scan_id, t_vendor=None, t_product=None, t_product_version=None):
-    """ Get CVE associated to given vendor/product/product version """
+    """Get CVE associated to given vendor/product/product version."""
     # Set up credentials
     hears_url = this.scans[scan_id]["hears_api"]["url"]
     hears_token = this.scans[scan_id]["hears_api"]["token"]
@@ -544,7 +547,7 @@ def _get_hears_findings(scan_id, t_vendor=None, t_product=None, t_product_versio
 
 def _get_cvss_severity(cvss):
     """
-    Returns severity from given CVSS
+    Return severity from given CVSS.
 
     :param cvss: CVSS
     :type cvss: float
@@ -695,7 +698,7 @@ def _parse_report(filename, scan_id):
 ###########################
 @app.route('/engines/droopescan/getfindings/<scan_id>')
 def getfindings(scan_id):
-    """ Retrieve findings from scan results.  """
+    """Retrieve findings from scan results."""
     res = {"page": "getfindings", "scan_id": scan_id}
     if scan_id not in this.scans.keys():
         res.update({"status": "error", "reason": "scan_id '{}' not found".format(scan_id)})

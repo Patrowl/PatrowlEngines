@@ -1,4 +1,4 @@
-FROM ubuntu:16.04
+FROM ubuntu:20.04
 MAINTAINER Patrowl.io "getsupport@patrowl.io"
 LABEL Name="Arachni\ \(Patrowl engine\)" Version="1.0.0"
 
@@ -25,8 +25,9 @@ COPY README.md .
 
 WORKDIR /opt/patrowl-engines/arachni/libs
 
-RUN apt-get -qq update && apt-get install -yq wget ruby bash python3 python3-dev curl bsdtar make gcc && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
-RUN curl -fsSL -o- https://bootstrap.pypa.io/pip/3.5/get-pip.py | python3.5
+# RUN apt-get -qq update && apt-get install -yq wget ruby bash python3 python3-dev curl bsdtar make gcc && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
+RUN apt-get -qq update && apt-get install -yq wget ruby bash python3 python3-dev curl make gcc && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
+RUN curl -fsSL -o- https://bootstrap.pypa.io/pip/get-pip.py | python3
 RUN ln -sf $(which bsdtar) $(which tar)
 RUN wget $DL_ARACHNI_LINK -nv
 RUN tar xzf $TGZ_ARACHNI && \
