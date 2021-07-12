@@ -176,7 +176,7 @@ def _loadconfig():
             LOGGER.error(f'Unable to convert config file to json: {e}')
             return {"status": "error", "reason": "unable to convert config file to json"}
         else:
-            engine.scanner['status'] = 'READY'
+           engine.scanner['status'] = 'READY'
         if 'options' not in engine.scanner or "github_accounts" not in engine.scanner['options']:
             LOGGER.error("Unable to find options in config file")
             return {"status": "error", "reason": "you have to specify options in your config file"}
@@ -244,7 +244,8 @@ def start_scan():
         'scan_id':      scan_id,
         'status':       "STARTED",
         'started_at':   int(time.time() * 1000),
-        'findings':     []
+        'findings':     [],
+        'assets':       []
     }
 
     engine.scans.update({scan_id: scan})
