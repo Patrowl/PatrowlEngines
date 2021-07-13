@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 # -*- coding: utf-8 -*-
 import json, requests, time, random
-import pytest
+
 
 class PatrowlEngineTest:
     def __init__(self, engine_name, base_url):
@@ -16,8 +16,8 @@ class PatrowlEngineTest:
             assert r.json()["page"] == "index"
 
         except AssertionError:
-            print(r.json()) ; assert False
-
+            print(r.json())
+            assert False
 
     def test_status(self):
         print("test-{}-status".format(self.engine_name))
@@ -27,8 +27,8 @@ class PatrowlEngineTest:
             assert r.json()["page"] == "status"
             assert r.json()["status"] == "READY"
         except AssertionError:
-            print(r.json()) ; assert False
-
+            print(r.json())
+            assert False
 
     def test_info(self):
         print("test-{}-info".format(self.engine_name))
@@ -38,7 +38,8 @@ class PatrowlEngineTest:
             assert r.json()["page"] == "info"
             assert r.json()["engine_config"]["status"] == "READY"
         except AssertionError:
-            print(r.json()) ; assert False
+            print(r.json())
+            assert False
 
     def test_reloadconfig(self):
         print("test-{}-reloadconfig".format(self.engine_name))
@@ -47,7 +48,8 @@ class PatrowlEngineTest:
             assert r.status_code == 200
             assert r.json()["config"]["status"] == "READY"
         except AssertionError:
-            print(r.json()) ; assert False
+            print(r.json())
+            assert False
 
     def test_stopscans(self):
         print("test-{}-stopscans".format(self.engine_name))
@@ -57,7 +59,8 @@ class PatrowlEngineTest:
             assert r.json()["page"] == "stopscans"
             assert r.json()["status"] == "SUCCESS"
         except AssertionError:
-            print(r.json()) ; assert False
+            print(r.json())
+            assert False
 
     def test_cleanscans(self):
         print("test-{}-cleanscans".format(self.engine_name))
@@ -67,7 +70,8 @@ class PatrowlEngineTest:
             assert r.json()["page"] == "clean"
             assert r.json()["status"] == "SUCCESS"
         except AssertionError:
-            print(r.json()) ; assert False
+            print(r.json())
+            assert False
 
     def custom_test(self, test_name, assets, scan_policy={}, is_valid=True, max_timeout=1200):
         print("test-{}-custom: {}".format(self.engine_name, test_name))
@@ -78,14 +82,16 @@ class PatrowlEngineTest:
             "scan_id": str(TEST_SCAN_ID)
         }
 
-        r = requests.post(url="{}/startscan".format(self.base_url),
-                   data=json.dumps(post_data),
-                   headers={'Content-type': 'application/json', 'Accept': 'application/json'})
+        r = requests.post(
+            url="{}/startscan".format(self.base_url),
+            data=json.dumps(post_data),
+            headers={'Content-type': 'application/json', 'Accept': 'application/json'})
         try:
             assert r.status_code == 200
             assert r.json()['status'] == "accepted"
         except AssertionError:
-            print(r.json()) ; assert False
+            print(r.json())
+            assert False
 
         # Wait until scan is finished
         timeout_start = time.time()
@@ -95,10 +101,12 @@ class PatrowlEngineTest:
             if r.json()["status"] == "SCANNING":
                 time.sleep(3)
                 continue
-            elif r.json()["status"] == "FINISHED": break
+            elif r.json()["status"] == "FINISHED":
+                break
             elif r.json()["status"] == "ERROR":
                 has_error = True
-                print(r.json()) ; assert False
+                print(r.json())
+                assert False
                 break
             time.sleep(3)
 
@@ -109,7 +117,8 @@ class PatrowlEngineTest:
                 print(r.json())
                 assert r.json()['status'] == "success"
             except AssertionError:
-                print(r.json()) ; assert False
+                print(r.json())
+                assert False
 
             # Get report
             r = requests.get(url="{}/getreport/{}".format(self.base_url, TEST_SCAN_ID))
@@ -118,7 +127,8 @@ class PatrowlEngineTest:
                 assert True == True
                 #assert r.json()['scan']['status'] == "FINISHED"
             except AssertionError:
-                print(r.json()) ; assert False
+                print(r.json())
+                assert False
         else:
             assert False
 

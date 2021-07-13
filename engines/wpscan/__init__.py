@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 __title__ = 'patrowl_engine_wpscan'
-__version__ = '1.4.18'
+__version__ = '1.4.26'
 __author__ = 'Nicolas Béguier'
 __license__ = 'AGPLv3'
-__copyright__ = 'Copyright (C) 2020 Nicolas Mattiocco - @MaKyOtOx'
+__copyright__ = 'Copyright (C) 2020-2021 Nicolas Mattiocco - @MaKyOtOx'

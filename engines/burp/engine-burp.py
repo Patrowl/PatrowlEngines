@@ -1,6 +1,6 @@
 #!/usr/bin/python3
 # -*- coding: utf-8 -*-
-import json, os, subprocess, sys, requests, urlparse, datetime
+import json, os, subprocess, sys, requests, urlparse, datetime, time
 from flask import Flask, request, jsonify, redirect, url_for
 
 app = Flask(__name__)
@@ -440,7 +440,7 @@ def _is_scan_finished(scan_id):
     #         this.scans[scan_id]["status"] = "FINISHED"
     #         this.scans[scan_id]["finished_at"] = datetime.datetime.now()
     #         return True
-    # except:
+    # except Exception:
     #     print("API connexion error")
     #     return False
 

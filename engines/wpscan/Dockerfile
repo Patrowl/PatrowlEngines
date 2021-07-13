@@ -25,6 +25,7 @@ RUN chmod -R a+r /usr/local/bundle
 
 # -- WPScan Deployment
 FROM ruby:2.7.1-alpine
+LABEL Name="WPScan\ \(Patrowl engine\)" Version="1.4.26"
 
 RUN adduser -h /wpscan -g WPScan -D wpscan
 COPY --from=builder /usr/local/bundle /usr/local/bundle

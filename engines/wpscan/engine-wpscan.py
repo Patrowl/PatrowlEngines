@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-WPSCAN PatrOwl engine application
+WPSCAN PatrOwl engine application.
 
 Copyright (C) 2021 Nicolas Mattiocco - @MaKyOtOx
 Licensed under the AGPLv3 License
@@ -53,9 +53,7 @@ this.keys = []
 
 
 def get_options(payload):
-    """
-    Extracts formatted options from the payload.
-    """
+    """Extract formatted options from the payload."""
     options = {}
     user_opts = payload["options"]
     if isinstance(user_opts, str):
@@ -69,9 +67,7 @@ def get_options(payload):
 
 
 def get_criticity(score):
-    """
-    Returns the level of criticity.
-    """
+    """Return the level of criticity."""
     criticity = "high"
     if score == 0:
         criticity = "info"
@@ -81,10 +77,9 @@ def get_criticity(score):
         criticity = "medium"
     return criticity
 
+
 def get_api_token(api_token_list):
-    """
-    Returns the API key with the most credits
-    """
+    """Return the API key with the most credits."""
     SESSION = Session()
     top_api_token = None
     top_api_token_credits = 0
@@ -92,16 +87,16 @@ def get_api_token(api_token_list):
         if not re.fullmatch("[a-zA-Z0-9]+", api_token):
             continue
         try:
-           token_status_req = SESSION.get(
-               "https://wpscan.com/api/v3/status",
-               headers={"Authorization": f"Token token={api_token}"})
-        except:
+            token_status_req = SESSION.get(
+                "https://wpscan.com/api/v3/status",
+                headers={"Authorization": f"Token token={api_token}"})
+        except Exception:
             continue
         if token_status_req.status_code != 200:
             continue
         try:
             requests_remaining = json.loads(token_status_req.text)["requests_remaining"]
-        except:
+        except Exception:
             requests_remaining = 0
         if requests_remaining > top_api_token_credits:
             top_api_token = api_token
@@ -210,6 +205,7 @@ def status_scan(scan_id):
                         # "pid": proc.pid,
                         # "cmd": engine.scans[scan_id]["reports"][asset]["proc_cmd"]}
                     }
+                }
             })
 
         elif psutil.pid_exists(proc.pid) and psutil.Process(proc.pid).status() == "zombie":
@@ -269,6 +265,7 @@ def _loadconfig():
 
 @app.route("/engines/wpscan/reloadconfig", methods=["GET"])
 def reloadconfig():
+    """Reload engine configuration."""
     res = {"page": "reloadconfig"}
     _loadconfig()
     res.update({"config": engine.scanner})
@@ -277,6 +274,7 @@ def reloadconfig():
 
 @app.route("/engines/wpscan/startscan", methods=["POST"])
 def start_scan():
+    """Start a new scan."""
     res = {"page": "startscan"}
 
     # Check the scanner is ready to start a new scan
@@ -701,6 +699,7 @@ def _parse_results(scan_id):
 
 @app.route("/engines/wpscan/getfindings/<scan_id>", methods=["GET"])
 def getfindings(scan_id):
+    """Get findings."""
     res = {"page": "getfindings", "scan_id": scan_id}
     if scan_id not in engine.scans.keys():
         res.update({"status": "error", "reason": "scan_id '{}' not found".format(scan_id)})

@@ -30,7 +30,7 @@ APP_MAXSCANS = int(os.environ.get('APP_MAXSCANS', 25))
 APP_ENGINE_NAME = "virustotal"
 APP_BASE_DIR = os.path.dirname(os.path.realpath(__file__))
 LOG = logging.getLogger("werkzeug")
-VERSION = "1.4.26"
+VERSION = "1.4.27"
 
 this = sys.modules[__name__]
 this.vts = []
@@ -46,10 +46,11 @@ engine = PatrowlEngine(
 
 def get_result_ratelimit(asset_name, asset_type):
     """
+    Get Results.
+
     This function get the virustotal result and try randomly each apikeys
     In case of error, generally a 204, it retries.
     """
-
     # Shuffle the virustotal apikeys
     random.shuffle(this.vts)
 
@@ -183,7 +184,30 @@ def status():
 @app.route('/engines/virustotal/status/<scan_id>')
 def status_scan(scan_id):
     """Get status on scan identified by id."""
-    return engine.getstatus_scan(scan_id)
+    # return engine.getstatus_scan(scan_id)
+    if scan_id not in engine.scans.keys():
+        return jsonify({
+            "status": "ERROR",
+            "details": "scan_id '{}' not found".format(scan_id)})
+
+    all_threads_finished = True
+
+    for t in engine.scans[scan_id]['threads']:
+        # print("scan_status-thread:", t.name, t.native_id)
+        if t.is_alive():
+            engine.scans[scan_id]['status'] = "SCANNING"
+            all_threads_finished = False
+            break
+        else:
+            # Terminate thread
+            t.join()
+            engine.scans[scan_id]['threads'].remove(t)
+
+    if all_threads_finished and len(engine.scans[scan_id]['threads']) == 0:
+        engine.scans[scan_id]['status'] = "FINISHED"
+        engine.scans[scan_id]['finished_at'] = int(time.time() * 1000)
+
+    return jsonify({"status": engine.scans[scan_id]['status']})
 
 
 @app.route('/engines/virustotal/stopscans')
@@ -230,6 +254,7 @@ def _loadconfig():
 
 @app.route('/engines/virustotal/startscan', methods=['POST'])
 def start_scan():
+    """Start a new scan."""
     # @todo: validate parameters and options format
     res = {"page": "startscan"}
 
@@ -248,7 +273,8 @@ def start_scan():
             "details": {
                 "reason": "scanner not ready",
                 "status": engine.scanner['status']
-        }})
+            }
+        })
         return jsonify(res)
 
     data = json.loads(request.data.decode("UTF-8", "ignore"))
@@ -257,7 +283,8 @@ def start_scan():
             "status": "refused",
             "details": {
                 "reason": "arg error, something is missing ('assets' ?)"
-        }})
+            }
+        })
         return jsonify(res)
 
     # Sanitize args :
@@ -301,7 +328,8 @@ def start_scan():
         "status": "accepted",
         "details": {
             "scan_id": scan_id
-    }})
+        }
+    })
 
     return jsonify(res)
 
@@ -340,7 +368,7 @@ def _scan_domain(scan_id):
             assets.append(asset['value'])
 
     for asset in assets:
-        if not asset in engine.scans[scan_id]["findings"]:
+        if asset not in engine.scans[scan_id]["findings"]:
             engine.scans[scan_id]["findings"][asset] = {}
         try:
             domain_result = get_result_ratelimit(asset, "domain")
@@ -353,7 +381,6 @@ def _scan_domain(scan_id):
         except Exception as e:
             LOG.error("API Connexion error (quota?) : {}".format(e))
             return False
-
     return True
 
 
@@ -378,6 +405,7 @@ def _scan_url(scan_id):
 
 
 def _parse_results(scan_id):
+    """Parse results."""
     issues = []
     summary = {}
 
@@ -939,7 +967,7 @@ def _parse_results(scan_id):
                             "target": {"addr": [asset], "protocol": "domain"},
                             "title": "Webutation for '{}' reveals to be '{}'".format(
                                 asset, results['Webutation domain info']['Verdict']),
-                            "description": "Webutation for '{}' reveals to be '{}:\n\n{}".format(
+                            "description": "Webutation for '{}' reveals to be '{}:\n{}".format(
                                 asset, results['Webutation domain info']['Verdict'], webutation_str),
                             "solution": "n/a",
                             "metadata": {"tags": ["domain", "reputation"]},
@@ -955,7 +983,7 @@ def _parse_results(scan_id):
                             "target": {"addr": [asset], "protocol": "domain"},
                             "title": "Webutation score for '{}' is set to '{}'".format(
                                 asset, results['Webutation domain info']['Safety score']),
-                            "description": "Webutation score for '{}' is set to '{}':\n\n{}".format(
+                            "description": "Webutation score for '{}' is set to '{}':\n{}".format(
                                 asset, results['Webutation domain info']['Safety score'], webutation_str),
                             "solution": "n/a",
                             "metadata": {"tags": ["domain", "reputation"]},
@@ -978,7 +1006,20 @@ def _parse_results(scan_id):
                     "severity": "info", "confidence": "certain",
                     "target": {"addr": [asset], "protocol": "domain"},
                     "title": "[Scan Summary] Domain report for '{}' (HASH: {})".format(asset, domain_hash),
-                    "description": "Domain Report for '{}':\n\n{}\n\nCategories: \n{}\n\nWhois: \n{}\n\nSibling domains: \n{}\n\nResolutions: \n{}\n\nDetected samples: \n{}\n\nUndetected samples: \n{}\n\nDetected referrer samples: \n{}\n\nUndetected referrer samples: \n{}\n\nPcaps: \n{}\n\nWeb-Of-Trust (WOT) info: \n{}\n\nWebutation: \n{}".format(
+                    "description": "Domain Report for '{}':\n\n\
+                                    Categories: \n{}\n\n\
+                                    Whois: \n{}\n\n\
+                                    Sibling domains: \n{}\n\n\
+                                    Resolutions: \n{}\n\n\
+                                    Subdomains: \n{}\n\n\
+                                    Detected urls: \n{}\n\n\
+                                    Detected samples: \n{}\n\n\
+                                    Undetected samples: \n{}\n\n\
+                                    Detected referrer samples: \n{}\n\n\
+                                    Undetected referrer samples: \n{}\n\n\
+                                    Pcaps: \n{}\n\n\
+                                    Web-Of-Trust (WOT) info: \n{}\n\n\
+                                    Webutation: \n{}".format(
                         asset, domain_categories, domain_whois, domain_siblings_str,
                         resolutions_str, subdomains_str, detected_url_str,
                         detected_samples_str, undetected_samples_str,

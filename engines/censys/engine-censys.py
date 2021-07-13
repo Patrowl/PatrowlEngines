@@ -6,7 +6,6 @@ from datetime import datetime, timedelta, date
 from flask import Flask, redirect, url_for, jsonify, request, send_from_directory
 
 
-
 app = Flask(__name__)
 APP_DEBUG = False
 APP_HOST = "0.0.0.0"
@@ -32,7 +31,7 @@ def default():
 
 @app.route('/engines/censys/')
 def index():
-    return jsonify({ "page": "index" })
+    return jsonify({"page": "index"})
 
 
 def _loadconfig():
@@ -61,7 +60,7 @@ def _loadconfig():
 
 @app.route('/engines/censys/reloadconfig', methods=['GET'])
 def reloadconfig():
-    res = { "page": "reloadconfig" }
+    res = {"page": "reloadconfig"}
 
     this.requestor = []
     _loadconfig()
@@ -72,7 +71,7 @@ def reloadconfig():
 
 @app.route('/engines/censys/startscan', methods=["POST"])
 def start_scan():
-    res = { "page": "startscan" }
+    res = {"page": "startscan"}
 
     if len(this.queries) == MAX_QUERIES:
         res.update({
@@ -89,15 +88,20 @@ def start_scan():
                 "reason": "arg error, something is missing ('options'.'keyword' ? 'assets' ?)"
         }})
         return jsonify(res)
-    if str(data['scan_id']) in scans.keys():
+    if str(data['scan_id']) in this.scans.keys():
         res.update({
             "status": "refused",
             "details": {
                 "reason": "scan '{}' already launched".format(data['scan_id'])
         }})
         return jsonify(res)
-    _put_queries({"search": data['options']['keyword'],"scan_id": str(data['scan_id'])})
-    this.scans[str(data['scan_id'])]={"keyword":{},
+
+    _put_queries({
+        "search": data['options']['keyword'],
+        "scan_id": str(data['scan_id'])
+    })
+    this.scans[str(data['scan_id'])] = {
+        "keyword":{},
         "issues":[],
         "options": [],
         "up_cert": {},
@@ -105,16 +109,20 @@ def start_scan():
         "revoked": {},
         "unreachable_host": [],
         "status": "SCANNING",
-        "gather": {"certificate_expired": [],
-                    "certificate_expired_in_two_weeks": [],
-                    "fail_load_crl": [],
-                    "certificate_in_crl": [],
-                    "analized_certificate": [],
-                    "host_self_signed": [],
-                    "alt_name_on_not_trusted_host": [],
-                    "ca_not_trusted": {}
-                },
-        "summary": {"engine_name":this.scanner["name"], "nb_issues":0,"engine_version":this.scanner["version"],
+        "gather": {
+            "certificate_expired": [],
+            "certificate_expired_in_two_weeks": [],
+            "fail_load_crl": [],
+            "certificate_in_crl": [],
+            "analized_certificate": [],
+            "host_self_signed": [],
+            "alt_name_on_not_trusted_host": [],
+            "ca_not_trusted": {}
+        },
+        "summary": {
+            "engine_name": this.scanner["name"],
+            "nb_issues": 0,
+            "engine_version": this.scanner["version"],
         "nb_info":0, "nb_high":0, "nb_medium":0, "nb_low":0
         },
         "totalLeft": 0
@@ -145,13 +153,13 @@ def _remove_scan(query):
 @app.route('/engines/censys/stop/<scan_id>')
 def stop_scan(scan_id):
     scan_id = str(scan_id)
-    res = { "page": "stop" }
+    res = {"page": "stop"}
     if not scan_id in this.scans.keys():
         res.update({"status": "error", "reason": "scan_id '{}' not found".format(scan_id)})
         return jsonify(res)
     scan_status(scan_id)
     if this.scans[scan_id]['status'] not in ["SCANNING"]:
-        res.update({ "status": "error", "reason": "scan '{}' is not running (status={})".format(scan_id, this.scans[scan_id]['status'])})
+        res.update({"status": "error", "reason": "scan '{}' is not running (status={})".format(scan_id, this.scans[scan_id]['status'])})
         return jsonify(res)
 
     this.STOPPED.append(scan_id)
@@ -186,11 +194,11 @@ def clean_scan(scan_id):
     res.update({"scan_id": scan_id})
 
     if not scan_id in this.scans.keys():
-        res.update({ "status": "error", "reason": "scan_id '{}' not found".format(scan_id)})
+        res.update({"status": "error", "reason": "scan_id '{}' not found".format(scan_id)})
         return jsonify(res)
 
     if this.scans[scan_id]['status'] != 'FINISHED' and this.scans[scan_id]['status'] != 'STOPPED':
-        res.update({ "status": "error", "reason": "CAN'T CLEAN '{}' because not FINISHED or STOPPED".format(scan_id)})
+        res.update({"status": "error", "reason": "CAN'T CLEAN '{}' because not FINISHED or STOPPED".format(scan_id)})
         return jsonify(res)
 
     this.scans.pop(scan_id)
@@ -233,7 +241,7 @@ def scan_status(scan_id):
 
 @app.route('/engines/censys/status')
 def status():
-    res = { "page": "status" }
+    res = {"page": "status"}
     scans = []
     for scan_id in this.scans.keys():
         scan_status(scan_id)
@@ -266,7 +274,7 @@ def info():
 @app.route('/engines/censys/getfindings/<scan_id>')
 def getfindings(scan_id):
     scan_id = str(scan_id)
-    res = { "page": "getfindings", "scan_id": scan_id}
+    res = {"page": "getfindings", "scan_id": scan_id}
     if not scan_id in this.scans.keys():
         res.update({"status": "ERROR",
             "details": "scan_id '{}' not found".format(scan_id)
@@ -691,7 +699,7 @@ def _requestor_d(key):
                         this.scans[action['scan_id']]['totalLeft']-=1
                     if this.scans[action['scan_id']]['totalLeft'] == 0:
                         this.scans[action['scan_id']]['finished_at'] = int(time.time() * 1000)
-            except:
+            except Exception:
                 print sys.exc_info()
         else:
             time.sleep(1)
@@ -708,7 +716,7 @@ def _search_cert(keyword,scan_id, key):
             time.sleep(1)
         except censys.base.CensysNotFoundException:
             return False
-        except:
+        except Exception:
             time.sleep(1)
             print sys.exc_info()
 
@@ -722,7 +730,7 @@ def _search_cert(keyword,scan_id, key):
                 this.scans[scan_id]['keyword'][keyword]['left']+=1
                 this.scans[scan_id]['totalLeft']+=1
         this.scans[scan_id]['keyword'][keyword]['begin']=True
-    except:
+    except Exception:
         pass
     return True
 
@@ -737,7 +745,7 @@ def _get_view_cert(cert_sha, key):
             time.sleep(1)
         except censys.base.CensysNotFoundException:
             return False
-        except:
+        except Exception:
             time.sleep(1)
             print sys.exc_info()
     return views
@@ -754,7 +762,7 @@ def _ignore_changed_certificate(views, scan_id):
             return False
         if not _still_exist(url, views["parsed"]["serial_number"],port, scan_id):
             return True
-    except:
+    except Exception:
         this.scans[scan_id]['unreachable_host'].append(url)
     return False
 
@@ -825,7 +833,7 @@ def _view_valid(views,cert_sha,scan_id,keyword):
                     except TypeError: # in case crl list empty
                         crl_fail = True
                         crl_description = crl_description + "Crl file '{}' unknow format\n".format(crl)
-                except: # in case can't reach url of crl point
+                except Exception: # in case can't reach url of crl point
                     crl_fail = True
                     crl_description = crl_description + "Crl file '{}' unable to reach file\n".format(crl)
 
@@ -878,7 +886,7 @@ def _still_exist(url, serial, port, scan_id):
             this.scans[scan_id]['up_cert'][url] = {'serial': new_serial, 'port': p}
 
             break;
-        except:
+        except Exception:
             pass
             #print sys.exc_info()
     return new_serial == int(serial)
@@ -942,7 +950,7 @@ def _ca_trusted(views,scan_id,keyword,key,chain=[]):
             the_certificate = hashlib.sha256(html.content).hexdigest()
 
             crl_object = OpenSSL.crypto.load_certificate(OpenSSL.crypto.FILETYPE_ASN1, html.content)
-        except:
+        except Exception:
             if not "extensions" in views["parsed"].keys() or not "authority_key_id" in views["parsed"]["extensions"].keys():
                 return False
 
@@ -955,7 +963,7 @@ def _ca_trusted(views,scan_id,keyword,key,chain=[]):
                     time.sleep(1)
                 except censys.base.CensysNotFoundException:
                     return False
-                except:
+                except Exception:
                     time.sleep(1)
                     print sys.exc_info()
             i = 0

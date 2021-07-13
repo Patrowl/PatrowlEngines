@@ -182,8 +182,9 @@ def getfindings(scan_id):
 
 def _json_serial(obj):
     """
-        JSON serializer for objects not serializable by default json code
-        Used for datetime serialization when the results are written in file
+    JSON serializer for objects not serializable by default json code.
+
+    Used for datetime serialization when the results are written in file
     """
     if isinstance(obj, datetime.datetime):
         serial = obj.isoformat()
@@ -384,7 +385,7 @@ def start_scan():
                 "status": "STARTED",
                 "started_at": int(time.time() * 1000),
                 "findings": {}
-        })
+            })
 
     if post_args['options']['action'] == 'scan':
         # Check scan policy
@@ -486,7 +487,10 @@ def stop_scan(scan_id):
         res.update({"status": "error", "reason": this.nessscan.res['error']})
         return jsonify(res)
     with transaction(table) as tr:
-            tr.update({"status": "STOPPED", "finished_at": int(time.time() * 1000)}, where('scan_id') == scan_id )
+        tr.update({
+            "status": "STOPPED",
+            "finished_at": int(time.time() * 1000)},
+            where('scan_id') == scan_id)
 
     res.update({"status": "success", "scan": item[0]})
     return jsonify(res)
@@ -496,8 +500,8 @@ def stop_scan(scan_id):
 def stop():
     res = {"page": "stopscans"}
 
-    for item in db:
-        scan_id=item.scan_id
+    for item in table.all():
+        scan_id = item.scan_id
         clean_scan(scan_id)
 
     res.update({"status": "success", "details": {

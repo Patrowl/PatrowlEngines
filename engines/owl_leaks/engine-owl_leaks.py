@@ -191,7 +191,7 @@ def _search_github_thread(scan_id, asset_kw):
     #                 from_date_str = engine.scans[scan_id]["options"]["github_qualifiers"]["from_date"]
     #                 from_date_check = datetime.strptime(engine.scans[scan_id]["options"]["github_qualifiers"]["from_date"], "%Y-%m-%d")
     #                 qualifiers.update({"created": ">="+str(from_date_str)})
-    #             except:
+    #             except Exception:
     #                 print "bad datetime format"
     #
     #         elif opt_qualifier == "to_date":
@@ -199,7 +199,7 @@ def _search_github_thread(scan_id, asset_kw):
     #                 to_date_str = engine.scans[scan_id]["options"]["github_qualifiers"]["to_date"]
     #                 to_date_check = datetime.strptime(engine.scans[scan_id]["options"]["github_qualifiers"]["to_date"], "%Y-%m-%d")
     #                 qualifiers.update({"created": "<="+str(to_date_str)})
-    #             except:
+    #             except Exception:
     #                 print "bad datetime format"
 
     # g = Github(engine.options["github_username"], engine.options["github_password"])  # rate limit = 30 requests/min

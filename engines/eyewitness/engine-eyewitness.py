@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-EyeWitness PatrOwl engine application
+EyeWitness PatrOwl engine application.
 
 Copyright (C) 2021 Nicolas Mattiocco - @MaKyOtOx
 Licensed under the AGPLv3 License
@@ -49,11 +49,9 @@ ENGINE = PatrowlEngine(
     version=VERSION
 )
 
-def get_options(payload):
-    """
-    Extracts formatted options from the payload
-    """
 
+def get_options(payload):
+    """Extract formatted options from the payload."""
     options = dict()
     user_opts = payload["options"]
     if isinstance(user_opts, str):
@@ -62,8 +60,9 @@ def get_options(payload):
         options["extra_opts"] = user_opts["extra_opts"]
     return options
 
+
 def get_criticity(score):
-    """Return the level of criicity."""
+    """Return the level of criticity."""
     criticity = "high"
     if score == 0:
         criticity = "info"
@@ -75,9 +74,7 @@ def get_criticity(score):
 
 
 def eyewitness_cmd(list_url, asset_id, scan_id, extra_opts):
-    """
-    Returns the screenshot path
-    """
+    """Return the screenshot path."""
     if 'extra_opts' in extra_opts:
         extra_opts = extra_opts['extra_opts'].split(' ')
     else:
@@ -109,7 +106,7 @@ def eyewitness_cmd(list_url, asset_id, scan_id, extra_opts):
             continue
         result_url = "{repo_url}/{scan_id}/{asset_id}/{count}/screens/{screenshot}".format(repo_url=ENGINE.scanner["options"]["ScreenshotsURL"]["value"], scan_id=scan_id, asset_id=asset_id, count=count, screenshot=screenshot_files[0])
         report_url = "{repo_url}/{scan_id}/{asset_id}/{count}/report.html".format(repo_url=ENGINE.scanner["options"]["ScreenshotsURL"]["value"], scan_id=scan_id, asset_id=asset_id, count=count)
-        report_sources_path = "{base_path}/{asset_id}/{count}/source/".format(base_path=base_path, scan_id=scan_id, asset_id=asset_id, count=count)
+        report_sources_path = "{base_path}/{asset_id}/{count}/source/".format(base_path=base_path, asset_id=asset_id, count=count)
         result.update({url: {
             "path": "{}/screens/{}".format(screenshot_base_path, screenshot_files[0]),
             "url": result_url,
@@ -120,9 +117,7 @@ def eyewitness_cmd(list_url, asset_id, scan_id, extra_opts):
 
 
 def get_last_screenshot(current_path, asset_id, scan_id):
-    """
-    Returns the path and the URL of the last screenshot taken
-    """
+    """Return the path and the URL of the last screenshot taken."""
     last_scan_id = 0
     last_scan_path = current_path
     last_scan_url = ''
@@ -138,10 +133,9 @@ def get_last_screenshot(current_path, asset_id, scan_id):
 
     return last_scan_path, last_scan_url
 
+
 def diff_screenshot(screenshot1, screenshot2):
-    """
-    Returns the percentage of differences between screenshot & screenshot2
-    """
+    """Return the percentage of differences between 2 screenshots."""
     try:
         output = check_output([ENGINE.scanner["options"]["ImageMagickComparePath"]["value"], "-metric", "RMSE", screenshot1, screenshot2, "NULL:"], stderr=STDOUT)
     except CalledProcessError as err_msg:
@@ -149,7 +143,6 @@ def diff_screenshot(screenshot1, screenshot2):
     except ValueError:
         return None
 
-    # pylint: disable=W1401
     try:
         diff = search("(\((.*?)\))", str(output))
         percent_diff = int(float(diff.group(2)) * 100)
@@ -158,10 +151,9 @@ def diff_screenshot(screenshot1, screenshot2):
 
     return percent_diff
 
+
 def is_forsale(report_sources_path):
-    """
-    Returns True if domain is for sale
-    """
+    """Return True if domain is for sale."""
     if not exists(report_sources_path) or \
         not os.listdir(report_sources_path) or \
         "RulesForSale" not in ENGINE.scanner["options"]:
@@ -176,6 +168,7 @@ def is_forsale(report_sources_path):
                 LOG.warning("Match: %s rule", rule_name)
                 return True
     return False
+
 
 @app.errorhandler(404)
 def page_not_found(error):
@@ -303,7 +296,7 @@ def getreport(scan_id):
 
 
 def _loadconfig():
-    """ Load config during startup """
+    """Load config during startup."""
     conf_file = APP_BASE_DIR+"/eyewitness.json"
     if exists(conf_file):
         json_data = open(conf_file)
@@ -359,7 +352,7 @@ def _loadconfig():
 
 @app.route("/engines/eyewitness/reloadconfig", methods=["GET"])
 def reloadconfig():
-    """ Reload config """
+    """Reload config."""
     res = {"page": "reloadconfig"}
     _loadconfig()
     res.update({"config": ENGINE.scanner})
@@ -369,7 +362,7 @@ def reloadconfig():
 
 @app.route("/engines/eyewitness/startscan", methods=["POST"])
 def start_scan():
-    """ Start scan function """
+    """Start scan function."""
     res = {"page": "startscan"}
 
     # Check the scanner is ready to start a new scan
@@ -618,7 +611,7 @@ def _parse_results(scan_id):
 
 @app.route("/engines/eyewitness/getfindings/<scan_id>", methods=["GET"])
 def getfindings(scan_id):
-    """ Function returning all findings """
+    """Return all findings."""
     res = {"page": "getfindings", "scan_id": scan_id}
 
     # check if the scan_id exists

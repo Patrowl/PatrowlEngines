@@ -1,12 +1,12 @@
 #!/usr/bin/python3
 # -*- coding: utf-8 -*-
-from flask import jsonify
 
 class PatrowlEngineExceptions(Exception):
     """
-    This class is all about exceptions.  All exception based directly on
-    PatrowlEngine will consist of  a **code** and a **message** describing
-    the reason of the exception shortly.
+    This class is all about exceptions.
+
+    All exception based directly on PatrowlEngine will consist of a **code**
+    and a **message** describing the reason of the exception shortly.
     """
 
     _error_codes = {
@@ -23,7 +23,6 @@ class PatrowlEngineExceptions(Exception):
             self.message = msg
         else:
             self.message = self._error_codes.get(code)
-
 
     def __str__(self):
         return "Error %i: %s" % (self.code, self.message)

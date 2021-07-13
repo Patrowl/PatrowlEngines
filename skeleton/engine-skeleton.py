@@ -10,7 +10,7 @@ from urllib.parse import urlparse
 from flask import Flask, request, jsonify
 from PatrowlEnginesUtils.PatrowlEngine import _json_serial
 from PatrowlEnginesUtils.PatrowlEngine import PatrowlEngine
-from PatrowlEnginesUtils.PatrowlEngine import PatrowlEngineFinding
+# from PatrowlEnginesUtils.PatrowlEngine import PatrowlEngineFinding
 from PatrowlEnginesUtils.PatrowlEngineExceptions import PatrowlEngineExceptions
 
 app = Flask(__name__)
