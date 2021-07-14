@@ -1,0 +1,21 @@
+---
+
+build-push-owl_request:
+  variables:
+    STACK: "engine-owl_request"
+    FOLDER_PATH: "engines/owl_request"
+    PORT: 5019
+  before_script:
+    - VERSION=$(cat $CI_PROJECT_DIR/$FOLDER_PATH/VERSION | cut -d " " -f1)
+    ### Issue with variable expansion in variable section
+  extends: .build-push
+
+# run-job-owl_request:
+#   variables:
+#     STACK: "engine-owl_request"
+#     FOLDER_PATH: "engines/owl_request"
+#     PORT: 5019
+#   before_script:
+#     - VERSION=$(cat $CI_PROJECT_DIR/$FOLDER_PATH/VERSION | cut -d " " -f1)
+#     ### Issue with variable expansion in variable section
+#   extends: .run-job
