@@ -1,0 +1,21 @@
+---
+
+build-push-cybelangel:
+  variables:
+    STACK: "engine-cybelangel"
+    FOLDER_PATH: "engines/cybelangel"
+    PORT: 5024
+  before_script:
+    - VERSION=$(cat $CI_PROJECT_DIR/$FOLDER_PATH/VERSION | cut -d " " -f1)
+    ### Issue with variable expansion in variable section
+  extends: .build-push
+
+# run-job-cybelangel:
+#   variables:
+#     STACK: "engine-cybelangel"
+#     FOLDER_PATH: "engines/cybelangel"
+#     PORT: 5024
+#   before_script:
+#     - VERSION=$(cat $CI_PROJECT_DIR/$FOLDER_PATH/VERSION | cut -d " " -f1)
+#     ### Issue with variable expansion in variable section
+#   extends: .run-job
