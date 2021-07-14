@@ -1,0 +1,21 @@
+---
+
+build-push-owl_leaks:
+  variables:
+    STACK: "engine-owl_leaks"
+    FOLDER_PATH: "engines/owl_leaks"
+    PORT: 5012
+  before_script:
+    - VERSION=$(cat $CI_PROJECT_DIR/$FOLDER_PATH/VERSION | cut -d " " -f1)
+    ### Issue with variable expansion in variable section
+  extends: .build-push
+
+# run-job-owl_leaks:
+#   variables:
+#     STACK: "engine-owl_leaks"
+#     FOLDER_PATH: "engines/owl_leaks"
+#     PORT: 5012
+#   before_script:
+#     - VERSION=$(cat $CI_PROJECT_DIR/$FOLDER_PATH/VERSION | cut -d " " -f1)
+#     ### Issue with variable expansion in variable section
+#   extends: .run-job
