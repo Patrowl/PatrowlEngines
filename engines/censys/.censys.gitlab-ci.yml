@@ -1,0 +1,21 @@
+---
+
+build-push-censys:
+  variables:
+    STACK: "engine-censys"
+    FOLDER_PATH: "engines/censys"
+    PORT: 5110
+  before_script:
+    - VERSION=$(cat $CI_PROJECT_DIR/$FOLDER_PATH/VERSION | cut -d " " -f1)
+    ### Issue with variable expansion in variable section
+  extends: .build-push
+
+# run-job-censys:
+#   variables:
+#     STACK: "engine-censys"
+#     FOLDER_PATH: "engines/censys"
+#     PORT: 5110
+#   before_script:
+#     - VERSION=$(cat $CI_PROJECT_DIR/$FOLDER_PATH/VERSION | cut -d " " -f1)
+#     ### Issue with variable expansion in variable section
+#   extends: .run-job
