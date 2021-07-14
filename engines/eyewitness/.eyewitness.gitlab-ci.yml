@@ -1,0 +1,21 @@
+---
+
+build-push-eyewitness:
+  variables:
+    STACK: "engine-eyewitness"
+    FOLDER_PATH: "engines/eyewitness"
+    PORT: 5018
+  before_script:
+    - VERSION=$(cat $CI_PROJECT_DIR/$FOLDER_PATH/VERSION | cut -d " " -f1)
+    ### Issue with variable expansion in variable section
+  extends: .build-push
+
+# run-job-eyewitness:
+#   variables:
+#     STACK: "engine-eyewitness"
+#     FOLDER_PATH: "engines/eyewitness"
+#     PORT: 5018
+#   before_script:
+#     - VERSION=$(cat $CI_PROJECT_DIR/$FOLDER_PATH/VERSION | cut -d " " -f1)
+#     ### Issue with variable expansion in variable section
+#   extends: .run-job
