@@ -1,0 +1,21 @@
+---
+
+build-push-virustotal:
+  variables:
+    STACK: "engine-virustotal"
+    FOLDER_PATH: "engines/virustotal"
+    PORT: 5007
+  before_script:
+    - VERSION=$(cat $CI_PROJECT_DIR/$FOLDER_PATH/VERSION | cut -d " " -f1)
+    ### Issue with variable expansion in variable section
+  extends: .build-push
+
+# run-job-virustotal:
+#   variables:
+#     STACK: "engine-virustotal"
+#     FOLDER_PATH: "engines/virustotal"
+#     PORT: 5007
+#   before_script:
+#     - VERSION=$(cat $CI_PROJECT_DIR/$FOLDER_PATH/VERSION | cut -d " " -f1)
+#     ### Issue with variable expansion in variable section
+#   extends: .run-job
