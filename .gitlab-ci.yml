@@ -45,8 +45,8 @@ include:
 #   - local: '/engines/certstream/.certstream.gitlab-ci.yml'
 #   - local: '/engines/cortex/.cortex.gitlab-ci.yml'
 #   - local: '/engines/cybelangel/.cybelangel.gitlab-ci.yml'
-#   - local: '/engines/droopescan/.droopescan.gitlab-ci.yml'
-#   - local: '/engines/eyewitness/.eyewitness.gitlab-ci.yml'
+  - local: '/engines/droopescan/.droopescan.gitlab-ci.yml'
+  #- local: '/engines/eyewitness/.eyewitness.gitlab-ci.yml'
 #   - local: '/engines/nessus/.nessus.gitlab-ci.yml'
 #   - local: '/engines/nmap/.nmap.gitlab-ci.yml'
 #   - local: '/engines/openvas/.openvas.gitlab-ci.yml'
@@ -54,7 +54,9 @@ include:
 #   - local: '/engines/owl_dns/.owl_dns.gitlab-ci.yml'
 #   - local: '/engines/owl_leaks/.owl_leaks.gitlab-ci.yml'
 #   - local: '/engines/owl_request/.owl_request.gitlab-ci.yml'
+#   - local: '/engines/pastebin_monitor/.pastebin_monitor.gitlab-ci.yml'
 #   - local: '/engines/shhgit/.shhgit.gitlab-ci.yml'
+#   - local: '/engines/ssllabs/.sslscan.gitlab-ci.yml
 #   - local: '/engines/ssllabs/.ssllabs.gitlab-ci.yml
 #   - local: '/engines/urlvoid/.urlvoid.gitlab-ci.yml'
 #   - local: '/engines/virustotal/.virustotal.gitlab-ci.yml'
