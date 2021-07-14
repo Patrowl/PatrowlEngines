@@ -1,0 +1,61 @@
+---
+variables:
+  CI_DEBUG_TRACE: "false"
+  REGISTRY_URL: "registry.local:5000/patrowl/docker-images"
+
+stages:
+  - build
+  - run
+
+.build-push:
+  stage: build
+  image:
+    name: gcr.io/kaniko-project/executor:debug
+    entrypoint: [""]
+  script:
+    - VERSION=$(cat $CI_PROJECT_DIR/$FOLDER_PATH/VERSION | cut -d " " -f1)
+    - echo "Building Dockerfile $REGISTRY_URL/$STACK:$VERSION on branch $CI_COMMIT_BRANCH"
+    - mkdir -p /kaniko/.docker
+    - echo "{\"auths\":{$(echo \"${REGISTRY_URL}\" | cut -d '/' -f1)\":{\"username\":\"$REGISTRY_USER\",\"password\":\"$REGISTRY_PASSWORD\"}}}" > /kaniko/.docker/config.json
+    - cat /kaniko/.docker/config.json
+    - /kaniko/executor --insecure --cache=true --cache-ttl=6h --context $CI_PROJECT_DIR/$FOLDER_PATH --dockerfile $CI_PROJECT_DIR/$FOLDER_PATH/Dockerfile --destination $REGISTRY_URL/$STACK:$VERSION
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH
+      changes:
+        - $FOLDER_PATH/*
+.run-job:
+  stage: run
+  image:
+    name: $REGISTRY_URL/$STACK:$VERSION
+  script:
+    - echo "Running engine $STACK on branch $CI_COMMIT_BRANCH"
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH
+      changes:
+        - $FOLDER_PATH/*
+  after_script:
+    - docker images | grep $STACK
+    - docker stop $(docker ps -a -q --filter ancestor=$REGISTRY_URL/$STACK:$VERSION)
+   
+include:
+#   - local: '/engines/apivoid/.apivoid.gitlab-ci.yml'
+#   - local: '/engines/arachni/.arachni.gitlab-ci.yml'
+#   - local: '/engines/burp/.burp.gitlab-ci.yml'
+#   - local: '/engines/censys/.censys.gitlab-ci.yml'
+#   - local: '/engines/certstream/.certstream.gitlab-ci.yml'
+#   - local: '/engines/cortex/.cortex.gitlab-ci.yml'
+#   - local: '/engines/cybelangel/.cybelangel.gitlab-ci.yml'
+#   - local: '/engines/droopescan/.droopescan.gitlab-ci.yml'
+#   - local: '/engines/eyewitness/.eyewitness.gitlab-ci.yml'
+#   - local: '/engines/nessus/.nessus.gitlab-ci.yml'
+#   - local: '/engines/nmap/.nmap.gitlab-ci.yml'
+#   - local: '/engines/openvas/.openvas.gitlab-ci.yml'
+#   - local: '/engines/owl_code/.owl_code.gitlab-ci.yml'
+#   - local: '/engines/owl_dns/.owl_dns.gitlab-ci.yml'
+#   - local: '/engines/owl_leaks/.owl_leaks.gitlab-ci.yml'
+#   - local: '/engines/owl_request/.owl_request.gitlab-ci.yml'
+#   - local: '/engines/shhgit/.shhgit.gitlab-ci.yml'
+#   - local: '/engines/ssllabs/.ssllabs.gitlab-ci.yml
+#   - local: '/engines/urlvoid/.urlvoid.gitlab-ci.yml'
+#   - local: '/engines/virustotal/.virustotal.gitlab-ci.yml'
+#   - local: '/engines/wpscan/.wpscan.gitlab-ci.yml'
