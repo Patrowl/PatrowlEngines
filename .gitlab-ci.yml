@@ -56,8 +56,8 @@ include:
   - local: '/engines/owl_request/.owl_request.gitlab-ci.yml'
   - local: '/engines/pastebin_monitor/.pastebin_monitor.gitlab-ci.yml'
   - local: '/engines/shhgit/.shhgit.gitlab-ci.yml'
-  - local: '/engines/ssllabs/.sslscan.gitlab-ci.yml
-  - local: '/engines/ssllabs/.ssllabs.gitlab-ci.yml
+  - local: '/engines/ssllabs/.sslscan.gitlab-ci.yml'
+  - local: '/engines/ssllabs/.ssllabs.gitlab-ci.yml'
   - local: '/engines/urlvoid/.urlvoid.gitlab-ci.yml'
   - local: '/engines/virustotal/.virustotal.gitlab-ci.yml'
   - local: '/engines/wpscan/.wpscan.gitlab-ci.yml'
