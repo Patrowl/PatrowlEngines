@@ -22,7 +22,7 @@ stages:
   rules:
     - if: $CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH
       changes:
-        - $FOLDER_PATH/*
+        - $FOLDER_PATH/VERSION
 .run-job:
   stage: run
   image:
@@ -32,7 +32,7 @@ stages:
   rules:
     - if: $CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH
       changes:
-        - $FOLDER_PATH/*
+        - $FOLDER_PATH/VERSION
   after_script:
     - docker images | grep $STACK
     - docker stop $(docker ps -a -q --filter ancestor=$REGISTRY_URL/$STACK:$VERSION)
