@@ -82,7 +82,8 @@ class dnstwist:
 
             issues.append({
                 "issue_id": len(issues)+1,
-                "severity": "low", "confidence": "certain",
+                "severity": "low", 
+                "confidence": "certain",
                 "target": {
                     "addr": [asset],
                     "protocol": "domain"

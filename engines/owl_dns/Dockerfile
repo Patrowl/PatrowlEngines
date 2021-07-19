@@ -35,6 +35,8 @@ WORKDIR /opt/patrowl-engines/owl_dns/external-libs/Sublist3r
 RUN pip3 install --trusted-host pypi.python.org -r requirements.txt
 WORKDIR /opt/patrowl-engines/owl_dns/external-libs
 RUN git clone https://github.com/elceef/dnstwist
+WORKDIR /opt/patrowl-engines/owl_dns/external-libs/dnstwist
+RUN pip3 install --trusted-host pypi.python.org -r requirements.txt
 
 # Install python modules for engine
 WORKDIR /opt/patrowl-engines/owl_dns/

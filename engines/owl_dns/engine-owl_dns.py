@@ -85,7 +85,8 @@ def start_scan():
             "details": {
                 "reason": "scanner not ready",
                 "status": this.scanner['status']
-        }})
+            }
+        })
         return jsonify(res)
 
     data = json.loads(request.data)
@@ -94,7 +95,8 @@ def start_scan():
             "status": "refused",
             "details": {
                 "reason": "arg error, something is missing ('assets' ?)"
-        }})
+            }
+        })
         return jsonify(res)
 
     # Sanitize args :
@@ -200,7 +202,8 @@ def start_scan():
         "status": "accepted",
         "details": {
             "scan_id": scan['scan_id']
-    }})
+        }
+    })
 
     return jsonify(res)
 

@@ -45,7 +45,7 @@ APP_BASE_DIR = dirname(realpath(__file__))
 # DEFAULT_OV_PORTLIST = "patrowl-all_tcp"
 DEFAULT_TIMEOUT = int(os.environ.get('DEFAULT_TIMEOUT', 600))
 DEFAULT_SCAN_TIMEOUT = int(os.environ.get('DEFAULT_SCAN_TIMEOUT', 432000)) # 2 days
-VERSION = "1.4.28"
+VERSION = "1.4.29"
 
 engine = PatrowlEngine(
     app=app,
@@ -96,8 +96,8 @@ def get_options(payload):
     return options
 
 
-def get_target(target_name, scan_portlist_id=None, alive_test=None):
-    """Return the target_id of a target. If not, it returns None."""
+def get_target(target_name, scan_portlist_id=None, alive_test=AliveTest.TCP_SYN_SERVICE_PING):
+    """Return the target_id of a target. If not, it return None."""
     valid_target_id = None
     connection = TLSConnection(
         hostname=engine.scanner["options"]["gmp_host"]["value"],
@@ -108,15 +108,19 @@ def get_target(target_name, scan_portlist_id=None, alive_test=None):
         gmp_cnx.authenticate(
             engine.scanner["options"]["gmp_username"]["value"],
             engine.scanner["options"]["gmp_password"]["value"])
-        targets_xml = gmp_cnx.get_targets()
+        targets_xml = gmp_cnx.get_targets(filter="~"+target_name)
+        # print("get_target/targets_xml:", targets_xml)
         try:
             targets = ET.fromstring(targets_xml)
-        except Exception:
+            # print("get_target/targets:", targets)
+        except Exception as e:
+            print(e)
             return None
         if not targets.attrib["status"] == "200":
             return None
 
         for target in targets.findall("target"):
+            # print("get_target/target:", target, target_name, target.find("name").text)
             if scan_portlist_id is None and target_name in target.find("name").text:
                 valid_target_id = target.get("id")
                 if not is_uuid(valid_target_id):
@@ -184,7 +188,6 @@ def get_scan_config_name(scan_config_id=None, gmp=this.gmp):
 
 def get_scan_config(name=None):
     """Return the scan_config_id from conf."""
-
     connection = TLSConnection(
         hostname=engine.scanner["options"]["gmp_host"]["value"],
         port=engine.scanner["options"]["gmp_port"]["value"],
@@ -228,7 +231,6 @@ def create_target(
         snmp_credential_id=None,
         alive_test=AliveTest.TCP_SYN_SERVICE_PING):
     """Create a target in OpenVAS and returns its target_id."""
-
     # Check alive_test param
     if alive_test not in OV_ALIVE_TESTS.keys():
         alive_test = AliveTest.TCP_SYN_SERVICE_PING
@@ -270,7 +272,6 @@ def create_target(
 
 def get_task_by_target_name(target_name, scan_config_id=None):
     """Return the task_id."""
-
     connection = TLSConnection(
         hostname=engine.scanner["options"]["gmp_host"]["value"],
         port=engine.scanner["options"]["gmp_port"]["value"],
@@ -437,8 +438,9 @@ def get_last_report(task_id):
 
 def get_multiple_report_status(info, gmp_cnx):
     """
-    Get the status of a set of assets
-    {'task_id': xx, 'report_id': xx}.
+    Get the status of a set of assets.
+
+    Ex: {'task_id': xx, 'report_id': xx}.
     """
     assets_status = dict()
     result_xml = gmp_cnx.get_tasks(filter="apply_overrides=1 min_qod=0 rows=-1")
@@ -754,12 +756,6 @@ def getreport(scan_id):
     return engine.getreport(scan_id)
 
 
-@app.route("/engines/openvas/resetcnx")
-def resetcnx():
-    res = {"page": "resetcnx", "status": "success"}
-    return jsonify(res)
-
-
 def _loadconfig():
     conf_file = APP_BASE_DIR+"/openvas.json"
     if not exists(conf_file):
@@ -958,7 +954,8 @@ def start_scan():
     res.update({
         "status": "accepted",
         "details": {
-            "scan_id": scan["scan_id"]
+            # "scan_id": scan["scan_id"]
+            "scan_id": scan_id
         }
     })
 
@@ -972,7 +969,10 @@ def _scan_assets(scan_id):
     if 'profile' in engine.scans[scan_id]["options"].keys():
         scan_config_name = engine.scans[scan_id]["options"]["profile"]
 
+    # print("scan_config_name:", scan_config_name)
+
     scan_config_id = get_scan_config(name=scan_config_name)
+    # print("scan_config_id:", scan_config_id)
     scan_portlist_id = None
     if "OpenVAS Default" in this.openvas_portlists.keys():
         scan_portlist_id = this.openvas_portlists["OpenVAS Default"]
@@ -981,6 +981,8 @@ def _scan_assets(scan_id):
         scan_portlist_name = scan["options"]["port_list"]
         if scan_portlist_name in this.openvas_portlists.keys():
             scan_portlist_id = this.openvas_portlists[scan_portlist_name]
+
+    # print("scan_portlist_id:", scan_portlist_id)
 
     if scan_portlist_id is None:
         engine.scans[scan_id]['status'] = "ERROR"
@@ -1005,6 +1007,7 @@ def _scan_assets(scan_id):
         if target_id is None:
             engine.scans[scan_id]['status'] = "ERROR"
             engine.scans[scan_id]['reason'] = "Unable to create a target ({})".format(assets_hash)
+            return False
 
         task_id = get_task_by_target_name(assets_hash, scan_config_id)
         if task_id is None and options["enable_create_task"] is True:
@@ -1012,6 +1015,7 @@ def _scan_assets(scan_id):
         if task_id is None:
             engine.scans[scan_id]['status'] = "ERROR"
             engine.scans[scan_id]['reason'] = "Unable to create a task ({})".format(assets_hash)
+            return False
 
         if options["enable_start_task"] is True:
             report_id = start_task(task_id)
@@ -1023,6 +1027,7 @@ def _scan_assets(scan_id):
         if report_id is None:
             engine.scans[scan_id]['status'] = "ERROR"
             engine.scans[scan_id]['reason'] = "Unable to get a report ({})".format(assets_hash)
+            return False
 
         # Store the scan info
         engine.scans[scan_id]['info'] = {
@@ -1487,13 +1492,11 @@ def main():
     if not exists(APP_BASE_DIR+"/results"):
         makedirs(APP_BASE_DIR+"/results")
     _loadconfig()
-    # resetcnx()
 #
 #
 # @app.errorhandler(GvmError)
 # def handle_gvm_error(e):
 #     print("GvmError detected. Reset GVM connection")
-#     resetcnx()
 #     return 'bad request!', 400
 
 
