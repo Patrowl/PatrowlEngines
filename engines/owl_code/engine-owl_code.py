@@ -383,7 +383,8 @@ def _scanowaspdc_thread(scan_id, asset_kw):
         scan_results = json.load(open(report_filename))
 
         for item in scan_results["dependencies"]:
-            if "vulnerabilities" not in item.keys(): continue
+            if "vulnerabilities" not in item.keys():
+                continue
             checked_files.append(item["filePath"])
 
             for vuln in item["vulnerabilities"]:
@@ -471,6 +472,12 @@ def main():
     if not os.path.exists(APP_BASE_DIR+"/workdirs"):
         os.makedirs(APP_BASE_DIR+"/workdirs")
     engine._loadconfig()
+    
+    version_filename = APP_BASE_DIR+'/VERSION'
+    if os.path.exists(version_filename):
+        version_file = open(version_filename, "r")
+        engine.version = version_file.read().rstrip('\n')
+        version_file.close()
 
 
 if __name__ == '__main__':

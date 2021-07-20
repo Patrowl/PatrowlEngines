@@ -129,8 +129,13 @@ def _loadconfig():
     if os.path.exists(conf_file):
         json_data = open(conf_file)
         engine.scanner = json.load(json_data)
-
         engine.scanner['status'] = "READY"
+
+        version_filename = APP_BASE_DIR+'/VERSION'
+        if os.path.exists(version_filename):
+            version_file = open(version_filename, "r")
+            engine.version = version_file.read().rstrip('\n')
+            version_file.close()
 
     else:
         print("Error: config file '{}' not found".format(conf_file))
@@ -257,7 +262,6 @@ def _scan_urls(scan_id):
 
 def get_report(asset):
     """Get Skeleton XML report."""
-
     result_code = os.system("host {} >/dev/null 2>&1".format(asset))
     issues = []
     if result_code != 0:

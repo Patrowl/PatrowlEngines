@@ -41,10 +41,17 @@ def _loadconfig():
             cert=False)
 
         this.scanner["status"] = "READY"
+
+        version_filename = BASE_DIR+'/VERSION'
+        if os.path.exists(version_filename):
+            version_file = open(version_filename, "r")
+            this.scanner["version"] = version_file.read().rstrip('\n')
+            version_file.close()
+    
         _refresh_analyzers()
     else:
         this.scanner["status"] = "ERROR"
-        print ("Error: config file '{}' not found".format(conf_file))
+        print("Error: config file '{}' not found".format(conf_file))
         return {"status": "error", "reason": "config file not found"}
 
 
@@ -69,10 +76,11 @@ def reloadconfig():
 
 @app.route('/engines/cortex/startscan', methods=['POST'])
 def start_scan():
-    '''
-    List available Cortex Analyzers (refresh)
+    """
+    List available Cortex Analyzers (refresh).
+
     Ensure each scans comply with the analyzer (ready, datatype, ...)
-    '''
+    """
     #@todo: validate parameters and options format
     res = {"page": "startscan"}
 
@@ -254,7 +262,7 @@ def _clean_job(job_id):
     try:
         this.api.delete_job(job_id)
     except CortexException as ex:
-        print('[ERROR]: Failed to get job report'.format(ex.message))
+        print('[ERROR]: Failed to get job report: {}'.format(ex.message))
     return True
 
 
@@ -272,7 +280,7 @@ def scan_status(scan_id):
                 this.scans[scan_id]["findings"] = this.scans[scan_id]["findings"] + _parse_results(scan_id, r)
                 this.scans[scan_id]["jobs"].remove(job_id)
         except CortexException as ex:
-            print('[ERROR]: Failed to get job report'.format(ex.message))
+            print('[ERROR]: Failed to get job report: {}'.format(ex.message))
 
     all_threads_finished = False
     for t in this.scans[scan_id]['threads']:

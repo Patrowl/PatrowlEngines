@@ -215,7 +215,7 @@ def _search_github_thread(scan_id, asset_kw):
             git_code.repository.owner.email.encode("ascii", "ignore")
         idescription = "File found in Github public repo (code):\n\n" + \
             "URL: {}\n\n".format(git_code.html_url) + \
-            "Repo: {}: \n\n".format(git_code.repository.name, git_code.repository.url) + \
+            "Repo: {}: {}\n\n".format(git_code.repository.name, git_code.repository.url) + \
             "Owner:\nlogin:{}, name:{}, email:{}\n\n".format(
                 git_code.repository.owner.login,
                 git_code.repository.owner.name,
@@ -246,7 +246,7 @@ def _search_github_thread(scan_id, asset_kw):
             hashlib.sha1(str(git_issue.body).encode('utf-8')).hexdigest()[:6])
         idescription = "Matching issue found in Github public repo:\n\n" + \
             "URL: {}\n\n".format(git_issue.html_url) + \
-            "Repo: {}: \n\n".format(git_issue.repository.name, git_issue.repository.url) + \
+            "Repo: {}: {}\n\n".format(git_issue.repository.name, git_issue.repository.url) + \
             "Owner:\nlogin:{}, name:{}, email:{}\n\n".format(
                 git_issue.repository.owner.login,
                 git_issue.repository.owner.name,
@@ -269,7 +269,7 @@ def _search_github_thread(scan_id, asset_kw):
             hashlib.sha1(git_repo.description.encode('ascii', 'ignore')).hexdigest()[:6])
         idescription = "Matching public Github repo:\n\n" + \
             "URL: {}\n\n".format(git_repo.html_url) + \
-            "Repo: {}: \n\n".format(git_repo.name, git_repo.url) + \
+            "Repo: {}: {}\n\n".format(git_repo.name, git_repo.url) + \
             "Owner:\nlogin:{}, name:{}, email:{}\n\n".format(
                 git_repo.owner.login,
                 git_repo.owner.name,
@@ -399,6 +399,12 @@ def main():
     if not os.path.exists(APP_BASE_DIR+"/results"):
         os.makedirs(APP_BASE_DIR+"/results")
     engine._loadconfig()
+    
+    version_filename = APP_BASE_DIR+'/VERSION'
+    if os.path.exists(version_filename):
+        version_file = open(version_filename, "r")
+        engine.version = version_file.read().rstrip('\n')
+        version_file.close()
 
 
 if __name__ == '__main__':

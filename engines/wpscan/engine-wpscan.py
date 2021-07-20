@@ -260,6 +260,11 @@ def _loadconfig():
         LOG.error("Error: You have to specify APIToken in options")
         return {"status": "error", "reason": "You have to specify APIToken in options"}
 
+    version_filename = APP_BASE_DIR+'/VERSION'
+    if os.path.exists(version_filename):
+        version_file = open(version_filename, "r")
+        engine.version = version_file.read().rstrip('\n')
+        version_file.close()
     LOG.info("[OK] APIToken")
 
 

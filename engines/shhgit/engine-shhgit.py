@@ -189,6 +189,12 @@ def _loadconfig():
                     LOGGER.error('Malformed github_group')
                     return {'status': 'error', 'reason': 'you have to define valid github_accounts'}
 
+    version_filename = APP_BASE_DIR+'/VERSION'
+    if os.path.exists(version_filename):
+        version_file = open(version_filename, "r")
+        engine.version = version_file.read().rstrip('\n')
+        version_file.close()
+
 
 @app.route('/engines/shhgit/reloadconfig', methods=['GET'])
 def reloadconfig():

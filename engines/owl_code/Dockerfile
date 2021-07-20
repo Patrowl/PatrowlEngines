@@ -1,6 +1,6 @@
 FROM alpine:latest
 MAINTAINER Patrowl.io "getsupport@patrowl.io"
-LABEL Name="Patrowl\ Code\ Security\ review\ \(Patrowl engine\)" Version="1.4.27"
+LABEL Name="Patrowl\ Code\ Security\ review\ \(Patrowl engine\)" Version="1.4.28"
 
 # Install dependencies
 RUN apk add --update --no-cache \

@@ -442,6 +442,12 @@ def main():
         os.makedirs(APP_BASE_DIR+"/results")
     engine._loadconfig()
 
+    version_filename = APP_BASE_DIR+'/VERSION'
+    if os.path.exists(version_filename):
+        version_file = open(version_filename, "r")
+        engine.version = version_file.read().rstrip('\n')
+        version_file.close()
+
     # Check if sslscan is available
     if not os.path.isfile(engine.options["bin_path"]):
         sys.exit(-1)

@@ -332,7 +332,6 @@ def _loadconfig():
 
     LOG.warning("[OK] ScreenshotsDirectory")
 
-
     if "ImageMagickComparePath" not in ENGINE.scanner["options"]:
         LOG.error("Error: You have to specify ImageMagickComparePath in options")
         return {"status": "error", "reason": "You have to specify ImageMagickComparePath in options"}
@@ -348,6 +347,12 @@ def _loadconfig():
     else:
         ENGINE.scanner["options"]["RulesForSale"]
         LOG.warning("[OK] RulesForSale")
+
+    version_filename = APP_BASE_DIR+'/VERSION'
+    if os.path.exists(version_filename):
+        version_file = open(version_filename, "r")
+        ENGINE.version = version_file.read().rstrip('\n')
+        version_file.close()
 
 
 @app.route("/engines/eyewitness/reloadconfig", methods=["GET"])

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-CertStream PatrOwl engine application
+CertStream PatrOwl engine application.
 
 Copyright (C) 2021 Nicolas Mattiocco - @MaKyOtOx
 Licensed under the AGPLv3 License
@@ -62,10 +62,9 @@ engine = PatrowlEngine(
 this = modules[__name__]
 this.keys = []
 
+
 def get_options(payload):
-    """
-    Extracts formatted options from the payload
-    """
+    """Extract formatted options from the payload."""
 
     options = {"since": 99999999999}
     user_opts = payload["options"]
@@ -77,6 +76,7 @@ def get_options(payload):
         except Exception:
             options["since"] = 0
     return options
+
 
 def get_criticity(score):
     """
@@ -90,6 +90,7 @@ def get_criticity(score):
     elif score < 7.0:
         criticity = "medium"
     return criticity
+
 
 def in_whitelist(domain):
     """
@@ -245,6 +246,12 @@ def _loadconfig():
         LOG.error("Error: config file '{}' not found".format(conf_file))
         return {"status": "error", "reason": "config file not found"}
 
+    version_filename = APP_BASE_DIR+'/VERSION'
+    if os.path.exists(version_filename):
+        version_file = open(version_filename, "r")
+        engine.version = version_file.read().rstrip('\n')
+        version_file.close()
+
     if "options" not in engine.scanner:
         LOG.error("Error: You have to specify options")
         return {"status": "error", "reason": "You have to specify options"}
@@ -279,6 +286,7 @@ def _loadconfig():
     if not exists(engine.scanner["options"]["DBFile"]):
         LOG.error("Error: sqlite file not found : {}".format(engine.scanner["options"]["DBFile"]))
         return {"status": "error", "reason": "sqlite file not found : {}".format(engine.scanner["options"]["DBFile"])}
+
 
 @app.route("/engines/certstream/reloadconfig", methods=["GET"])
 def reloadconfig():
@@ -588,6 +596,7 @@ def main():
         os.makedirs(APP_BASE_DIR+"/results")
     _loadconfig()
     LOG.debug("Run engine")
+
 
 if __name__ == "__main__":
     engine.run_app(app_debug=APP_DEBUG, app_host=APP_HOST, app_port=APP_PORT)

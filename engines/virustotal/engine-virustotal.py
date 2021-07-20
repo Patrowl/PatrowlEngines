@@ -246,6 +246,13 @@ def _loadconfig():
         for apikey in engine.scanner["apikeys"]:
             this.vts.append(virus_total_apis.PrivateApi(apikey))
         del engine.scanner["apikeys"]
+
+        version_filename = APP_BASE_DIR+'/VERSION'
+        if os.path.exists(version_filename):
+            version_file = open(version_filename, "r")
+            engine.version = version_file.read().rstrip('\n')
+            version_file.close()
+
         engine.scanner['status'] = "READY"
     else:
         LOG.error("Error: config file '{}' not found".format(conf_file))

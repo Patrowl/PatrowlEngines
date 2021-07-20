@@ -85,6 +85,12 @@ def _loadconfig():
             "details": {"filename": conf_file}
         }
 
+    version_filename = BASE_DIR+'/VERSION'
+    if os.path.exists(version_filename):
+        version_file = open(version_filename, "r")
+        this.scanner["version"] = version_file.read().rstrip('\n')
+        version_file.close()
+
     # check if an instance is running, then kill and restart it
     if hasattr(this.proc, 'pid') and psutil.pid_exists(this.proc.pid):
         app.logger.info(" * Terminate PID {}".format(this.proc.pid))

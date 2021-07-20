@@ -179,6 +179,12 @@ def _loadconfig():
                 LOGGER.error(f'Required option empty / not found: {key}')
                 return {"status": "error", "reason": f"you have to specify {key} in options"}
 
+    version_filename = APP_BASE_DIR+'/VERSION'
+    if os.path.exists(version_filename):
+        version_file = open(version_filename, "r")
+        engine.version = version_file.read().rstrip('\n')
+        version_file.close()
+
 
 @app.route('/engines/cybelangel/reloadconfig', methods=['GET'])
 def reloadconfig():

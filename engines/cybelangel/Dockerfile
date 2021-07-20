@@ -1,6 +1,6 @@
 FROM alpine:latest
 MAINTAINER Patrowl.io "getsupport@patrowl.io"
-LABEL Name="CybelAngel\ \(Patrowl engine\)" Version="1.0.0"
+LABEL Name="CybelAngel\ \(Patrowl engine\)" Version="1.4.27"
 
 # Create the target repo
 RUN mkdir -p /opt/patrowl-engines/cybelangel

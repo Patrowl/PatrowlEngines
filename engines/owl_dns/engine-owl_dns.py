@@ -56,6 +56,12 @@ def _loadconfig():
         print("Error: config file '{}' not found".format(conf_file))
         return {"status": "error", "reason": "config file not found"}
 
+    version_filename = BASE_DIR+'/VERSION'
+    if os.path.exists(version_filename):
+        version_file = open(version_filename, "r")
+        this.scanner["version"] = version_file.read().rstrip('\n')
+        version_file.close()
+
 
 @app.route('/engines/owl_dns/reloadconfig')
 def reloadconfig():

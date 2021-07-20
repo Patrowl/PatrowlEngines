@@ -57,6 +57,12 @@ def _loadconfig():
     if os.path.exists(conf_file):
         json_data = open(conf_file)
         this.scanner = json.load(json_data)
+        version_filename = BASE_DIR+'/VERSION'
+        if os.path.exists(version_filename):
+            version_file = open(version_filename, "r")
+            this.scanner["version"] = version_file.read().rstrip('\n')
+            version_file.close()
+
         os.environ['NO_PROXY'] = this.scanner["server_host"]
     else:
         app.logger.debug("Error: config file '{}' not found".format(conf_file))

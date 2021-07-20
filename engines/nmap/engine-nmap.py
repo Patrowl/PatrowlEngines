@@ -62,6 +62,12 @@ def loadconfig():
         this.scanner['status'] = "ERROR"
         return {"status": "ERROR", "reason": "path to nmap binary not found."}
 
+    version_filename = BASE_DIR+'/VERSION'
+    if os.path.exists(version_filename):
+        version_file = open(version_filename, "r")
+        this.scanner["version"] = version_file.read().rstrip('\n')
+        version_file.close()
+
 
 @app.route('/engines/nmap/reloadconfig')
 def reloadconfig():

@@ -187,6 +187,13 @@ def loadconfig():
         json_data = open(conf_file)
         this.scanner = json.load(json_data)
         this.scanner['status'] = "READY"
+
+        version_filename = BASE_DIR+'/VERSION'
+        if os.path.exists(version_filename):
+            version_file = open(version_filename, "r")
+            engine.version = version_file.read().rstrip('\n')
+            version_file.close()
+
         return {"status": "OK", "reason": "config file loaded."}
     this.scanner['status'] = "ERROR"
     return {"status": "ERROR", "reason": "config file not found."}

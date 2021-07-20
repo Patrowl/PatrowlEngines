@@ -863,6 +863,12 @@ def _loadconfig():
         except Exception:
             return None
 
+    version_filename = APP_BASE_DIR+'/VERSION'
+    if os.path.exists(version_filename):
+        version_file = open(version_filename, "r")
+        engine.version = version_file.read().rstrip('\n')
+        version_file.close()
+
     engine.scanner["status"] = "READY"
     engine.scanner["credentials"] = ()
     this.gmp.disconnect()
