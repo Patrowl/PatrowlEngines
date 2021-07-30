@@ -19,6 +19,7 @@ COPY parser.py .
 COPY nessus.json.sample nessus.json
 COPY requirements.txt .
 COPY README.md .
+COPY VERSION .
 COPY etc/ ./etc/
 
 RUN apk add --update \

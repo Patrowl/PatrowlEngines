@@ -22,6 +22,7 @@ COPY engine-arachni.py .
 COPY arachni.json.sample arachni.json
 COPY requirements.txt .
 COPY README.md .
+COPY VERSION .
 
 WORKDIR /opt/patrowl-engines/arachni/libs
 

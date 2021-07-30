@@ -22,8 +22,10 @@ COPY engine-owl_dns.py .
 COPY owl_dns.json.sample owl_dns.json
 COPY requirements.txt .
 COPY README.md .
+COPY VERSION .
 COPY etc/ etc/
 COPY modules/ modules/
+
 WORKDIR /opt/patrowl-engines/owl_dns/external-libs
 RUN git clone https://github.com/Patrowl/Sublist3r
 WORKDIR /opt/patrowl-engines/owl_dns/external-libs/Sublist3r

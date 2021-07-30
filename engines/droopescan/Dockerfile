@@ -18,6 +18,7 @@ COPY engine-droopescan.py .
 COPY droopescan.json.sample droopescan.json
 COPY requirements.txt .
 COPY README.md .
+COPY VERSION .
 # Will be moved to requirement.txt fie when repo is set on public
 # COPY patrowlhears4py/* ./patrowlhears4py/
 

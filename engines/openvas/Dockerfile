@@ -19,6 +19,7 @@ COPY engine-openvas.py .
 COPY openvas.json.sample openvas.json
 COPY requirements.txt .
 COPY README.md .
+COPY VERSION .
 
 COPY scripts/crontab.txt /opt/patrowl-engines/openvas/scripts/crontab.txt
 COPY scripts/cron.sh /opt/patrowl-engines/openvas/scripts/scripts/cron.sh

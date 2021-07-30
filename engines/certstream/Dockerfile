@@ -20,6 +20,7 @@ COPY engine-certstream.py .
 COPY certstream.json.sample certstream.json
 COPY requirements.txt .
 COPY README.md .
+COPY VERSION .
 COPY whitelist.txt.sample whitelist.txt
 
 RUN pip3 install --no-cache-dir -U pip wheel setuptools

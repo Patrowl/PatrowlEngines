@@ -68,6 +68,7 @@ COPY engine-wpscan.py .
 COPY wpscan.json.sample wpscan.json
 COPY requirements.txt .
 COPY README.md .
+COPY VERSION .
 
 RUN pip3 install --no-cache-dir -U pip wheel setuptools
 RUN pip3 install --no-cache-dir -r requirements.txt

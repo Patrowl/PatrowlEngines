@@ -16,6 +16,7 @@ COPY cybelangel.py .
 COPY cybelangel.json.sample cybelangel.json
 COPY requirements.txt .
 COPY README.md .
+COPY VERSION .
 
 # Install any needed packages specified in requirements.txt
 RUN mkdir -p results

@@ -17,6 +17,7 @@ import xml.etree.ElementTree as ET
 import re
 import hashlib
 import validators
+import logging
 
 # Third party library imports
 from flask import Flask, request, jsonify
@@ -45,7 +46,7 @@ APP_BASE_DIR = dirname(realpath(__file__))
 # DEFAULT_OV_PORTLIST = "patrowl-all_tcp"
 DEFAULT_TIMEOUT = int(os.environ.get('DEFAULT_TIMEOUT', 600))
 DEFAULT_SCAN_TIMEOUT = int(os.environ.get('DEFAULT_SCAN_TIMEOUT', 432000)) # 2 days
-VERSION = "1.4.29"
+VERSION = "1.4.30"
 
 engine = PatrowlEngine(
     app=app,
@@ -72,6 +73,11 @@ OV_ALIVE_TESTS = {
     "ICMP_PING": "ICMP Ping",
     "DEFAULT": "Scan Config Default",
 }
+
+if __name__ != '__main__':
+    gunicorn_logger = logging.getLogger('gunicorn.error')
+    app.logger.handlers = gunicorn_logger.handlers
+    app.logger.setLevel(gunicorn_logger.level)
 
 
 def is_uuid(uuid_string, version=4):
@@ -489,6 +495,7 @@ def is_ip(string):
 
 
 def is_ip_subnet(subnet):
+    """Return True is the string is probably an IP subnet."""
     try:
         IPNetwork(subnet)
     except (TypeError, ValueError, AddrFormatError):
@@ -499,6 +506,7 @@ def is_ip_subnet(subnet):
 
 
 def subnet_ips(subnet):
+    """Return IP addresses from an IP subnet."""
     ips = []
     if is_ip_subnet(subnet):
         try:
@@ -509,6 +517,7 @@ def subnet_ips(subnet):
 
 
 def is_ip_range(subnet):
+    """Return True is the string is probably an IP range."""
     ips = []
     try:
         ips = glob_to_iprange(subnet)
@@ -518,6 +527,7 @@ def is_ip_range(subnet):
 
 
 def range_ips(range):
+    """Return IP addresses from an IP subnet."""
     ips = []
     if is_ip_range(range):
         ips = [str(ip) for ip in glob_to_iprange(range)]
@@ -525,6 +535,7 @@ def range_ips(range):
 
 
 def split_port(asset_port):
+    """Get protocol and port number from input."""
     port_number = "0"
     port_protocol = "tcp"
     try:
@@ -757,15 +768,20 @@ def getreport(scan_id):
 
 
 def _loadconfig():
+    """Load configuration file."""
     conf_file = APP_BASE_DIR+"/openvas.json"
     if not exists(conf_file):
         app.logger.error("Error: config file '{}' not found".format(conf_file))
         return False
 
-    json_data = open(conf_file)
-    engine.scanner = load(json_data)
-    engine.scanner["status"] = "ERROR"
-    engine.scanner["reason"] = "loadconfig error"
+    try:
+        json_data = open(conf_file)
+        engine.scanner = load(json_data)
+        engine.scanner["status"] = "ERROR"
+        engine.scanner["reason"] = "Starting loading configuration file"
+    except Exception as ex:
+        app.logger.error("Loadconfig: Error "+ex.__str__())
+        return False
 
     try:
         response = ""
@@ -787,7 +803,7 @@ def _loadconfig():
         else:
             engine.scanner["reason"] = ex.__str__()
 
-        app.logger.error("Error: "+ex.__str__())
+        app.logger.error("Loadconfig: Error "+ex.__str__())
         return False
 
     # Check login response
@@ -795,13 +811,16 @@ def _loadconfig():
         engine.status = "ERROR"
         engine.scanner["status"] = "ERROR"
         engine.scanner["reason"] = "openvas login failed"
+        app.logger.error("Loadconfig: Openvas login failed !")
         return False
 
     # Check port lists
     try:
         portlists = ET.fromstring(this.gmp.get_port_lists())
     except Exception:
-        return None
+        app.logger.error("Loadconfig: Unable to retrieve port lists.")
+        return False
+
     for pl in portlists.findall('port_list'):
         pl_name = pl.find('name').text
         pl_uuid = pl.get('id')
@@ -817,7 +836,8 @@ def _loadconfig():
             new_pl = ET.fromstring(new_pl_xml)
             this.openvas_portlists.update({"patrowl-all_tcp": new_pl.get('id')})
         except Exception:
-            return None
+            app.logger.error("Loadconfig: Unable to create port list 'patrowl-all_tcp'")
+            return False
 
     if "patrowl-quick_tcp" not in this.openvas_portlists.keys():
         try:
@@ -828,7 +848,8 @@ def _loadconfig():
             new_pl = ET.fromstring(new_pl_xml)
             this.openvas_portlists.update({"patrowl-quick_tcp": new_pl.get('id')})
         except Exception:
-            return None
+            app.logger.error("Loadconfig: Unable to create port list 'patrowl-quick_tcp'")
+            return False
 
     if "patrowl-tcp_80" not in this.openvas_portlists.keys():
         try:
@@ -839,7 +860,8 @@ def _loadconfig():
             new_pl = ET.fromstring(new_pl_xml)
             this.openvas_portlists.update({"patrowl-tcp_80": new_pl.get('id')})
         except Exception:
-            return None
+            app.logger.error("Loadconfig: Unable to create port list 'patrowl-tcp_80'")
+            return False
 
     if "patrowl-tcp_443" not in this.openvas_portlists.keys():
         try:
@@ -850,7 +872,8 @@ def _loadconfig():
             new_pl = ET.fromstring(new_pl_xml)
             this.openvas_portlists.update({"patrowl-tcp_443": new_pl.get('id')})
         except Exception:
-            return None
+            app.logger.error("Loadconfig: Unable to create port list 'patrowl-tcp_443'")
+            return False
 
     if "patrowl-tcp_22" not in this.openvas_portlists.keys():
         try:
@@ -861,21 +884,30 @@ def _loadconfig():
             new_pl = ET.fromstring(new_pl_xml)
             this.openvas_portlists.update({"patrowl-tcp_22": new_pl.get('id')})
         except Exception:
-            return None
+            app.logger.error("Loadconfig: Unable to create port list 'patrowl-tcp_22'")
+            return False
 
-    version_filename = APP_BASE_DIR+'/VERSION'
-    if os.path.exists(version_filename):
-        version_file = open(version_filename, "r")
-        engine.version = version_file.read().rstrip('\n')
-        version_file.close()
+    try:
+        version_filename = APP_BASE_DIR+'/VERSION'
+        if os.path.exists(version_filename):
+            version_file = open(version_filename, "r")
+            engine.version = version_file.read().rstrip('\n')
+            version_file.close()
+    except Exception as ex:
+        app.logger.error("Loadconfig: Unable to read the VERSION file. "+ex.__str__())
+        return False
 
     engine.scanner["status"] = "READY"
     engine.scanner["credentials"] = ()
     this.gmp.disconnect()
 
+    app.logger.info("Loadconfig: Configuration file successfuly loaded. Let's go guy !")
+    return True
+
 
 @app.route("/engines/openvas/reloadconfig", methods=["GET"])
 def reloadconfig():
+    """Reload configuration file."""
     res = {"page": "reloadconfig"}
     _loadconfig()
     res.update({"config": engine.scanner})
@@ -884,6 +916,7 @@ def reloadconfig():
 
 @app.route("/engines/openvas/startscan", methods=["POST"])
 def start_scan():
+    """Start a new scan."""
     res = {"page": "startscan"}
 
     # Check the scanner is ready to start a new scan
@@ -911,6 +944,7 @@ def start_scan():
             "details": {
                 "reason": "arg error, something is missing ('assets' ?)"
             }})
+        app.logger.error("StartScan: arg error, something is missing ('assets' or 'scan_id' ?)")
         return jsonify(res)
 
     assets = []
@@ -969,6 +1003,7 @@ def start_scan():
 
 
 def _scan_assets(scan_id):
+    """Scan assets from a scan."""
     scan = engine.scans[scan_id]
 
     scan_config_name = None
@@ -1236,6 +1271,7 @@ def get_report(scan_id):
 
 
 def _parse_results(scan_id):
+    """Parse results to create findings."""
     issues = []
     summary = {}
 
@@ -1456,6 +1492,7 @@ def _parse_results(scan_id):
 
 @app.route("/engines/openvas/getfindings/<scan_id>", methods=["GET"])
 def getfindings(scan_id):
+    """Get findings from a finished scan."""
     res = {"page": "getfindings", "scan_id": scan_id}
 
     # check if the scan_id exists
@@ -1497,13 +1534,9 @@ def main():
     """First function called."""
     if not exists(APP_BASE_DIR+"/results"):
         makedirs(APP_BASE_DIR+"/results")
-    _loadconfig()
-#
-#
-# @app.errorhandler(GvmError)
-# def handle_gvm_error(e):
-#     print("GvmError detected. Reset GVM connection")
-#     return 'bad request!', 400
+    res = _loadconfig()
+    if res is False:
+        app.logger.error("Unable to initialize the engine with provided configuration file.")
 
 
 if __name__ == "__main__":

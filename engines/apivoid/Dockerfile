@@ -15,6 +15,7 @@ COPY engine-apivoid.py .
 COPY apivoid.json.sample apivoid.json
 COPY requirements.txt .
 COPY README.md .
+COPY VERSION .
 
 # Install any needed packages specified in requirements.txt
 RUN apk add --update --no-cache \

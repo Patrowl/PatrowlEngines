@@ -15,6 +15,7 @@ COPY engine-nmap.py .
 COPY nmap.json.sample nmap.json
 COPY requirements.txt .
 COPY README.md .
+COPY VERSION .
 COPY libs/ libs/
 
 # Install any needed packages specified in requirements.txt

@@ -16,6 +16,7 @@ COPY engine-sslscan.py .
 COPY sslscan.json.sample sslscan.json
 COPY requirements.txt .
 COPY README.md .
+COPY VERSION .
 
 WORKDIR /opt/patrowl-engines/sslscan/external-libs
 RUN apk add --update --no-cache \
