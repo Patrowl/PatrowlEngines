@@ -159,6 +159,7 @@ def getreport(scan_id):
 
 
 def _loadconfig():
+    """Load configuration file."""
     conf_file = APP_BASE_DIR / 'shhgit.json'
     global LOGGER
     try:

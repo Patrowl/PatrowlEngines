@@ -43,6 +43,8 @@ engines/droopescan/tmp/*
 engines/apivoid/apivoid.json
 engines/wpscan/wpscan.json
 engines/cybelangel/cybelangel.json
+engines/shhgit/shhgit.json
+engines/shhgit/libs/sast_git_leaks
 env
 env3
 venv

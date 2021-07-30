@@ -5,12 +5,11 @@ Copyright 2021 Leboncoin
 Licensed under the Apache License
 Written by Fabien Martinez <fabien.martinez+github@adevinta.com>
 '''
-import logging
-
 from github import Github
 
 
 def get_repositories(logger, github_account, organization):
+    """Retrieve repositories from a Github organization."""
     try:
         repositories = github_account.get_organization(organization).get_repos()
     except Exception as e:
@@ -20,6 +19,7 @@ def get_repositories(logger, github_account, organization):
 
 
 def get_github_repositories(logger, github_account):
+    """Retrieve repositories."""
     github = Github(github_account['github_key'])
     if github_account['is_internal']:
         github = Github(
