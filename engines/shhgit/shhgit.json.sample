@@ -6,6 +6,7 @@
         "keyword"
     ],
     "options": {
+        "logger": "shhgit_engine",
         "github_accounts": [{
             "patrowl_group": "YOUR_GROUP",
             "base_url": "",

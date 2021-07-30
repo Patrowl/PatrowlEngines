@@ -38,7 +38,7 @@ DATA_BASE_PATH = APP_BASE_DIR / 'data'
 REPO_BASE_PATH = DATA_BASE_PATH / 'repositories'
 OUTPUT_BASE_PATH = DATA_BASE_PATH / 'results'
 
-VERSION = "1.0.0"
+VERSION = "1.1.0"
 
 logging.basicConfig(level=(logging.DEBUG if APP_DEBUG else logging.INFO))
 LOGGER = logging.getLogger('shhgit')
@@ -160,6 +160,7 @@ def getreport(scan_id):
 
 def _loadconfig():
     conf_file = APP_BASE_DIR / 'shhgit.json'
+    global LOGGER
     try:
         json_data = conf_file.read_text()
     except FileNotFoundError:
@@ -175,10 +176,12 @@ def _loadconfig():
             LOGGER.error(f'Unable to convert config file to json: {e}')
             return {"status": "error", "reason": "unable to convert config file to json"}
         else:
-            engine.scanner['status'] = 'READY'
+           engine.scanner['status'] = 'READY'
         if 'options' not in engine.scanner or "github_accounts" not in engine.scanner['options']:
             LOGGER.error("Unable to find options in config file")
             return {"status": "error", "reason": "you have to specify options in your config file"}
+        if 'logger' in engine.scanner['options']:
+            LOGGER = logging.getLogger(engine.scanner['options']['logger'])
         required_keys = ['base_url', 'github_key', 'is_internal', 'patrowl_group', 'organization']
         for github_group in engine.scanner['options']['github_accounts']:
             if not isinstance(github_group, dict):
@@ -247,7 +250,8 @@ def start_scan():
         'scan_id':      scan_id,
         'status':       "STARTED",
         'started_at':   int(time.time() * 1000),
-        'findings':     []
+        'findings':     [],
+        'assets':       []
     }
 
     engine.scans.update({scan_id: scan})
@@ -268,7 +272,7 @@ def start_scan():
 def check_repositories(scan_id):
     repositories_to_check = []
     for github_account in engine.scanner['options']['github_accounts']:
-        repositories = get_github_repositories(github_account)
+        repositories = get_github_repositories(LOGGER, github_account)
         if not repositories:
             continue
         else:
@@ -297,6 +301,7 @@ def check_repositories(scan_id):
             engine.scans[scan_id]['output_paths'][github_account['patrowl_group']] = []
         for repository in data['repositories']:
             repository_path = clone_repository(
+                LOGGER,
                 repository['clone_url'],
                 repository['name'],
                 data['github_token'],
@@ -305,6 +310,7 @@ def check_repositories(scan_id):
             if not repository_path:
                 continue
             leaks = get_leaks_from_repository(
+                LOGGER,
                 repository_path,
                 output_path / f'{repository["name"]}_{repository["id"]}.json'
             )
