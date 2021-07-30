@@ -1,0 +1,21 @@
+---
+
+build-push-droopescan:
+  variables:
+    STACK: "engine-droopescan"
+    FOLDER_PATH: "engines/droopescan"
+    PORT: 5021
+  before_script:
+    - VERSION=$(cat $CI_PROJECT_DIR/$FOLDER_PATH/VERSION | cut -d " " -f1)
+    ### Issue with variable expansion in variable section
+  extends: .build-push
+
+# run-job-droopescan:
+#   variables:
+#     STACK: "engine-droopescan"
+#     FOLDER_PATH: "engines/droopescan"
+#     PORT: 5021
+#   before_script:
+#     - VERSION=$(cat $CI_PROJECT_DIR/$FOLDER_PATH/VERSION | cut -d " " -f1)
+#     ### Issue with variable expansion in variable section
+#   extends: .run-job

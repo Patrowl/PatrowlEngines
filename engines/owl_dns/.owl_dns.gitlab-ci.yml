@@ -1,0 +1,21 @@
+---
+
+build-push-owl_dns:
+  variables:
+    STACK: "engine-owl_dns"
+    FOLDER_PATH: "engines/owl_dns"
+    PORT: 5006
+  before_script:
+    - VERSION=$(cat $CI_PROJECT_DIR/$FOLDER_PATH/VERSION | cut -d " " -f1)
+    ### Issue with variable expansion in variable section
+  extends: .build-push
+
+# run-job-owl_dns:
+#   variables:
+#     STACK: "engine-owl_dns"
+#     FOLDER_PATH: "engines/owl_dns"
+#     PORT: 5006
+#   before_script:
+#     - VERSION=$(cat $CI_PROJECT_DIR/$FOLDER_PATH/VERSION | cut -d " " -f1)
+#     ### Issue with variable expansion in variable section
+#   extends: .run-job

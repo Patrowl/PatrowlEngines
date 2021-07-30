@@ -1,0 +1,21 @@
+---
+
+build-push-pastebin_monitor:
+  variables:
+    STACK: "engine-pastebin_monitor"
+    FOLDER_PATH: "engines/pastebin_monitor"
+    PORT: 5020
+  before_script:
+    - VERSION=$(cat $CI_PROJECT_DIR/$FOLDER_PATH/VERSION | cut -d " " -f1)
+    ### Issue with variable expansion in variable section
+  extends: .build-push
+
+# run-job-pastebin_monitor:
+#   variables:
+#     STACK: "engine-pastebin_monitor"
+#     FOLDER_PATH: "engines/pastebin_monitor"
+#     PORT: 5020
+#   before_script:
+#     - VERSION=$(cat $CI_PROJECT_DIR/$FOLDER_PATH/VERSION | cut -d " " -f1)
+#     ### Issue with variable expansion in variable section
+#   extends: .run-job

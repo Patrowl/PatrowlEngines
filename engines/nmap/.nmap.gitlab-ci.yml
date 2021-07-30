@@ -1,0 +1,21 @@
+---
+
+build-push-nmap:
+  variables:
+    STACK: "engine-nmap"
+    FOLDER_PATH: "engines/nmap"
+    PORT: 5001
+  before_script:
+    - VERSION=$(cat $CI_PROJECT_DIR/$FOLDER_PATH/VERSION | cut -d " " -f1)
+    ### Issue with variable expansion in variable section
+  extends: .build-push
+
+# run-job-nmap:
+#   variables:
+#     STACK: "engine-nmap"
+#     FOLDER_PATH: "engines/nmap"
+#     PORT: 5001
+#   before_script:
+#     - VERSION=$(cat $CI_PROJECT_DIR/$FOLDER_PATH/VERSION | cut -d " " -f1)
+#     ### Issue with variable expansion in variable section
+#   extends: .run-job
