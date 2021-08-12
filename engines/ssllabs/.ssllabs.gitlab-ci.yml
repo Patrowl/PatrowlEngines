@@ -10,6 +10,13 @@ build-push-ssllabs:
     ### Issue with variable expansion in variable section
   extends: .build-push
 
+test-build-ssllabs:
+  variables:
+    STACK: "engine-ssllabs"
+    FOLDER_PATH: "engines/ssllabs"
+    PORT: 5004
+  extends: .test-build
+  
 # run-job-ssllabs:
 #   variables:
 #     STACK: "engine-ssllabs"
