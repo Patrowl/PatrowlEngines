@@ -10,6 +10,13 @@ build-push-openvas:
     ### Issue with variable expansion in variable section
   extends: .build-push
 
+test-build-openvas:
+  variables:
+    STACK: "engine-openvas"
+    FOLDER_PATH: "engines/openvas"
+    PORT: 5016
+  extends: .test-build
+
 # run-job-openvas:
 #   variables:
 #     STACK: "engine-openvas"
