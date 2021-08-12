@@ -10,6 +10,13 @@ build-push-sslscan:
     ### Issue with variable expansion in variable section
   extends: .build-push
 
+test-build-sslscan:
+  variables:
+    STACK: "engine-sslscan"
+    FOLDER_PATH: "engines/sslscan"
+    PORT: 5014
+  extends: .test-build
+  
 # run-job-sslscan:
 #   variables:
 #     STACK: "engine-sslscan"

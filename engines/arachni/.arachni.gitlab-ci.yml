@@ -10,6 +10,13 @@ build-push-arachni:
     ### Issue with variable expansion in variable section
   extends: .build-push
 
+test-build-arachni:
+  variables:
+    STACK: "engine-arachni"
+    FOLDER_PATH: "engines/arachni"
+    PORT: 5005
+  extends: .test-build
+
 # run-job-arachni:
 #   variables:
 #     STACK: "engine-arachni"

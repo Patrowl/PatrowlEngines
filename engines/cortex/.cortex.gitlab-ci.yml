@@ -10,6 +10,13 @@ build-push-cortex:
     ### Issue with variable expansion in variable section
   extends: .build-push
 
+test-build-cortex:
+  variables:
+    STACK: "engine-cortex"
+    FOLDER_PATH: "engines/cortex"
+    PORT: 5009
+  extends: .test-build
+  
 # run-job-cortex:
 #   variables:
 #     STACK: "engine-cortex"
