@@ -56,7 +56,7 @@ include:
   - local: '/engines/apivoid/.apivoid.gitlab-ci.yml'
   - local: '/engines/arachni/.arachni.gitlab-ci.yml'
 #   - local: '/engines/burp/.burp.gitlab-ci.yml'
-  - local: '/engines/censys/.censys.gitlab-ci.yml'
+#   - local: '/engines/censys/.censys.gitlab-ci.yml'
   - local: '/engines/certstream/.certstream.gitlab-ci.yml'
   - local: '/engines/cortex/.cortex.gitlab-ci.yml'
   - local: '/engines/cybelangel/.cybelangel.gitlab-ci.yml'
