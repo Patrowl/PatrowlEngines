@@ -10,6 +10,13 @@ build-push-censys:
     ### Issue with variable expansion in variable section
   extends: .build-push
 
+test-build-censys:
+  variables:
+    STACK: "engine-censys"
+    FOLDER_PATH: "engines/censys"
+    PORT: 5110
+  extends: .test-build
+
 # run-job-censys:
 #   variables:
 #     STACK: "engine-censys"
