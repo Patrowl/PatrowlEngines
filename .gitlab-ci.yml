@@ -31,7 +31,7 @@ stages:
     name: gcr.io/kaniko-project/executor:debug
     entrypoint: [""]
   script:
-    - echo "Building Dockerfile $REGISTRY_URL/$STACK:$VERSION on branch $CI_COMMIT_BRANCH"
+    - echo "Building Dockerfile $STACK on branch $CI_COMMIT_BRANCH"
     - /kaniko/executor --insecure --cleanup --context $CI_PROJECT_DIR/$FOLDER_PATH --dockerfile $CI_PROJECT_DIR/$FOLDER_PATH/Dockerfile --no-push
   rules:
     - if: $CI_COMMIT_BRANCH != "master"
