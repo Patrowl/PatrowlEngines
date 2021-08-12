@@ -10,6 +10,13 @@ build-push-eyewitness:
     ### Issue with variable expansion in variable section
   extends: .build-push
 
+test-build-eyewitness:
+  variables:
+    STACK: "engine-eyewitness"
+    FOLDER_PATH: "engines/eyewitness"
+    PORT: 5018
+  extends: .test-build
+  
 # run-job-eyewitness:
 #   variables:
 #     STACK: "engine-eyewitness"
