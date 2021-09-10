@@ -1,7 +1,7 @@
 # FROM ubuntu:18.04
 FROM ubuntu:20.04
 MAINTAINER Patrowl.io "getsupport@patrowl.io"
-LABEL Name="Patrowl\ DNS\ \(Patrowl engine\)" Version="1.4.28"
+LABEL Name="Patrowl\ DNS\ \(Patrowl engine\)" Version="1.4.29"
 
 # Install dependencies
 RUN apt-get update && \
@@ -17,9 +17,7 @@ ENV LANGUAGE=en_US.UTF-8
 RUN mkdir -p /opt/patrowl-engines/owl_dns
 RUN mkdir -p /opt/patrowl-engines/owl_dns/results
 RUN mkdir -p /opt/patrowl-engines/owl_dns/external-libs
-
-# Set the working directory to /opt/<engine_name>
-WORKDIR /opt/patrowl-engines/owl_dns
+WORKDIR /opt/patrowl-engines/owl_dns/
 
 # Copy the current directory contents into the container at /
 COPY __init__.py .
@@ -40,10 +38,13 @@ RUN git clone https://github.com/elceef/dnstwist
 WORKDIR /opt/patrowl-engines/owl_dns/external-libs/dnstwist
 RUN pip3 install --trusted-host pypi.python.org -r requirements.txt
 
+# Set the working directory to /opt/<engine_name>
+WORKDIR /opt/patrowl-engines/owl_dns
+
 # Install python modules for engine
-WORKDIR /opt/patrowl-engines/owl_dns/
 RUN pip3 install --upgrade pip
 RUN pip3 install --trusted-host pypi.python.org -r requirements.txt
+
 
 # TCP port exposed by the container (NAT)
 EXPOSE 5006
