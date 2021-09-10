@@ -2,7 +2,9 @@ name: Docker Image CI
 
 on:
   push:
-    branches: [ master ]
+    branches:
+      - master
+      - patch_wpscan_ci
   pull_request:
     branches: [ master ]
 
