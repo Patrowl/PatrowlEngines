@@ -2,7 +2,8 @@ name: Docker Image CI
 
 on:
   push:
-    branches: [ master ]
+    branches:
+      - master
   pull_request:
     branches: [ master ]
 
@@ -12,4 +13,4 @@ jobs:
     steps:
     - uses: actions/checkout@v2
     - name: Build the WPScan Docker image
-      run: docker build . --file engines/wpscan/Dockerfile --tag patrowl/engine-wpscan:$(date +%s)
+      run: docker build ./engines/wpscan/ --tag patrowl/engine-wpscan:$(date +%s)
