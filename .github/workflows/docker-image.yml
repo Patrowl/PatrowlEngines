@@ -4,7 +4,6 @@ on:
   push:
     branches:
       - master
-      - patch_wpscan_ci
   pull_request:
     branches: [ master ]
 
