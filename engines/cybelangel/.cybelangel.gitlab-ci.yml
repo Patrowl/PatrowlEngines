@@ -10,6 +10,13 @@ build-push-cybelangel:
     ### Issue with variable expansion in variable section
   extends: .build-push
 
+test-build-cybelangel:
+  variables:
+    STACK: "engine-cybelangel"
+    FOLDER_PATH: "engines/cybelangel"
+    PORT: 5024
+  extends: .test-build
+  
 # run-job-cybelangel:
 #   variables:
 #     STACK: "engine-cybelangel"

@@ -10,6 +10,13 @@ build-push-pastebin_monitor:
     ### Issue with variable expansion in variable section
   extends: .build-push
 
+test-build-pastebin_monitor:
+  variables:
+    STACK: "engine-pastebin_monitor"
+    FOLDER_PATH: "engines/pastebin_monitor"
+    PORT: 5020
+  extends: .test-build
+  
 # run-job-pastebin_monitor:
 #   variables:
 #     STACK: "engine-pastebin_monitor"

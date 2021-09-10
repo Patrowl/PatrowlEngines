@@ -10,6 +10,13 @@ build-push-wpscan:
     ### Issue with variable expansion in variable section
   extends: .build-push
 
+test-build-wpscan:
+  variables:
+    STACK: "engine-wpscan"
+    FOLDER_PATH: "engines/wpscan"
+    PORT: 5023
+  extends: .test-build
+  
 # run-job-wpscan:
 #   variables:
 #     STACK: "engine-wpscan"

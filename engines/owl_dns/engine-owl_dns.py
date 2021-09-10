@@ -596,10 +596,11 @@ def _parse_results(scan_id):
         for asset in scan['findings']['dns_resolve'].keys():
 
             dns_resolve_str = ""
-            for record in sorted(scan['findings']['dns_resolve'][asset]):
-                entry = "Record type '{}': {}".format(
-                    record['record_type'], ", ".join(record['values']))
-                dns_resolve_str = "".join((dns_resolve_str, entry+"\n"))
+            for key, value in sorted(scan['findings']['dns_resolve'].items(), key=lambda x:x[1], reverse=True):
+                for record in value:
+                    entry = "Record type '{}': {}".format(
+                            record['record_type'], ", ".join(record['values']))
+                    dns_resolve_str = "".join((dns_resolve_str, entry+"\n"))
 
             dns_resolve_hash = hashlib.sha1(dns_resolve_str.encode("utf-8")).hexdigest()[:6]
 

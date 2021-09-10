@@ -10,6 +10,13 @@ build-push-apivoid:
     ### Issue with variable expansion in variable section
   extends: .build-push
 
+test-build-apivoid:
+  variables:
+    STACK: "engine-apivoid"
+    FOLDER_PATH: "engines/apivoid"
+    PORT: 5022
+  extends: .test-build
+
 # run-job-apivoid:
 #   variables:
 #     STACK: "engine-apivoid"

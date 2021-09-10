@@ -10,6 +10,13 @@ build-push-droopescan:
     ### Issue with variable expansion in variable section
   extends: .build-push
 
+test-build-droopescan:
+  variables:
+    STACK: "engine-droopescan"
+    FOLDER_PATH: "engines/droopescan"
+    PORT: 5021
+  extends: .test-build
+  
 # run-job-droopescan:
 #   variables:
 #     STACK: "engine-droopescan"

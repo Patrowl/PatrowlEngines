@@ -10,6 +10,13 @@ build-push-owl_code:
     ### Issue with variable expansion in variable section
   extends: .build-push
 
+test-build-owl_code:
+  variables:
+    STACK: "engine-owl_code"
+    FOLDER_PATH: "engines/owl_code"
+    PORT: 5013
+  extends: .test-build
+  
 # run-job-owl_code:
 #   variables:
 #     STACK: "engine-owl_code"

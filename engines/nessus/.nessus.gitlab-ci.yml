@@ -10,6 +10,13 @@ build-push-nessus:
     ### Issue with variable expansion in variable section
   extends: .build-push
 
+test-build-nessus:
+  variables:
+    STACK: "engine-nessus"
+    FOLDER_PATH: "engines/nessus"
+    PORT: 5002
+  extends: .test-build
+  
 # run-job-nessus:
 #   variables:
 #     STACK: "engine-nessus"

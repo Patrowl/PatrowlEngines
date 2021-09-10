@@ -10,6 +10,13 @@ build-push-owl_dns:
     ### Issue with variable expansion in variable section
   extends: .build-push
 
+test-build-owl_dns:
+  variables:
+    STACK: "engine-owl_dns"
+    FOLDER_PATH: "engines/owl_dns"
+    PORT: 5006
+  extends: .test-build
+  
 # run-job-owl_dns:
 #   variables:
 #     STACK: "engine-owl_dns"

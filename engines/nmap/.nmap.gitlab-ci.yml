@@ -10,6 +10,13 @@ build-push-nmap:
     ### Issue with variable expansion in variable section
   extends: .build-push
 
+test-build-nmap:
+  variables:
+    STACK: "engine-nmap"
+    FOLDER_PATH: "engines/nmap"
+    PORT: 5001
+  extends: .test-build
+
 # run-job-nmap:
 #   variables:
 #     STACK: "engine-nmap"

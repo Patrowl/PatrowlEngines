@@ -10,6 +10,13 @@ build-push-certstream:
     ### Issue with variable expansion in variable section
   extends: .build-push
 
+test-build-certstream:
+  variables:
+    STACK: "engine-certstream"
+    FOLDER_PATH: "engines/certstream"
+    PORT: 5017
+  extends: .test-build
+  
 # run-job-certstream:
 #   variables:
 #     STACK: "engine-certstream"

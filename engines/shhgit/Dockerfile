@@ -35,7 +35,7 @@ COPY VERSION .
 # Install python requirements
 RUN pip3 install --upgrade pip
 RUN pip3 install --trusted-host pypi.python.org -r requirements.txt
-RUN pip3 install --trusted-host pypi.python.org -r libs/sast_git_leaks/requirements.txt
+RUN pip3 install --trusted-host pypi.python.org -r libs/sast-git-leaks/requirements.txt
 
 # TCP port exposed by the container (NAT)
 EXPOSE 5025
