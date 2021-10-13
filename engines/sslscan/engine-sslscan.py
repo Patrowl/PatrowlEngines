@@ -198,11 +198,10 @@ def _scan_thread(scan_id, asset, asset_port):
     cmd = "{} --show-certificate --xml={}/{}.xml {}:{}".format(
         engine.options["bin_path"],
         output_dir, asset+"_"+asset_port, asset, asset_port)
-    # FIXME testing
-    #p = subprocess.Popen(cmd, shell=True, stdout=open("/dev/null", "w"))
-    #while p.poll() is None:
-    #    # print("still running")
-    #    time.sleep(1)
+    p = subprocess.Popen(cmd, shell=True, stdout=open("/dev/null", "w"))
+    while p.poll() is None:
+        # print("still running")
+        time.sleep(1)
 
     _parse_xml_results(scan_id, asset, asset_port)
     engine.scans[scan_id]['status'] = "FINISHED"
@@ -211,9 +210,7 @@ def _scan_thread(scan_id, asset, asset_port):
 def _parse_xml_results(scan_id, asset, asset_port):
     issue_id = 0
     findings = []
-    # FIXME testing
-    #filename = APP_BASE_DIR+"/results/"+scan_id+"/"+asset+"_"+asset_port+".xml"
-    filename = APP_BASE_DIR+"/results/0/greenlock.fr_443.xml"
+    filename = APP_BASE_DIR+"/results/"+scan_id+"/"+asset+"_"+asset_port+".xml"
     # Check file
     try:
         findings_tree = ET.parse(filename)
@@ -409,7 +406,7 @@ def _spot_weak_protocol(protocols, issue_id, asset, asset_port):
         return False
     res = []
     for protocol in protocols:
-        if protocol.attrib["type"] == "ssl" and protocol.attrib["enabled"]:
+        if protocol.attrib["type"] == "ssl" and protocol.attrib["enabled"] == "1":
             issue_id += 1
             res.append(PatrowlEngineFinding(
                 issue_id=issue_id,
@@ -425,7 +422,7 @@ def _spot_weak_protocol(protocols, issue_id, asset, asset_port):
                 meta_tags=["ssl", "tls"]))
         if protocol.attrib["type"] == "tls" and \
            protocol.attrib["version"] in ("1.0", "1.1") and \
-           protocol.attrib["enabled"]:
+           protocol.attrib["enabled"] == "1":
             issue_id += 1
             res.append(PatrowlEngineFinding(
                 issue_id=issue_id,
