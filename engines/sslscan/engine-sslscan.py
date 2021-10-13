@@ -501,7 +501,7 @@ def _is_certificate_expired(cert_tags, issue_id, asset, asset_port):
         return False
 
     expired_text = cert_tags.find("expired").text
-    if len(expired_text) == 0 or expired_text == "false":
+    if not expired_text or expired_text == "false":
         return False
 
     return PatrowlEngineFinding(
@@ -577,7 +577,7 @@ def _is_certificate_selfsigned(cert_tags, issue_id, asset, asset_port):
         return False
 
     selfsigned_text = cert_tags.find("self-signed").text
-    if len(selfsigned_text) == 0 or selfsigned_text == "false":
+    if not selfsigned_text or selfsigned_text == "false":
         return False
 
     return PatrowlEngineFinding(
