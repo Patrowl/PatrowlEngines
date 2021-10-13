@@ -413,7 +413,7 @@ def _spot_weak_protocol(protocols, issue_id, asset, asset_port):
                 type="tls_supported_protocols",
                 title="Weak TLS protocol detected : SSLv{}".format(protocol.attrib["version"]),
                 description="Weak TLS protocol SSLv{} was detected on {}:{}".format(
-                    protocol.attrib["version"],asset, asset_port),
+                    protocol.attrib["version"], asset, asset_port),
                 solution="Deactivate SSLv{} on your server".format(protocol.attrib["version"]),
                 severity="high",
                 confidence="firm",
@@ -429,7 +429,7 @@ def _spot_weak_protocol(protocols, issue_id, asset, asset_port):
                 type="tls_supported_protocols",
                 title="Weak TLS protocol detected : TLSv{}".format(protocol.attrib["version"]),
                 description="Weak TLS protocol TLSv{} was detected on {}:{}".format(
-                    protocol.attrib["version"],asset, asset_port),
+                    protocol.attrib["version"], asset, asset_port),
                 solution="Deactivate TLSv{} on your server".format(protocol.attrib["version"]),
                 severity="medium",
                 confidence="firm",
@@ -452,7 +452,7 @@ def _spot_weak_ciphersuites(ciphers, issue_id, asset, asset_port):
                 type="tls_supported_ciphersuites",
                 title="Unsecure TLS ciphersuite detected : {}".format(cipher.attrib["cipher"]),
                 description="Unsecure TLS ciphersuite {} was detected on {}:{}".format(
-                    cipher.attrib["cipher"],asset, asset_port),
+                    cipher.attrib["cipher"], asset, asset_port),
                 solution="Deactivate this ciphersuite on your TLS configuration".format(cipher.attrib["cipher"]),
                 severity="medium",
                 confidence="firm",
@@ -467,7 +467,7 @@ def _spot_weak_ciphersuites(ciphers, issue_id, asset, asset_port):
                 type="tls_supported_ciphersuites",
                 title="Dangerous (weak) TLS ciphersuite detected : {}".format(cipher.attrib["cipher"]),
                 description="Weak TLS ciphersuite {} was detected on {}:{}".format(
-                    cipher.attrib["cipher"],asset, asset_port),
+                    cipher.attrib["cipher"], asset, asset_port),
                 solution="Deactivate this ciphersuite on your TLS configuration".format(cipher.attrib["cipher"]),
                 severity="medium",
                 confidence="firm",
@@ -510,8 +510,8 @@ def _is_certificate_expired(cert_tags, issue_id, asset, asset_port):
         title="Certificate from '{}:{}' is expired.".format(asset, asset_port),
         description="The SSL/TLS certificate retrieved from the server is \
             expired:\nNot valid before: {}\nNot valid after: {}".format(
-            cert_tags.find("not-valid-before").text,
-            cert_tags.find("not-valid-after").text),
+                cert_tags.find("not-valid-before").text,
+                cert_tags.find("not-valid-after").text),
         solution="Renew the certificate on the service listening on \
             '{}:{}'.".format(asset, asset_port),
         severity="high",
@@ -544,7 +544,7 @@ def _is_secure_renegotiation_supported(sec_rng, issue_id, asset, asset_port):
     if sec_rng is None:
         return False
 
-    if sec_rng.attrib["supported"] != '1' :
+    if sec_rng.attrib["supported"] != '1':
         return PatrowlEngineFinding(
             issue_id=issue_id,
             type="ssltest_secure_renegotiation",
@@ -569,6 +569,8 @@ def _is_secure_renegotiation_supported(sec_rng, issue_id, asset, asset_port):
             raw=sec_rng.attrib,
             target_addrs=[asset],
             meta_tags=["ssl", "tls"])
+    else:
+        return False
 
 def _is_certificate_selfsigned(cert_tags, issue_id, asset, asset_port):
     if cert_tags is None:
