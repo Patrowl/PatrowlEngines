@@ -198,7 +198,6 @@ def _scan_thread(scan_id, asset, asset_port):
     cmd = "{} --show-certificate --xml={}/{}.xml {}:{}".format(
         engine.options["bin_path"],
         output_dir, asset+"_"+asset_port, asset, asset_port)
-
     p = subprocess.Popen(cmd, shell=True, stdout=open("/dev/null", "w"))
     while p.poll() is None:
         # print("still running")
@@ -277,6 +276,42 @@ def _parse_xml_results(scan_id, asset, asset_port):
             issue_id=issue_id, asset=asset, asset_port=asset_port)
         if hb_vuln:
             findings.append(hb_vuln)
+
+        # Finding: Fallback supported ?
+        issue_id += 1
+        is_fallback_supported_issue = _is_fallback_supported(
+            fallback=scan_results.find("fallback"),
+            issue_id=issue_id, asset=asset, asset_port=asset_port)
+        if is_fallback_supported_issue:
+            findings.append(is_fallback_supported_issue)
+
+        # Finding: Secure renegotiation supported ?
+        issue_id += 1
+        is_secure_renegotiation_issue = _is_secure_renegotiation_supported(
+            sec_rng=scan_results.find("renegotiation"),
+            issue_id=issue_id, asset=asset, asset_port=asset_port)
+        if is_secure_renegotiation_issue:
+            findings.append(is_secure_renegotiation_issue)
+
+        # Finding: weak protocols
+        # issue_id is handled inside the function
+        wp_vuln = _spot_weak_protocol(
+            protocols=scan_results.findall("protocol"),
+            issue_id=issue_id, asset=asset, asset_port=asset_port)
+        if wp_vuln:
+            for weak_pr in wp_vuln:
+                issue_id = weak_pr.__dict__["issue_id"]
+                findings.append(weak_pr)
+
+        # Finding: weak ciphersuites
+        # issue_id is handled inside the function
+        wc_vuln = _spot_weak_ciphersuites(
+            ciphers=scan_results.findall("cipher"),
+            issue_id=issue_id, asset=asset, asset_port=asset_port)
+        if wc_vuln:
+            for weak_cs in wc_vuln:
+                issue_id = weak_cs.__dict__["issue_id"]
+                findings.append(weak_cs)
 
     # Write results under mutex
     scan_lock = threading.RLock()
@@ -366,6 +401,81 @@ def _get_ciphersuites(items, issue_id, asset, asset_port):
         target_addrs=[asset],
         meta_tags=["ciphersuites", "ssl", "tls"])
 
+def _spot_weak_protocol(protocols, issue_id, asset, asset_port):
+    if protocols is None:
+        return False
+    res = []
+    for protocol in protocols:
+        if protocol.attrib["type"] == "ssl" and protocol.attrib["enabled"] == "1":
+            issue_id += 1
+            res.append(PatrowlEngineFinding(
+                issue_id=issue_id,
+                type="tls_supported_protocols",
+                title="Weak TLS protocol detected : SSLv{}".format(protocol.attrib["version"]),
+                description="Weak TLS protocol SSLv{} was detected on {}:{}".format(
+                    protocol.attrib["version"], asset, asset_port),
+                solution="Deactivate SSLv{} on your server".format(protocol.attrib["version"]),
+                severity="high",
+                confidence="firm",
+                raw=protocol.attrib,
+                target_addrs=[asset],
+                meta_tags=["ssl", "tls"]))
+        if protocol.attrib["type"] == "tls" and \
+           protocol.attrib["version"] in ("1.0", "1.1") and \
+           protocol.attrib["enabled"] == "1":
+            issue_id += 1
+            res.append(PatrowlEngineFinding(
+                issue_id=issue_id,
+                type="tls_supported_protocols",
+                title="Weak TLS protocol detected : TLSv{}".format(protocol.attrib["version"]),
+                description="Weak TLS protocol TLSv{} was detected on {}:{}".format(
+                    protocol.attrib["version"], asset, asset_port),
+                solution="Deactivate TLSv{} on your server".format(protocol.attrib["version"]),
+                severity="medium",
+                confidence="firm",
+                raw=protocol.attrib,
+                target_addrs=[asset],
+                meta_tags=["ssl", "tls"]))
+
+    return res
+
+def _spot_weak_ciphersuites(ciphers, issue_id, asset, asset_port):
+    if ciphers is None:
+        return False
+    res = []
+    for cipher in ciphers:
+        if cipher.attrib["strength"] in ("anonymous", "medium") and \
+            cipher.attrib["status"] in ("preferred", "accepted"):
+            issue_id += 1
+            res.append(PatrowlEngineFinding(
+                issue_id=issue_id,
+                type="tls_supported_ciphersuites",
+                title="Unsecure TLS ciphersuite detected : {}".format(cipher.attrib["cipher"]),
+                description="Unsecure TLS ciphersuite {} was detected on {}:{}".format(
+                    cipher.attrib["cipher"], asset, asset_port),
+                solution="Deactivate this ciphersuite on your TLS configuration".format(cipher.attrib["cipher"]),
+                severity="medium",
+                confidence="firm",
+                raw=cipher.attrib,
+                target_addrs=[asset],
+                meta_tags=["ssl", "tls", "ciphersuites"]))
+        if cipher.attrib["strength"] in ("null", "weak") and \
+            cipher.attrib["status"] in ("preferred", "accepted"):
+            issue_id += 1
+            res.append(PatrowlEngineFinding(
+                issue_id=issue_id,
+                type="tls_supported_ciphersuites",
+                title="Dangerous (weak) TLS ciphersuite detected : {}".format(cipher.attrib["cipher"]),
+                description="Weak TLS ciphersuite {} was detected on {}:{}".format(
+                    cipher.attrib["cipher"], asset, asset_port),
+                solution="Deactivate this ciphersuite on your TLS configuration".format(cipher.attrib["cipher"]),
+                severity="medium",
+                confidence="firm",
+                raw=cipher.attrib,
+                target_addrs=[asset],
+                meta_tags=["ssl", "tls", "ciphersuites"]))
+
+    return res
 
 def _get_certificate_blob(cert_blob, issue_id, asset, asset_port):
     if cert_blob is None:
@@ -391,7 +501,7 @@ def _is_certificate_expired(cert_tags, issue_id, asset, asset_port):
         return False
 
     expired_text = cert_tags.find("expired").text
-    if len(expired_text) == 0 or expired_text == "false":
+    if not expired_text or expired_text == "false":
         return False
 
     return PatrowlEngineFinding(
@@ -400,8 +510,8 @@ def _is_certificate_expired(cert_tags, issue_id, asset, asset_port):
         title="Certificate from '{}:{}' is expired.".format(asset, asset_port),
         description="The SSL/TLS certificate retrieved from the server is \
             expired:\nNot valid before: {}\nNot valid after: {}".format(
-            cert_tags.find("not-valid-before").text,
-            cert_tags.find("not-valid-after").text),
+                cert_tags.find("not-valid-before").text,
+                cert_tags.find("not-valid-after").text),
         solution="Renew the certificate on the service listening on \
             '{}:{}'.".format(asset, asset_port),
         severity="high",
@@ -410,13 +520,64 @@ def _is_certificate_expired(cert_tags, issue_id, asset, asset_port):
         target_addrs=[asset],
         meta_tags=["certificate", "ssl", "tls", "expired"])
 
+def _is_fallback_supported(fallback, issue_id, asset, asset_port):
+    if fallback is None:
+        return False
+    fallback_support = fallback.attrib["supported"]
+    if fallback_support == '1':
+        return False
+
+    return PatrowlEngineFinding(
+        issue_id=issue_id,
+        type="ssltest_fallback_support",
+        title="Downgrade attack prevention is not supported",
+        description="Downgrade attack prevention is not supported on {}:{}".format(
+            asset, asset_port),
+        solution="Enable TLS_FALLBACK_SCSV option on your server",
+        severity="low",
+        confidence="firm",
+        raw=fallback.attrib,
+        target_addrs=[asset],
+        meta_tags=["ssl", "tls"])
+
+def _is_secure_renegotiation_supported(sec_rng, issue_id, asset, asset_port):
+    if sec_rng is None:
+        return False
+
+    if sec_rng.attrib["supported"] != '1':
+        return PatrowlEngineFinding(
+            issue_id=issue_id,
+            type="ssltest_secure_renegotiation",
+            title="Secure renegotiation is not supported",
+            description="Secure renegotiation is not supported on {}:{}".format(
+                asset, asset_port),
+            solution="Enable secure renegotiation on your server",
+            severity="medium",
+            confidence="firm",
+            raw=sec_rng.attrib,
+            target_addrs=[asset],
+            meta_tags=["ssl", "tls"])
+    elif sec_rng.attrib["supported"] == '1' and sec_rng.attrib["secure"] != '1':
+        return PatrowlEngineFinding(
+            issue_id=issue_id,
+            type="ssltest_secure_renegotiation",
+            title="Unsecure renegotiation is enabled",
+            description="Unsecure renegotiation is enabled on {}:{}".format(asset, asset_port),
+            solution="Disable unsecure renegotiation on your server",
+            severity="high",
+            confidence="firm",
+            raw=sec_rng.attrib,
+            target_addrs=[asset],
+            meta_tags=["ssl", "tls"])
+    else:
+        return False
 
 def _is_certificate_selfsigned(cert_tags, issue_id, asset, asset_port):
     if cert_tags is None:
         return False
 
     selfsigned_text = cert_tags.find("self-signed").text
-    if len(selfsigned_text) == 0 or selfsigned_text == "false":
+    if not selfsigned_text or selfsigned_text == "false":
         return False
 
     return PatrowlEngineFinding(
