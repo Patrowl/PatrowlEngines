@@ -198,11 +198,11 @@ def _scan_thread(scan_id, asset, asset_port):
     cmd = "{} --show-certificate --xml={}/{}.xml {}:{}".format(
         engine.options["bin_path"],
         output_dir, asset+"_"+asset_port, asset, asset_port)
-
-    p = subprocess.Popen(cmd, shell=True, stdout=open("/dev/null", "w"))
-    while p.poll() is None:
-        # print("still running")
-        time.sleep(1)
+    # FIXME testing
+    #p = subprocess.Popen(cmd, shell=True, stdout=open("/dev/null", "w"))
+    #while p.poll() is None:
+    #    # print("still running")
+    #    time.sleep(1)
 
     _parse_xml_results(scan_id, asset, asset_port)
     engine.scans[scan_id]['status'] = "FINISHED"
@@ -211,7 +211,9 @@ def _scan_thread(scan_id, asset, asset_port):
 def _parse_xml_results(scan_id, asset, asset_port):
     issue_id = 0
     findings = []
-    filename = APP_BASE_DIR+"/results/"+scan_id+"/"+asset+"_"+asset_port+".xml"
+    # FIXME testing
+    #filename = APP_BASE_DIR+"/results/"+scan_id+"/"+asset+"_"+asset_port+".xml"
+    filename = APP_BASE_DIR+"/results/0/greenlock.fr_443.xml"
     # Check file
     try:
         findings_tree = ET.parse(filename)
@@ -277,6 +279,16 @@ def _parse_xml_results(scan_id, asset, asset_port):
             issue_id=issue_id, asset=asset, asset_port=asset_port)
         if hb_vuln:
             findings.append(hb_vuln)
+
+        # Finding: weak protocols
+        # issue_id is handled inside the function
+        import pdb; pdb.set_trace()
+        wp_vuln = _spot_weak_protocol(
+            protocols=scan_results.findall("protocol"),
+            issue_id=issue_id, asset=asset, asset_port=asset_port)
+        if wp_vuln:
+            for weak_pr in wp_vuln:
+                findings.append(weak_pr)
 
     # Write results under mutex
     scan_lock = threading.RLock()
@@ -366,6 +378,43 @@ def _get_ciphersuites(items, issue_id, asset, asset_port):
         target_addrs=[asset],
         meta_tags=["ciphersuites", "ssl", "tls"])
 
+def _spot_weak_protocol(protocols, issue_id, asset, asset_port):
+    if protocols is None:
+        return False
+    res = []
+    for protocol in protocols:
+        if protocol.attrib["type"] == "ssl" and protocol.attrib["enabled"]:
+            issue_id += 1
+            res.append(PatrowlEngineFinding(
+                issue_id=issue_id,
+                type="tls_supported_protocols",
+                title="Weak TLS protocol detected : SSLv{}".format(protocol.attrib["version"]),
+                description="Weak TLS protocol SSLv{} was detected on {}:{}".format(
+                    protocol.attrib["version"],asset, asset_port),
+                solution="Deactivate SSLv{} on your server".format(protocol.attrib["version"]),
+                severity="high",
+                confidence="firm",
+                raw=protocol.attrib,
+                target_addrs=[asset],
+                meta_tags=["ssl", "tls"]))
+        if protocol.attrib["type"] == "tls" and \
+           protocol.attrib["version"] in ("1.0", "1.1") and \
+           protocol.attrib["enabled"]:
+            issue_id += 1
+            res.append(PatrowlEngineFinding(
+                issue_id=issue_id,
+                type="tls_supported_protocols",
+                title="Weak TLS protocol detected : TLSv{}".format(protocol.attrib["version"]),
+                description="Weak TLS protocol TLSv{} was detected on {}:{}".format(
+                    protocol.attrib["version"],asset, asset_port),
+                solution="Deactivate TLSv{} on your server".format(protocol.attrib["version"]),
+                severity="medium",
+                confidence="firm",
+                raw=protocol.attrib,
+                target_addrs=[asset],
+                meta_tags=["ssl", "tls"]))
+
+    return res
 
 def _get_certificate_blob(cert_blob, issue_id, asset, asset_port):
     if cert_blob is None:
