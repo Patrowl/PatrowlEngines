@@ -1,6 +1,6 @@
 FROM alpine:latest
 MAINTAINER Patrowl.io "getsupport@patrowl.io"
-LABEL Name="SSLScan\ \(Patrowl engine\)" Version="1.4.27"
+LABEL Name="SSLScan\ \(Patrowl engine\)" Version="1.4.30"
 
 ENV CFLAGS "-D__USE_GNU"
 
