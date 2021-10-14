@@ -453,7 +453,7 @@ def _spot_weak_ciphersuites(ciphers, issue_id, asset, asset_port):
                 title="Unsecure TLS ciphersuite detected : {}".format(cipher.attrib["cipher"]),
                 description="Unsecure TLS ciphersuite {} was detected on {}:{}".format(
                     cipher.attrib["cipher"], asset, asset_port),
-                solution="Deactivate this ciphersuite on your TLS configuration".format(cipher.attrib["cipher"]),
+                solution="Deactivate the ciphersuite {} on your TLS configuration".format(cipher.attrib["cipher"]),
                 severity="medium",
                 confidence="firm",
                 raw=cipher.attrib,
