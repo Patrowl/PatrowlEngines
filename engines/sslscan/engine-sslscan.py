@@ -378,11 +378,11 @@ def _get_ciphersuites(items, issue_id, asset, asset_port):
     for item in items:
         add_info = ""
         if 'curve' in item.keys():
-            add_info += "Curve: ".format(item.get("curve"))
+            add_info += "Curve: {}".format(item.get("curve"))
         if 'dhebits' in item.keys():
-            add_info += "DHEbits: ".format(item.get("dhebits"))
+            add_info += "DHEbits: {}".format(item.get("dhebits"))
         if 'ecdhebits' in item.keys():
-            add_info += "ECDHEbits: ".format(item.get("ecdhebits"))
+            add_info += "ECDHEbits: {}".format(item.get("ecdhebits"))
         issue_desc += "{:30} SSLVersion: {:8} Bits: {:4} Status: {:10} {}\n".format(
             item.get("cipher"), item.get("sslversion"),
             item.get("bits"), item.get("status"), add_info
@@ -468,7 +468,7 @@ def _spot_weak_ciphersuites(ciphers, issue_id, asset, asset_port):
                 title="Dangerous (weak) TLS ciphersuite detected : {}".format(cipher.attrib["cipher"]),
                 description="Weak TLS ciphersuite {} was detected on {}:{}".format(
                     cipher.attrib["cipher"], asset, asset_port),
-                solution="Deactivate this ciphersuite on your TLS configuration".format(cipher.attrib["cipher"]),
+                solution="Deactivate the ciphersuite {} on your TLS configuration".format(cipher.attrib["cipher"]),
                 severity="medium",
                 confidence="firm",
                 raw=cipher.attrib,
@@ -557,7 +557,7 @@ def _is_secure_renegotiation_supported(sec_rng, issue_id, asset, asset_port):
             raw=sec_rng.attrib,
             target_addrs=[asset],
             meta_tags=["ssl", "tls"])
-    elif sec_rng.attrib["supported"] == '1' and sec_rng.attrib["secure"] != '1':
+    if sec_rng.attrib["supported"] == '1' and sec_rng.attrib["secure"] != '1':
         return PatrowlEngineFinding(
             issue_id=issue_id,
             type="ssltest_secure_renegotiation",
@@ -569,8 +569,7 @@ def _is_secure_renegotiation_supported(sec_rng, issue_id, asset, asset_port):
             raw=sec_rng.attrib,
             target_addrs=[asset],
             meta_tags=["ssl", "tls"])
-    else:
-        return False
+    return False
 
 def _is_certificate_selfsigned(cert_tags, issue_id, asset, asset_port):
     if cert_tags is None:

@@ -3,14 +3,14 @@ import json, requests, sys, getopt
 
 opts, args = getopt.getopt(sys.argv[1:], 'n:m:t:d:')
 
-id = 0
+scan_id = 0
 mode = 'status'
 target = "https://google.com"
 datatype = "url"
 
 for opt, arg in opts:
     if opt == '-n':
-        id = arg
+        scan_id = arg
     elif opt == '-m':
         mode = arg
     elif opt == '-t':
@@ -31,7 +31,7 @@ post_data = {
     'options': {
         'ports': ["443"]
     },
-    'scan_id': id
+    'scan_id': scan_id
 }
 
 # Mode
@@ -43,7 +43,7 @@ if(mode == 'scan'):
     )
     print(r.text)
 elif(mode == 'results'):
-    r = requests.get(url='http://0.0.0.0:5014/engines/sslscan/getfindings/{}'.format(id))
+    r = requests.get(url='http://0.0.0.0:5014/engines/sslscan/getfindings/{}'.format(scan_id))
     print(r.text)
 # Default is status
 elif(mode == 'status'):
