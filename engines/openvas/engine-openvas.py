@@ -24,7 +24,8 @@ from flask import Flask, request, jsonify
 from dns.resolver import query
 from gvm.connections import TLSConnection
 from gvm.protocols.gmp import Gmp
-from gvm.protocols.gmpv7.types import AliveTest
+# from gvm.protocols.gmpv7.types import AliveTest
+from gvm.protocols.gmpv208 import AliveTest
 # from gvm.errors import GvmError
 
 # Own library
@@ -114,7 +115,8 @@ def get_target(target_name, scan_portlist_id=None, alive_test=AliveTest.TCP_SYN_
         gmp_cnx.authenticate(
             engine.scanner["options"]["gmp_username"]["value"],
             engine.scanner["options"]["gmp_password"]["value"])
-        targets_xml = gmp_cnx.get_targets(filter="~"+target_name)
+        # targets_xml = gmp_cnx.get_targets(filter="~"+target_name)
+        targets_xml = gmp_cnx.get_targets(filter_string="~"+target_name)
         # print("get_target/targets_xml:", targets_xml)
         try:
             targets = ET.fromstring(targets_xml)
@@ -175,7 +177,8 @@ def get_target(target_name, scan_portlist_id=None, alive_test=AliveTest.TCP_SYN_
 
 def get_scan_config_name(scan_config_id=None, gmp=this.gmp):
     scan_config_name = None
-    configs_xml = gmp.get_configs()
+    # configs_xml = gmp.get_configs()
+    configs_xml = gmp.get_scan_configs()
     try:
         configs = ET.fromstring(configs_xml)
     except Exception:
@@ -203,7 +206,8 @@ def get_scan_config(name=None):
         gmp_cnx.authenticate(
             engine.scanner["options"]["gmp_username"]["value"],
             engine.scanner["options"]["gmp_password"]["value"])
-        configs_xml = gmp_cnx.get_configs()
+        # configs_xml = gmp_cnx.get_configs()
+        configs_xml = gmp_cnx.get_scan_configs()
         try:
             configs = ET.fromstring(configs_xml)
         except Exception as e:
@@ -287,7 +291,8 @@ def get_task_by_target_name(target_name, scan_config_id=None):
         gmp_cnx.authenticate(
             engine.scanner["options"]["gmp_username"]["value"],
             engine.scanner["options"]["gmp_password"]["value"])
-        tasks_xml = gmp_cnx.get_tasks(filter="apply_overrides=1 min_qod=0 rows=-1 levels=hmlg")
+        # tasks_xml = gmp_cnx.get_tasks(filter="apply_overrides=1 min_qod=0 rows=-1 levels=hmlg")
+        tasks_xml = gmp_cnx.get_tasks(filter_string="apply_overrides=1 min_qod=0 rows=-1 levels=hmlg")
         target_id = get_target(target_name)
         if target_id is None:
             return None
@@ -449,7 +454,8 @@ def get_multiple_report_status(info, gmp_cnx):
     Ex: {'task_id': xx, 'report_id': xx}.
     """
     assets_status = dict()
-    result_xml = gmp_cnx.get_tasks(filter="apply_overrides=1 min_qod=0 rows=-1")
+    # result_xml = gmp_cnx.get_tasks(filter="apply_overrides=1 min_qod=0 rows=-1")
+    result_xml = gmp_cnx.get_tasks(filter_string="apply_overrides=1 min_qod=0 rows=-1")
     try:
         result = ET.fromstring(result_xml)
     except Exception:
@@ -1181,7 +1187,8 @@ def get_report(scan_id):
             # )
             result = gmp_cnx.get_report(
                 report_id=report_id,
-                filter="levels=hmlg apply_overrides=0 rows=-1 min_qod=70 sort-reverse=severity notes=1 overrides=1",
+                # filter="levels=hmlg apply_overrides=0 rows=-1 min_qod=70 sort-reverse=severity notes=1 overrides=1",
+                filter_string="levels=hmlg apply_overrides=0 rows=-1 min_qod=70 sort-reverse=severity notes=1 overrides=1",
                 details=1,
                 ignore_pagination=1
             )

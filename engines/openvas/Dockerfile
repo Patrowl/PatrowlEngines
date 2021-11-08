@@ -1,6 +1,6 @@
 FROM alpine:latest
 MAINTAINER Patrowl.io "getsupport@patrowl.io"
-LABEL Name="OpenVAS\ \(Patrowl engine\)" Version="1.4.30"
+LABEL Name="OpenVAS\ \(Patrowl engine\)" Version="1.4.31"
 
 ENV CRYPTOGRAPHY_DONT_BUILD_RUST=1
 
@@ -31,9 +31,10 @@ RUN mkdir -p results
 RUN apk add --update --no-cache \
     build-base \
     libffi-dev openssl-dev \
-    libxml2-dev libxslt-dev \
+    libxml2 libxml2-dev \
     python3 python3-dev py3-pip \
     git curl \
+  && apk add libxslt libxslt-dev py3-lxml \
   && rm -rf /var/cache/apk/*
 
 RUN pip3 install --upgrade pip
@@ -44,8 +45,9 @@ RUN pip3 install --upgrade pip
 # RUN pip3 install -e python-gvm
 
 WORKDIR /opt/patrowl-engines/openvas
-RUN pip3 install --trusted-host pypi.python.org -r requirements.txt --ignore-installed
-
+RUN pip3 install --no-cache-dir --trusted-host pypi.python.org -r requirements.txt --ignore-installed
+# RUN pip3 install --trusted-host pypi.python.org -r requirements.txt
+RUN pip3 freeze
 # TCP port exposed by the container (NAT)
 EXPOSE 5016
 

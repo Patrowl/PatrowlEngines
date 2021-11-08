@@ -754,7 +754,8 @@ def getreport(scan_id):
     return send_file(
         filepath,
         mimetype='application/json',
-        attachment_filename='nmap_'+str(scan_id)+".json",
+        # attachment_filename='nmap_'+str(scan_id)+".json",
+        download_name='nmap_'+str(scan_id)+".json",
         as_attachment=True
     )
 
