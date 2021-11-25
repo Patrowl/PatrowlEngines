@@ -1,4 +1,4 @@
-FROM ruby:2.7.1-alpine AS builder
+FROM ruby:3.0.2-alpine AS builder
 
 # ENV WP_VERSION v3.8.7
 ENV WP_VERSION v3.8.13
@@ -24,7 +24,7 @@ RUN rake install --trace
 RUN chmod -R a+r /usr/local/bundle
 
 # -- WPScan Deployment
-FROM ruby:2.7.1-alpine
+FROM ruby:3.0.2-alpine
 LABEL Name="WPScan\ \(Patrowl engine\)" Version="1.4.27"
 
 RUN adduser -h /wpscan -g WPScan -D wpscan
