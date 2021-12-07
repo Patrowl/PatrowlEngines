@@ -98,7 +98,7 @@ def start():
             "details": {
                 "reason": "scanner not ready",
                 "status": this.scanner['status']
-        }})
+            }})
         return jsonify(res)
 
     # Load scan parameters
@@ -108,7 +108,7 @@ def start():
             "status": "refused",
             "details": {
                 "reason": "arg error, something is missing ('assets' ?)"
-        }})
+            }})
         return jsonify(res)
 
     scan_id = str(data['scan_id'])
@@ -117,21 +117,21 @@ def start():
             "status": "refused",
             "details": {
                 "reason": "scan '{}' already launched".format(data['scan_id']),
-        }})
+            }})
         return jsonify(res)
 
     if type(data['options']) == str:
         data['options'] = json.loads(data['options'])
 
     scan = {
-        'assets':       data['assets'],
-        'threads':      [],
-        'proc':         None,
-        'options':      data['options'],
-        'scan_id':      scan_id,
-        'status':       "STARTED",
-        'started_at':   int(time.time() * 1000),
-        'nb_findings':  0
+        'assets': data['assets'],
+        'threads': [],
+        'proc': None,
+        'options': data['options'],
+        'scan_id': scan_id,
+        'status': "STARTED",
+        'started_at': int(time.time() * 1000),
+        'nb_findings': 0
     }
 
     this.scans.update({scan_id: scan})
@@ -156,7 +156,7 @@ def _scan_thread(scan_id):
                 "status": "refused",
                 "details": {
                     "reason": "datatype '{}' not supported for the asset {}.".format(asset["datatype"], asset["value"])
-            }})
+                }})
         else:
             # extract the net location from urls if needed
             if asset["datatype"] == 'url':
@@ -195,7 +195,7 @@ def _scan_thread(scan_id):
             cmd += " {}".format(this.scanner['options'][opt_key]['value'])
         if opt_key == "ports" and ports is not None:  # /!\ @todo / Security issue: Sanitize parameters here
             cmd += " -p{}".format(ports)
-        if opt_key == "top_ports": # /!\ @todo / Security issue: Sanitize parameters here
+        if opt_key == "top_ports":  # /!\ @todo / Security issue: Sanitize parameters here
             cmd += " --top-ports {}".format(options.get(opt_key))
         if opt_key == "script" and options.get(opt_key).endswith('.nse'):  # /!\ @todo / Security issue: Sanitize parameters here
             cmd += " --script {}".format(options.get(opt_key))
@@ -219,7 +219,11 @@ def _scan_thread(scan_id):
 
     this.scans[scan_id]["proc_cmd"] = "not set!!"
     with open(log_path, "w") as stderr:
-        this.scans[scan_id]["proc"] = subprocess.Popen(cmd_sec, shell=False, stdout=open("/dev/null", "w"), stderr=stderr)
+        this.scans[scan_id]["proc"] = subprocess.Popen(
+            cmd_sec,
+            shell=False,
+            stdout=open("/dev/null", "w"), stderr=stderr
+        )
     this.scans[scan_id]["proc_cmd"] = cmd
 
     return True
@@ -276,7 +280,8 @@ def stop_scan(scan_id):
         # os.killpg(os.getpgid(proc.pid), signal.SIGTERM)
         if psutil.pid_exists(proc.pid):
             psutil.Process(proc.pid).terminate()
-        res.update({"status": "TERMINATED",
+        res.update({
+            "status": "TERMINATED",
             "details": {
                 "pid": proc.pid,
                 "cmd": this.scans[scan_id]["proc_cmd"],
@@ -581,7 +586,7 @@ def _parse_report(filename, scan_id):
                             risk={"cvss_base_score": port_max_cvss},
                             vuln_refs={"CVE": port_cve_list, "CPE": port_cpe},
                             links=port_cve_links
-                            )))
+                        )))
                     else:
                         res.append(deepcopy(_add_issue(scan_id, target, ts,
                             "Nmap script '{}' detected findings on port {}/{}"
@@ -735,7 +740,7 @@ def getfindings(scan_id):
         "summary": summary,
         "issues": issues,
         "status": "success"
-        })
+    })
     return jsonify(res)
 
 
@@ -754,9 +759,7 @@ def getreport(scan_id):
     return send_file(
         filepath,
         mimetype='application/json',
-        # attachment_filename='nmap_'+str(scan_id)+".json",
-        # download_name='nmap_'+str(scan_id)+".json",
-        attachment_filename='nmap_'+str(scan_id)+".json",
+        download_name='nmap_'+str(scan_id)+".json",
         as_attachment=True
     )
 

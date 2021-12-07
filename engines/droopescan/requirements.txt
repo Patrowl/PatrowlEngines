@@ -13,5 +13,5 @@ werkzeug
 netaddr
 PatrowlEnginesUtils>=1.0.1
 psutil
-droopescan==1.45.0
+droopescan==1.45.1
 patrowlhears4py==1.2.0
