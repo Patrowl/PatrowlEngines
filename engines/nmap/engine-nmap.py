@@ -520,7 +520,7 @@ def _parse_report(filename, scan_id):
                     "Port '{}/{}' is {}".format(proto, portid, port_state),
                     "The scan detected that the port '{}/{}' was {}".format(
                         proto, portid, port_state),
-                    type="port_status")))
+                    type="port_status", raw=str(portid))))
 
                 # get service information if available
                 if port.find('service') is not None and port.find('state').get('state') not in ["filtered", "closed"]:
