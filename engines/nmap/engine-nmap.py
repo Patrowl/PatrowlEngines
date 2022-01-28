@@ -393,7 +393,7 @@ def info():
     return jsonify(res)
 
 
-def _add_issue(scan_id, target, ts, title, desc, type, severity="info", confidence="certain", vuln_refs={}, links=[], tags=[], risk={}):
+def _add_issue(scan_id, target, ts, title, desc, type, severity="info", confidence="certain", vuln_refs={}, links=[], tags=[], risk={}, raw=[]):
     this.scans[scan_id]["nb_findings"] = this.scans[scan_id]["nb_findings"] + 1
     issue = {
         "issue_id": this.scans[scan_id]["nb_findings"],
@@ -402,6 +402,7 @@ def _add_issue(scan_id, target, ts, title, desc, type, severity="info", confiden
         "target": target,
         "title": title,
         "description": desc,
+        "raw": raw,
         "solution": "n/a",
         "type": type,
         "timestamp": ts,
@@ -479,7 +480,7 @@ def _parse_report(filename, scan_id):
                     res.append(deepcopy(_add_issue(scan_id, target, ts,
                         "Host '{}' has ip: '{}'".format(hostname.get('name'),host.find('address').get('addr')),
                         "The scan detected that the host {} has IP '{}'".format(hostname.get('name'), host.find('address').get('addr')),
-                        type="host_availability")))
+                        type="host_availability", raw=str(host.find('address').get('addr')))))
 
         # Add the addr_list to identified_assets (post exec: spot unresolved domains)
         unresolved_domains = unresolved_domains.difference(set(addr_list))
@@ -654,6 +655,7 @@ def _parse_report(filename, scan_id):
                                            "Host '{}' is down".format(down_ip),
                                            "The scan detected that the host {} was down".format(down_ip),
                                            type="host_availability")))
+
     return res
 
 
