@@ -725,7 +725,7 @@ def getfindings(scan_id):
             has_error = True
             has_error_reason = "Scan in progress"
             break
-        
+
         # check if the report is available (exists && scan finished)
         if not exists(engine.scans[scan_id]["reports"][asset]["report_path"]):
             has_error = True
