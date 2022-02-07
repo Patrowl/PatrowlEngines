@@ -356,7 +356,7 @@ def status():
 
     if 'path' in this.scanner:
         if not os.path.isfile(this.scanner['path']):
-            app.logger.error("NMAP engine not found (%s)",this.scanner['path'])
+            app.logger.error("NMAP engine not found (%s)", this.scanner['path'])
             this.scanner['status'] = "ERROR"
 
     res.update({"status": this.scanner['status']})
@@ -483,7 +483,7 @@ def _parse_report(filename, scan_id):
             for hostnames in host.findall('hostnames'):
                 for hostname in list(hostnames):
                     res.append(deepcopy(_add_issue(scan_id, target, ts,
-                        "Host '{}' has ip: '{}'".format(hostname.get('name'),host.find('address').get('addr')),
+                        "Host '{}' has ip: '{}'".format(hostname.get('name'), host.find('address').get('addr')),
                         "The scan detected that the host {} has IP '{}'".format(hostname.get('name'), host.find('address').get('addr')),
                         type="host_availability", raw=str(host.find('address').get('addr')))))
 
@@ -596,7 +596,7 @@ def _parse_report(filename, scan_id):
                                 .format(script_id, script_output),
                             type="port_script",
                             tags=[script_id])))
-            if not openports and "ports" in this.scans[scan_id]["options"].keys() and this.scans[scan_id]["options"]["ports"][0] in ["-",'1-65535']: #only if all ports were scanned you can add the finding
+            if not openports and "ports" in this.scans[scan_id]["options"].keys() and this.scans[scan_id]["options"]["ports"][0] in ["-", '1-65535']: #only if all ports were scanned you can add the finding
                 res.append(deepcopy(_add_issue(scan_id, target, ts,
                 "All Ports are closed",
                 "The scan detected that all ports are closed or filtered",
@@ -609,7 +609,7 @@ def _parse_report(filename, scan_id):
                                            "Host '{}' is up".format(addr),
                                            "The scan detected that the host {} was up".format(addr),
                                            type="host_availability")))
-        elif status and status == "up" and  "no_ping" in this.scans[scan_id]["options"].keys() and this.scans[scan_id]["options"]["no_ping"]=='0': #if no_ping (-Pn) is used all hosts are always up even if they are not
+        elif status and status == "up" and  "no_ping" in this.scans[scan_id]["options"].keys() and this.scans[scan_id]["options"]["no_ping"] == '0': #if no_ping (-Pn) is used all hosts are always up even if they are not
             if "no_ping" in this.scans[scan_id]["options"].keys() and this.scans[scan_id]["options"]["no_ping"]=='0':
                 res.append(deepcopy(_add_issue(scan_id, target, ts,
                     "Host '{}' is up".format(addr),
@@ -650,7 +650,7 @@ def _parse_report(filename, scan_id):
             "Failed to resolve '{}'".format(unresolved_domain),
             "The asset '{}' was not resolved by the engine.".format(unresolved_domain),
             type="nmap_error_unresolved")))
-    if "ports" in this.scans[scan_id]["options"].keys() and this.scans[scan_id]["options"]["ports"][0] in ["-",'1-65535']:
+    if "ports" in this.scans[scan_id]["options"].keys() and this.scans[scan_id]["options"]["ports"][0] in ["-", '1-65535']:
         for down_ip in down_ips:
             target = {
                 "addr": [down_ip],
@@ -691,10 +691,10 @@ def _get_vulners_findings(findings):
 @app.route('/engines/nmap/getfindings/<scan_id>')
 def getfindings(scan_id):
     """ Get findings from engine """
+    res = {"page": "getfindings", "scan_id": scan_id}
     if not scan_id.isdecimal():
         res.update({"status": "error", "reason": "scan_id must be numeric digits only"})
         return jsonify(res)
-    res = {"page": "getfindings", "scan_id": scan_id}
     if scan_id not in this.scans.keys():
         res.update({"status": "error", "reason": "scan_id '{}' not found".format(scan_id)})
         return jsonify(res)
