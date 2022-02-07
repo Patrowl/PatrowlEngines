@@ -378,6 +378,7 @@ def _scan_urls(scan_id, asset):
     wordpress_hostname_hash = sha256(wordpress_hostname.encode()).hexdigest()
 
     wpscan_cmd += " --url '{}'".format(wordpress_hostname)
+    wpscan_cmd += " --disable-tls-checks"
 
     # Patrowl specific User-Agent
     wpscan_cmd += " --ua 'Patrowl Engine WPSCAN v{}'".format(VERSION)
