@@ -690,7 +690,7 @@ def _get_vulners_findings(findings):
 
 @app.route('/engines/nmap/getfindings/<scan_id>')
 def getfindings(scan_id):
-    """ Get findings from engine """
+    """Get findings from engine"""
     res = {"page": "getfindings", "scan_id": scan_id}
     if not scan_id.isdecimal():
         res.update({"status": "error", "reason": "scan_id must be numeric digits only"})
