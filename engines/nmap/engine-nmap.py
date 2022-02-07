@@ -690,6 +690,10 @@ def _get_vulners_findings(findings):
 
 @app.route('/engines/nmap/getfindings/<scan_id>')
 def getfindings(scan_id):
+    """ Get findings from engine """
+    if not scan_id.isdecimal():
+        res.update({"status": "error", "reason": "scan_id must be numeric digits only"})
+        return jsonify(res)
     res = {"page": "getfindings", "scan_id": scan_id}
     if scan_id not in this.scans.keys():
         res.update({"status": "error", "reason": "scan_id '{}' not found".format(scan_id)})
