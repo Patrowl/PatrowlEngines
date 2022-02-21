@@ -649,7 +649,7 @@ def _parse_report(filename, scan_id):
         res.append(deepcopy(_add_issue(scan_id, target, ts,
             "Failed to resolve '{}'".format(unresolved_domain),
             "The asset '{}' was not resolved by the engine.".format(unresolved_domain),
-            type="nmap_error_unresolved")))
+            type="nmap_error_unresolved", severity="low")))
     if "ports" in this.scans[scan_id]["options"].keys() and this.scans[scan_id]["options"]["ports"][0] in ["-", '1-65535']:
         for down_ip in down_ips:
             target = {
@@ -659,7 +659,8 @@ def _parse_report(filename, scan_id):
             res.append(deepcopy(_add_issue(scan_id, target, ts,
                                            "Host '{}' is down".format(down_ip),
                                            "The scan detected that the host {} was down".format(down_ip),
-                                           type="host_availability")))
+                                           type="host_availability"
+                                           severity="low")))
 
     return res
 
