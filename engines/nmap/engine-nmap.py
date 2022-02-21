@@ -21,7 +21,7 @@ app = Flask(__name__)
 APP_DEBUG = False
 APP_HOST = "0.0.0.0"
 APP_PORT = 5001
-APP_MAXSCANS = int(os.environ.get('APP_MAXSCANS', 25))
+APP_MAXSCANS = int(os.environ.get('APP_MAXSCANS', 5))
 
 BASE_DIR = os.path.dirname(os.path.realpath(__file__))
 this = sys.modules[__name__]
@@ -82,12 +82,12 @@ def start():
     res = {"page": "startscan"}
 
     # check the scanner is ready to start a new scan
-    if len(this.scans) == APP_MAXSCANS:
+    if len(this.scans) == APP_MAXSCANS+5:
         res.update({
             "status": "error",
             "reason": "Scan refused: max concurrent active scans reached ({})".format(APP_MAXSCANS)
         })
-        return jsonify(res)
+        return jsonify(res), 503
 
     # update scanner status
     status()
@@ -99,7 +99,7 @@ def start():
                 "reason": "scanner not ready",
                 "status": this.scanner['status']
             }})
-        return jsonify(res)
+        return jsonify(res), 503
 
     # Load scan parameters
     data = json.loads(request.data.decode("UTF-8"))
@@ -109,7 +109,7 @@ def start():
             "details": {
                 "reason": "arg error, something is missing ('assets' ?)"
             }})
-        return jsonify(res)
+        return jsonify(res), 500
 
     scan_id = str(data['scan_id'])
     if data['scan_id'] in this.scans.keys():
@@ -118,7 +118,7 @@ def start():
             "details": {
                 "reason": "scan '{}' already launched".format(data['scan_id']),
             }})
-        return jsonify(res)
+        return jsonify(res), 503
 
     if type(data['options']) == str:
         data['options'] = json.loads(data['options'])
@@ -185,7 +185,7 @@ def _scan_thread(scan_id):
 
     app.logger.debug('options: %s', options)
 
-    log_path = BASE_DIR+"/logs/" + scan_id + ".error"
+    log_path = BASE_DIR + "/logs/" + scan_id + ".error"
 
     cmd = this.scanner['path'] + " -vvv" + " -oX " +BASE_DIR+"/results/nmap_" + scan_id + ".xml"
 
@@ -609,7 +609,7 @@ def _parse_report(filename, scan_id):
                                            "Host '{}' is up".format(addr),
                                            "The scan detected that the host {} was up".format(addr),
                                            type="host_availability")))
-        elif status and status == "up" and  "no_ping" in this.scans[scan_id]["options"].keys() and this.scans[scan_id]["options"]["no_ping"] == '0': #if no_ping (-Pn) is used all hosts are always up even if they are not
+        elif status and status == "up" and "no_ping" in this.scans[scan_id]["options"].keys() and this.scans[scan_id]["options"]["no_ping"] == '0': #if no_ping (-Pn) is used all hosts are always up even if they are not
             if "no_ping" in this.scans[scan_id]["options"].keys() and this.scans[scan_id]["options"]["no_ping"]=='0':
                 res.append(deepcopy(_add_issue(scan_id, target, ts,
                     "Host '{}' is up".format(addr),
@@ -690,7 +690,7 @@ def _get_vulners_findings(findings):
 
 @app.route('/engines/nmap/getfindings/<scan_id>')
 def getfindings(scan_id):
-    """ Get findings from engine """
+    """Get findings from engine."""
     res = {"page": "getfindings", "scan_id": scan_id}
     if not scan_id.isdecimal():
         res.update({"status": "error", "reason": "scan_id must be numeric digits only"})

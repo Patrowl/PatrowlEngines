@@ -12,8 +12,7 @@ app = Flask(__name__)
 APP_DEBUG = False
 APP_HOST = "0.0.0.0"
 APP_PORT = 5006
-# APP_MAXSCANS = int(os.environ.get('APP_MAXSCANS', 10))
-APP_MAXSCANS = int(os.environ.get('APP_MAXSCANS', 5))
+APP_MAXSCANS = int(os.environ.get('APP_MAXSCANS', 3))
 APP_TIMEOUT = 3600
 
 BASE_DIR = os.path.dirname(os.path.realpath(__file__))
@@ -25,7 +24,7 @@ this.scan_lock = threading.RLock()
 this.resolver = dns.resolver.Resolver()
 this.resolver.lifetime = this.resolver.timeout = 5.0
 
-this.pool = ThreadPoolExecutor(4)
+this.pool = ThreadPoolExecutor(5)
 
 
 def get_random_string(n=32):
@@ -77,12 +76,34 @@ def start_scan():
     res = {"page": "startscan"}
 
     # check the scanner is ready to start a new scan
-    if len(this.scans) == APP_MAXSCANS:
+    if len(this.scans) == APP_MAXSCANS*2:
+    # if len(this.scans) == APP_MAXSCANS:
         res.update({
             "status": "error",
             "reason": "Scan refused: max concurrent active scans reached ({})".format(APP_MAXSCANS)
         })
-        return jsonify(res)
+        return jsonify(res), 503
+
+    data = json.loads(request.data)
+    if 'assets' not in data.keys():
+        res.update({
+            "status": "refused",
+            "details": {
+                "reason": "arg error, something is missing ('assets' ?)"
+            }
+        })
+        return jsonify(res), 503
+
+    scan_id = str(data['scan_id'])
+
+    # this.scans.update({scan_id: None})
+    this.scans.update({scan_id: {
+        'status': 'STARTED',
+        'started_at': int(time.time() * 1000),
+        'assets': data['assets'],
+    }})
+
+    # print(f"Scan job '{scan_id}' reserved !")
 
     status()
     if this.scanner['status'] != "READY":
@@ -93,30 +114,24 @@ def start_scan():
                 "status": this.scanner['status']
             }
         })
-        return jsonify(res)
-
-    data = json.loads(request.data)
-    if 'assets' not in data.keys():
-        res.update({
-            "status": "refused",
-            "details": {
-                "reason": "arg error, something is missing ('assets' ?)"
-            }
-        })
-        return jsonify(res)
+        this.scans.update({scan_id: {
+            'status': "ERROR",
+        }})
+        this.scans.pop(scan_id, None)
+        # print(f"Scan job '{scan_id}' out: Scanner not ready")
+        return jsonify(res), 503
 
     # Sanitize args :
-    scan_id = str(data['scan_id'])
     scan = {
-        'assets':       data['assets'],
-        'threads':      [],
-        'futures':      [],
-        'dnstwist':     {},
-        'options':      data['options'],
-        'scan_id':      scan_id,
-        'status':       "STARTED",
-        'started_at':   int(time.time() * 1000),
-        'findings':     {}
+        'assets': data['assets'],
+        'threads': [],
+        'futures': [],
+        'dnstwist': {},
+        'options': data['options'],
+        'scan_id': scan_id,
+        'status': "STARTED",
+        'started_at': int(time.time() * 1000),
+        'findings': {}
     }
 
     this.scans.update({scan_id: scan})
@@ -124,55 +139,69 @@ def start_scan():
     if 'do_whois' in scan['options'].keys() and data['options']['do_whois']:
         for asset in data["assets"]:
             if asset["datatype"] == "domain":
-                th = threading.Thread(target=_get_whois, args=(scan_id, asset["value"],))
-                th.start()
-                this.scans[scan_id]['threads'].append(th)
+                # th = threading.Thread(target=_get_whois, args=(scan_id, asset["value"],))
+                # th.start()
+                # this.scans[scan_id]['threads'].append(th)
+                th = this.pool.submit(_get_whois, scan_id, asset["value"])
+                this.scans[scan_id]['futures'].append(th)
 
     if 'do_advanced_whois' in scan['options'].keys() and data['options']['do_advanced_whois']:
         for asset in data["assets"]:
             if asset["datatype"] == "domain":
-                th = threading.Thread(target=_get_whois, args=(scan_id, asset["value"],))
-                th.start()
-                this.scans[scan_id]['threads'].append(th)
+                # th = threading.Thread(target=_get_whois, args=(scan_id, asset["value"],))
+                # th.start()
+                # this.scans[scan_id]['threads'].append(th)
+                th = this.pool.submit(_get_whois, scan_id, asset["value"])
+                this.scans[scan_id]['futures'].append(th)
 
     # subdomains enumeration using search engines, VT and public PassiveDNS API
     if 'do_subdomain_enum' in scan['options'].keys() and data['options']['do_subdomain_enum']:
         for asset in data["assets"]:
             if asset["datatype"] == "domain":
-                th = threading.Thread(target=_subdomain_enum, args=(scan_id, asset["value"],))
-                th.daemon = True
-                th.start()
-                this.scans[scan_id]['threads'].append(th)
+                # th = threading.Thread(target=_subdomain_enum, args=(scan_id, asset["value"],))
+                # th.daemon = True
+                # th.start()
+                # this.scans[scan_id]['threads'].append(th)
+                th = this.pool.submit(_subdomain_enum, scan_id, asset["value"])
+                this.scans[scan_id]['futures'].append(th)
 
     if 'do_subdomains_resolve' in scan['options'].keys() and data['options']['do_subdomains_resolve']:
         for asset in data["assets"]:
             if asset["datatype"] == "domain":
-                th = threading.Thread(target=_dns_resolve, args=(scan_id, asset["value"], True))
-                th.daemon = True
-                th.start()
-                this.scans[scan_id]['threads'].append(th)
+                # th = threading.Thread(target=_dns_resolve, args=(scan_id, asset["value"], True))
+                # th.daemon = True
+                # th.start()
+                # this.scans[scan_id]['threads'].append(th)
+                th = this.pool.submit(_dns_resolve, scan_id, asset["value"], True)
+                this.scans[scan_id]['futures'].append(th)
 
     if 'do_dns_resolve' in scan['options'].keys() and data['options']['do_dns_resolve']:
         for asset in data["assets"]:
             if asset["datatype"] == "domain":
-                th = threading.Thread(target=_dns_resolve, args=(scan_id, asset["value"], False))
-                th.start()
-                this.scans[scan_id]['threads'].append(th)
+                # th = threading.Thread(target=_dns_resolve, args=(scan_id, asset["value"], False))
+                # th.start()
+                # this.scans[scan_id]['threads'].append(th)
+                th = this.pool.submit(_dns_resolve, scan_id, asset["value"], False)
+                this.scans[scan_id]['futures'].append(th)
 
     if 'do_subdomain_bruteforce' in scan['options'].keys() and data['options']['do_subdomain_bruteforce']:
         for asset in data["assets"]:
             if asset["datatype"] == "domain":
-                th = threading.Thread(target=_subdomain_bruteforce, args=(scan_id, asset["value"],))
-                th.daemon = True
-                th.start()
-                this.scans[scan_id]['threads'].append(th)
+                # th = threading.Thread(target=_subdomain_bruteforce, args=(scan_id, asset["value"],))
+                # th.daemon = True
+                # th.start()
+                # this.scans[scan_id]['threads'].append(th)
+                th = this.pool.submit(_subdomain_bruteforce, scan_id, asset["value"])
+                this.scans[scan_id]['futures'].append(th)
 
     if 'do_reverse_dns' in scan['options'].keys() and data['options']['do_reverse_dns']:
         for asset in data["assets"]:
             if asset["datatype"] == "ip":
-                th = threading.Thread(target=_reverse_dns, args=(scan_id, asset["value"]))
-                th.start()
-                this.scans[scan_id]['threads'].append(th)
+                # th = threading.Thread(target=_reverse_dns, args=(scan_id, asset["value"]))
+                # th.start()
+                # this.scans[scan_id]['threads'].append(th)
+                th = this.pool.submit(_reverse_dns, scan_id, asset["value"])
+                this.scans[scan_id]['futures'].append(th)
 
     if 'do_dnstwist_subdomain_search' in scan['options'].keys() and data['options']['do_dnstwist_subdomain_search']:
         # Check if extra TLD should be tested
@@ -210,6 +239,9 @@ def start_scan():
             "scan_id": scan['scan_id']
         }
     })
+    # print(', '.join([a['value'] for a in data['assets']]))
+
+    # print(f"Scan job '{scan_id}' started (threads) !")
 
     return jsonify(res)
 
@@ -269,6 +301,8 @@ def __dns_resolve_asset(asset):
                 pass
             except dns.resolver.Timeout:
                 pass
+            except Exception:
+                pass
     except dns.resolver.NXDOMAIN:
         pass
     return sub_res
@@ -289,6 +323,8 @@ def _reverse_dns(scan_id, asset):
     except dns.resolver.NoAnswer:
         pass
     except dns.resolver.NXDOMAIN:
+        pass
+    except Exception:
         pass
 
     scan_lock = threading.RLock()
@@ -329,6 +365,7 @@ def _subdomain_bruteforce(scan_id, asset):
         "ftp", "ftp1", "ftp2", "ftp3", "sftp",
         "mail", "mail1", "mail2", "mail3", "webmail", "smtp", "mx", "email", "owa", "imap",
         "prod", "dev", "pro", "test", "demo", "demo1", "demo2", "beta", "pre-prod", "preprod",
+        "int", "acc",
         "intra", "intranet", "internal", "backup", "backups", "share",
         "db", "db1", "db2", "data", "mysql", "oracle", "pg",
         "ldap", "ldap2", "open", "survey",
@@ -500,34 +537,47 @@ def scan_status(scan_id):
     if scan_id not in this.scans.keys():
         return jsonify({
             "status": "ERROR",
-            "details": "scan_id '{}' not found".format(scan_id)})
+            "details": "scan_id '{}' not found".format(scan_id)
+        })
 
     all_threads_finished = True
 
-    for t in this.scans[scan_id]['threads']:
-        # print("scan_status-thread:", t.name, t.native_id)
-        if t.is_alive():
-            this.scans[scan_id]['status'] = "SCANNING"
-            all_threads_finished = False
-            break
-        else:
-            # Terminate thread
-            t.join()
-            this.scans[scan_id]['threads'].remove(t)
+    if 'threads' in this.scans[scan_id]:
+        for t in this.scans[scan_id]['threads']:
+            # print("scan_status-thread:", t.name, t.native_id)
+            if t.is_alive():
+                this.scans[scan_id]['status'] = "SCANNING"
+                all_threads_finished = False
+                break
+            else:
+                # Terminate thread
+                t.join()
+                this.scans[scan_id]['threads'].remove(t)
 
-    for f in this.scans[scan_id]['futures']:
-        if not f.done():
-            this.scans[scan_id]['status'] = "SCANNING"
-            all_threads_finished = False
-            break
-        else:
-            dnstwist_asset, dnstwist_results = f.result()
-            this.scans[scan_id]['dnstwist'][dnstwist_asset] = dnstwist_results
-            this.scans[scan_id]['futures'].remove(f)
+    if 'futures' in this.scans[scan_id]:
+        for f in this.scans[scan_id]['futures']:
+            if not f.done():
+                this.scans[scan_id]['status'] = "SCANNING"
+                all_threads_finished = False
+                break
+            else:
+                try:
+                    dnstwist_asset, dnstwist_results = f.result()
+                    this.scans[scan_id]['dnstwist'][dnstwist_asset] = dnstwist_results
+                except Exception:
+                    pass
+                this.scans[scan_id]['futures'].remove(f)
 
-    if all_threads_finished and len(this.scans[scan_id]['threads']) == 0 and len(this.scans[scan_id]['futures']) == 0:
-        this.scans[scan_id]['status'] = "FINISHED"
-        this.scans[scan_id]['finished_at'] = int(time.time() * 1000)
+    if 'threads' not in this.scans[scan_id] and 'futures' not in this.scans[scan_id]:
+        this.scans[scan_id]['status'] = "STARTED"
+        all_threads_finished = False
+
+    try:
+        if all_threads_finished and len(this.scans[scan_id]['threads']) == 0 and len(this.scans[scan_id]['futures']) == 0:
+            this.scans[scan_id]['status'] = "FINISHED"
+            this.scans[scan_id]['finished_at'] = int(time.time() * 1000)
+    except Exception:
+        pass
 
     return jsonify({"status": this.scans[scan_id]['status']})
 
@@ -536,7 +586,7 @@ def scan_status(scan_id):
 def status():
     res = {"page": "status"}
 
-    if len(this.scans) == APP_MAXSCANS:
+    if len(this.scans) == APP_MAXSCANS*2:
         this.scanner['status'] = "BUSY"
     else:
         this.scanner['status'] = "READY"
@@ -606,7 +656,7 @@ def _parse_results(scan_id):
 
             nb_vulns['info'] += 1
             issues.append({
-                "issue_id": len(issues)+1,
+                "issue_id": len(issues) + 1,
                 "severity": "info", "confidence": "certain",
                 "target": {
                     "addr": [asset],
@@ -638,12 +688,12 @@ def _parse_results(scan_id):
 
                 nb_vulns['info'] += 1
                 issues.append({
-                    "issue_id": len(issues)+1,
+                    "issue_id": len(issues) + 1,
                     "severity": "info", "confidence": "certain",
                     "target": {
                         "addr": [asset],
                         "protocol": "domain"
-                        },
+                    },
                     "title": "DNS Resolution entries for '{}' (HASH: {})".format(
                         subdom, subdom_resolve_hash),
                     "description": "DNS Resolution entries for '{}':\n\n{}".format(
@@ -657,18 +707,17 @@ def _parse_results(scan_id):
                     "timestamp": ts
                 })
 
-
     # reverse dns
     if 'reverse_dns' in scan['findings'].keys():
         for asset in scan['findings']['reverse_dns'].keys():
             nb_vulns['info'] += 1
             issues.append({
-                "issue_id": len(issues)+1,
+                "issue_id": len(issues) + 1,
                 "severity": "info", "confidence": "certain",
                 "target": {
                     "addr": [asset],
                     "protocol": "domain"
-                    },
+                },
                 "title": "IP '{}' points to domain name '{}'".format(
                     asset, ", ".join(scan['findings']['reverse_dns'][asset])),
                 "description": "IP '{}' points to domain name '{}'".format(
@@ -715,7 +764,7 @@ def _parse_results(scan_id):
                 nb_vulns['info'] += 1
                 if create_new_assets:
                     issues.append({
-                        "issue_id": len(issues)+1,
+                        "issue_id": len(issues) + 1,
                         "severity": "info", "confidence": "certain",
                         "target": {
                             "addr": [s],
@@ -733,7 +782,7 @@ def _parse_results(scan_id):
                     })
                 else:
                     issues.append({
-                        "issue_id": len(issues)+1,
+                        "issue_id": len(issues) + 1,
                         "severity": "info", "confidence": "certain",
                         "target": {
                             "addr": [asset],
@@ -757,12 +806,12 @@ def _parse_results(scan_id):
 
             nb_vulns['info'] += 1
             issues.append({
-                "issue_id": len(issues)+1,
+                "issue_id": len(issues) + 1,
                 "severity": "info", "confidence": "certain",
                 "target": {
                     "addr": [asset],
                     "protocol": "domain"
-                    },
+                },
                 "title": "List of subdomains for '{}' ({} found, HASH: {})".format(
                     asset, len(subdomains_list_clean), subdomains_hash),
                 "description": "Subdomain list for '{}': \n\n{}".format(
@@ -783,12 +832,12 @@ def _parse_results(scan_id):
             # check errors
             if "errors" in scan['findings']['whois'][asset].keys():
                 issues.append({
-                    "issue_id": len(issues)+1,
+                    "issue_id": len(issues) + 1,
                     "severity": "info", "confidence": "certain",
                     "target": {
                         "addr": [asset],
                         "protocol": "domain"
-                        },
+                    },
                     "title": "[Whois] No match for '{}'".format(asset),
                     "description": "No Whois data available for domain '{}'. Note that Whois is available for registered domains only (not sub-domains): \n{}".format(asset, scan['findings']['whois'][asset]['errors']),
                     "solution": "n/a",
@@ -802,12 +851,12 @@ def _parse_results(scan_id):
             else:
                 whois_hash = hashlib.sha1(str(scan['findings']['whois'][asset]['text']).encode("utf-8")).hexdigest()[:6]
                 issues.append({
-                    "issue_id": len(issues)+1,
+                    "issue_id": len(issues) + 1,
                     "severity": "info", "confidence": "certain",
                     "target": {
                         "addr": [asset],
                         "protocol": "domain"
-                        },
+                    },
                     "title": "Whois info for '{}' (HASH: {})".format(asset, whois_hash),
                     "description": "Whois Info (raw): \n\n{}".format(str(scan['findings']['whois'][asset]['text'])),
                     "solution": "n/a",
@@ -830,7 +879,7 @@ def _parse_results(scan_id):
                     "target": {
                         "addr": [asset],
                         "protocol": "domain"
-                        },
+                    },
                     "solution": "n/a",
                     "metadata": {
                         "tags": ["domains", "whois"]
@@ -842,7 +891,7 @@ def _parse_results(scan_id):
                 nb_vulns['info'] += 1
                 whois_statuses = ",\n".join(scan['findings']['whois'][asset]['raw']['status'])
                 dom_status = copy.deepcopy(issue) ; dom_status.update({
-                    "issue_id": len(issues)+1,
+                    "issue_id": len(issues) + 1,
                     "type": "whois_domain_status",
                     "title": "[Whois] '{}' domain has status '{}'".format(asset, scan['findings']['whois'][asset]['raw']['status'][0]),
                     "description": "[Whois] '{}' domain has status '{}'".format(asset, whois_statuses),
@@ -856,7 +905,7 @@ def _parse_results(scan_id):
                 whois_reginfo += "ID: {}\n".format(scan['findings']['whois'][asset]['raw']['registrar_id'])
                 whois_reginfo += "URL(s): {}\n".format(", ".join(scan['findings']['whois'][asset]['raw']['registrar_url']))
                 dom_registrar = copy.deepcopy(issue) ; dom_registrar.update({
-                    "issue_id": len(issues)+1,
+                    "issue_id": len(issues) + 1,
                     "type": "whois_registrar",
                     "title": "[Whois] '{}' domain registrar is '{}'".format(
                         asset, scan['findings']['whois'][asset]['raw']['registrar']),
@@ -871,7 +920,7 @@ def _parse_results(scan_id):
                 if 'emails' in scan['findings']['whois'][asset]['raw'].keys() and scan['findings']['whois'][asset]['raw']['emails']:
                     nb_vulns['info'] += 1
                     dom_emails = copy.deepcopy(issue) ; dom_emails.update({
-                        "issue_id": len(issues)+1,
+                        "issue_id": len(issues) + 1,
                         "type": "whois_emails",
                         "title": "[Whois] '{}' domain contact emails are set.".format(asset),
                         "description": "[Whois] '{}' domain contact emails are:\n'{}'".format(
@@ -883,7 +932,7 @@ def _parse_results(scan_id):
                 # nameservers
                 nb_vulns['info'] += 1
                 dom_nameservers = copy.deepcopy(issue) ; dom_nameservers.update({
-                    "issue_id": len(issues)+1,
+                    "issue_id": len(issues) + 1,
                     "type": "whois_nameservers",
                     "title": "[Whois] '{}' domain nameservers are set.".format(asset),
                     "description": "[Whois] '{}' domain nameservers are:\n{}".format(
@@ -896,7 +945,7 @@ def _parse_results(scan_id):
                 nb_vulns['info'] += 1
                 update_dates = [d.date().isoformat() for d in scan['findings']['whois'][asset]['raw']['updated_date']]
                 dom_updated_dates = copy.deepcopy(issue) ; dom_updated_dates.update({
-                    "issue_id": len(issues)+1,
+                    "issue_id": len(issues) + 1,
                     "type": "whois_update_dates",
                     "title": "[Whois] '{}' domain was lastly updated the '{}'".format(
                         asset, max(scan['findings']['whois'][asset]['raw']['updated_date']).date().isoformat()),
@@ -909,7 +958,7 @@ def _parse_results(scan_id):
                 # creation_date
                 nb_vulns['info'] += 1
                 dom_created_dates = copy.deepcopy(issue) ; dom_created_dates.update({
-                    "issue_id": len(issues)+1,
+                    "issue_id": len(issues) + 1,
                     "type": "whois_creation_dates",
                     "title": "[Whois] '{}' domain was lastly created the '{}'".format(
                         asset, scan['findings']['whois'][asset]['raw']['creation_date'].date().isoformat()),
@@ -922,7 +971,7 @@ def _parse_results(scan_id):
                 # expiry date
                 nb_vulns['info'] += 1
                 dom_expiration_date = copy.deepcopy(issue) ; dom_expiration_date.update({
-                    "issue_id": len(issues)+1,
+                    "issue_id": len(issues) + 1,
                     "type": "whois_expiration_dates",
                     "title": "[Whois] '{}' domain is registred until '{}'".format(
                         asset, scan['findings']['whois'][asset]['raw']['expiration_date'].date().isoformat()),
@@ -941,7 +990,7 @@ def _parse_results(scan_id):
                 if exp_date < datetime.datetime.now():
                     nb_vulns['high'] += 1
                     dom_expiration_date_passed = copy.deepcopy(issue) ; dom_expiration_date_passed.update({
-                        "issue_id": len(issues)+1,
+                        "issue_id": len(issues) + 1,
                         "severity": "high",
                         "type": "whois_expiration_dates",
                         "title": "[Whois] '{}' domain is expired since '{}'".format(
@@ -959,7 +1008,7 @@ def _parse_results(scan_id):
                 elif exp_date < two_weeks_later:
                     nb_vulns['high'] += 1
                     dom_expiration_date_2w = copy.deepcopy(issue) ; dom_expiration_date_2w.update({
-                        "issue_id": len(issues)+1,
+                        "issue_id": len(issues) + 1,
                         "severity": "high",
                         "type": "whois_expiration_dates",
                         "title": "[Whois] '{}' domain is registred until '{}' (less than 2 weeks)".format(
@@ -977,7 +1026,7 @@ def _parse_results(scan_id):
                 elif exp_date < three_month_later:
                     nb_vulns['medium'] += 1
                     dom_expiration_date_3m = copy.deepcopy(issue) ; dom_expiration_date_3m.update({
-                        "issue_id": len(issues)+1,
+                        "issue_id": len(issues) + 1,
                         "severity": "medium",
                         "type": "whois_expiration_dates",
                         "title": "[Whois] '{}' domain is registred until '{}' (less than 3 months)".format(
@@ -995,7 +1044,7 @@ def _parse_results(scan_id):
                 elif exp_date < six_month_later:
                     nb_vulns['low'] += 1
                     dom_expiration_date_6m = copy.deepcopy(issue) ; dom_expiration_date_6m.update({
-                        "issue_id": len(issues)+1,
+                        "issue_id": len(issues) + 1,
                         "severity": "low",
                         "type": "whois_expiration_dates",
                         "title": "[Whois] '{}' domain is registred until '{}' (less than 6 months)".format(
