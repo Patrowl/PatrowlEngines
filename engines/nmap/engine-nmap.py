@@ -659,7 +659,7 @@ def _parse_report(filename, scan_id):
             res.append(deepcopy(_add_issue(scan_id, target, ts,
                                            "Host '{}' is down".format(down_ip),
                                            "The scan detected that the host {} was down".format(down_ip),
-                                           type="host_availability"
+                                           type="host_availability",
                                            severity="low")))
 
     return res
