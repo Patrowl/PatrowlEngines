@@ -446,7 +446,6 @@ def _parse_report(filename, scan_id):
         if a["datatype"] == "ip":
             down_ips.add(a["value"])
 
-    import pdb;pdb.set_trace()
     for host in tree.findall('host'):
         #  get startdate of the host scan
         #  ts = host.get('starttime')
