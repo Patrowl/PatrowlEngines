@@ -446,6 +446,7 @@ def _parse_report(filename, scan_id):
         if a["datatype"] == "ip":
             down_ips.add(a["value"])
 
+    import pdb;pdb.set_trace()
     for host in tree.findall('host'):
         #  get startdate of the host scan
         #  ts = host.get('starttime')
@@ -650,7 +651,10 @@ def _parse_report(filename, scan_id):
             "Failed to resolve '{}'".format(unresolved_domain),
             "The asset '{}' was not resolved by the engine.".format(unresolved_domain),
             type="nmap_error_unresolved", severity="low")))
-    if "ports" in this.scans[scan_id]["options"].keys() and this.scans[scan_id]["options"]["ports"][0] in ["-", '1-65535']:
+    if ("ports" in this.scans[scan_id]["options"].keys() and \
+       this.scans[scan_id]["options"]["ports"][0] in ["-", '1-65535']) or \
+       ("fast_scan" in this.scans[scan_id]["options"].keys() and \
+       this.scans[scan_id]["options"]["fast_scan"]):
         for down_ip in down_ips:
             target = {
                 "addr": [down_ip],
