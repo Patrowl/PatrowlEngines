@@ -635,8 +635,12 @@ def _parse_results(scan_id):
     # dnstwist
     if 'dnstwist' in this.scans[scan_id].keys():
         for asset in this.scans[scan_id]['dnstwist'].keys():
-            dnstwist_issues = dnstwist.parse_results(
-                ts, asset, this.scans[scan_id]['dnstwist'][asset])
+            try:
+                dnstwist_issues = dnstwist.parse_results(
+                    ts, asset, this.scans[scan_id]['dnstwist'][asset])
+            except KeyError:
+                app.logger.error("dnstwist: missing result (domain-name)")
+                dnstwist_issues = []
             for dnstwist_issue in dnstwist_issues:
                 nb_vulns[dnstwist_issue['severity']] += 1
                 issues.append(dnstwist_issue)
