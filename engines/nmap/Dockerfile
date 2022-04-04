@@ -1,7 +1,7 @@
 FROM alpine:latest
 
 MAINTAINER Patrowl.io "getsupport@patrowl.io"
-LABEL Name="Nmap\ \(Patrowl engine\)" Version="1.4.31"
+LABEL Name="Nmap\ \(Patrowl engine\)" Version="1.4.33"
 
 # Set the working directory
 RUN mkdir -p /opt/patrowl-engines/nmap
@@ -41,4 +41,4 @@ EXPOSE 5001
 USER alpine
 
 # Run app when the container launches
-CMD ["sudo", "gunicorn", "engine-nmap:app", "-b", "0.0.0.0:5001", "--access-logfile", "-"]
+CMD ["sudo", "gunicorn", "engine-nmap:app", "-b", "0.0.0.0:5001", "--access-logfile", "-", "-k", "gevent"]

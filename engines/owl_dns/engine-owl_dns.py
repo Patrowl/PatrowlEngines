@@ -138,7 +138,7 @@ def start_scan():
 
     if 'do_whois' in scan['options'].keys() and data['options']['do_whois']:
         for asset in data["assets"]:
-            if asset["datatype"] == "domain":
+            if asset["datatype"] in ["domain", "ip"]:
                 # th = threading.Thread(target=_get_whois, args=(scan_id, asset["value"],))
                 # th.start()
                 # this.scans[scan_id]['threads'].append(th)
@@ -258,7 +258,7 @@ def __is_ip_addr(host):
 def __is_domain(host):
     res = False
     try:
-        res = validators.domain(host)
+        res = validators.domain(host) == True
     except Exception:
         pass
     return res
@@ -282,7 +282,9 @@ def _dns_resolve(scan_id, asset, check_subdomains=False):
                     res_dom.update({asset: {s: data}})
 
         with this.scan_lock:
-            this.scans[scan_id]["findings"]["subdomains_resolve"] = res_dom
+            if 'subdomains_resolve' not in this.scans[scan_id]['findings'].keys():
+                this.scans[scan_id]['findings']['subdomains_resolve'] = {}
+            this.scans[scan_id]["findings"]["subdomains_resolve"].update(res_dom)
 
     return res
 
@@ -329,7 +331,9 @@ def _reverse_dns(scan_id, asset):
 
     scan_lock = threading.RLock()
     with scan_lock:
-        this.scans[scan_id]["findings"]["reverse_dns"] = res
+        if 'reverse_dns' not in this.scans[scan_id]['findings'].keys():
+            this.scans[scan_id]['findings']['reverse_dns'] = {}
+        this.scans[scan_id]["findings"]["reverse_dns"].update(res)
 
     return res
 
@@ -337,8 +341,8 @@ def _reverse_dns(scan_id, asset):
 def _get_whois(scan_id, asset):
     res = {}
 
-    # check the asset is a valid domain name
-    if not __is_domain(asset):
+    # Check the asset is a valid domain name or IP Address
+    if not __is_domain(asset) and not __is_ip_addr(asset):
         return res
 
     w = whois.whois(str(asset))
@@ -348,12 +352,14 @@ def _get_whois(scan_id, asset):
         })
     else:
         res.update({
-            asset: {"raw": w, "text": w.text}
+            asset: {"raw": {'dict': w, 'text': w.text}, "text": w.text}
         })
 
     scan_lock = threading.RLock()
     with scan_lock:
-        this.scans[scan_id]["findings"]["whois"] = res
+        if 'whois' not in this.scans[scan_id]['findings'].keys():
+            this.scans[scan_id]['findings']['whois'] = {}
+        this.scans[scan_id]['findings']['whois'].update(res)
 
     return res
 

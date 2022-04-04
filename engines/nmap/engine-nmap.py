@@ -16,6 +16,7 @@ from urllib.parse import urlparse
 from copy import deepcopy
 from flask import Flask, request, jsonify, redirect, url_for, send_file
 import xml.etree.ElementTree as ET
+# from concurrent.futures import ThreadPoolExecutor
 
 app = Flask(__name__)
 APP_DEBUG = False
@@ -28,6 +29,7 @@ this = sys.modules[__name__]
 this.scanner = {}
 this.scan_id = 1
 this.scans = {}
+# this.pool = ThreadPoolExecutor(5)
 
 
 # Generic functions
@@ -82,7 +84,7 @@ def start():
     res = {"page": "startscan"}
 
     # check the scanner is ready to start a new scan
-    if len(this.scans) == APP_MAXSCANS+5:
+    if len(this.scans) >= APP_MAXSCANS+5:
         res.update({
             "status": "error",
             "reason": "Scan refused: max concurrent active scans reached ({})".format(APP_MAXSCANS)
@@ -125,6 +127,7 @@ def start():
 
     scan = {
         'assets': data['assets'],
+        'futures': [],
         'threads': [],
         'proc': None,
         'options': data['options'],
@@ -138,6 +141,9 @@ def start():
     th = threading.Thread(target=_scan_thread, args=(scan_id,))
     th.start()
     this.scans[scan_id]['threads'].append(th)
+
+    # th = this.pool.submit(_scan_thread, args=(scan_id,))
+    # this.scans[scan_id]['futures'].append(th)
 
     res.update({
         "status": "accepted",
@@ -287,6 +293,9 @@ def stop_scan(scan_id):
                 "cmd": this.scans[scan_id]["proc_cmd"],
                 "scan_id": scan_id}
         })
+
+    this.scans[scan_id]['status'] = "STOPPED"
+    this.scans[scan_id]['finished_at'] = int(time.time() * 1000)
     return jsonify(res)
 
 
@@ -344,12 +353,6 @@ def scan_status(scan_id):
 @app.route('/engines/nmap/status')
 def status():
     res = {"page": "status"}
-
-    if len(this.scans) == APP_MAXSCANS:
-        this.scanner['status'] = "BUSY"
-    else:
-        this.scanner['status'] = "READY"
-
     if not os.path.exists(BASE_DIR+'/nmap.json'):
         app.logger.error("nmap.json config file not found")
         this.scanner['status'] = "ERROR"
@@ -358,6 +361,21 @@ def status():
         if not os.path.isfile(this.scanner['path']):
             app.logger.error("NMAP engine not found (%s)", this.scanner['path'])
             this.scanner['status'] = "ERROR"
+    #
+    # if len(this.scans) >= APP_MAXSCANS:
+    #     this.scanner['status'] = "BUSY"
+    # else:
+    #     this.scanner['status'] = "READY"
+
+    this.scanner['status'] = "READY"
+    if len(this.scans) >= APP_MAXSCANS:
+        # count nb started
+        nb_started = 0
+        for scan in this.scans.keys():
+            if this.scans[scan]['status'] == 'SCANNING':
+                nb_started += 1
+        if nb_started >= APP_MAXSCANS:
+            this.scanner['status'] = "BUSY"
 
     res.update({"status": this.scanner['status']})
 
