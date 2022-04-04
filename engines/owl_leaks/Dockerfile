@@ -1,12 +1,13 @@
 FROM alpine:latest
 MAINTAINER Patrowl.io "getsupport@patrowl.io"
-LABEL Name="Patrowl\ Data\ Leaks\ \(Patrowl engine\)" Version="1.4.26"
+LABEL Name="Patrowl\ Data\ Leaks\ \(Patrowl engine\)" Version="1.4.28"
 
 # Install dependencies
 RUN apk add --update \
     python3 \
     python3-dev \
     py3-pip \
+    gcc musl-dev libffi-dev \
   && rm -rf /var/cache/apk/*
 
 # Create the target repo
