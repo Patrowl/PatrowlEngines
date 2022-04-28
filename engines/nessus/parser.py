@@ -138,8 +138,8 @@ def parse_report(report_filename, nessus_prefix, resolvefqdn=False):
                                     plugin_output = str(re.sub('Scan Start Date:.*\n', '\n', str(param.text)))
                                     finding['description'] = finding['description'] + "\n\nScanner output:\n\n" + plugin_output
 
-                            finding_hash = hashlib.sha1(str(finding['description']).encode("utf-8")).hexdigest()[:6]
-                            finding['title'] += " ({})".format(finding_hash)
+                            #finding_hash = hashlib.sha1(str(finding['description']).encode("utf-8")).hexdigest()[:6]
+                            #finding['title'] += " ({})".format(finding_hash)
                             data.append(finding)
 
     except Exception as e:
