@@ -16,7 +16,6 @@ from urllib.parse import urlparse
 from copy import deepcopy
 from flask import Flask, request, jsonify, redirect, url_for, send_file
 import xml.etree.ElementTree as ET
-# from concurrent.futures import ThreadPoolExecutor
 
 app = Flask(__name__)
 APP_DEBUG = False
@@ -29,7 +28,6 @@ this = sys.modules[__name__]
 this.scanner = {}
 this.scan_id = 1
 this.scans = {}
-# this.pool = ThreadPoolExecutor(5)
 
 
 # Generic functions
@@ -43,16 +41,19 @@ def _json_serial(obj):
 # Route actions
 @app.route('/')
 def default():
+    """Handle default route."""
     return redirect(url_for('index'))
 
 
 @app.route('/engines/nmap/')
 def index():
+    """Handle index route."""
     return jsonify({"page": "index"})
 
 
 def loadconfig():
-    conf_file = BASE_DIR+'/nmap.json'
+    """Load configuration from local file."""
+    conf_file = f"{BASE_DIR}/nmap.json"
     if os.path.exists(conf_file):
         json_data = open(conf_file)
         this.scanner = json.load(json_data)
@@ -64,7 +65,7 @@ def loadconfig():
         this.scanner['status'] = "ERROR"
         return {"status": "ERROR", "reason": "path to nmap binary not found."}
 
-    version_filename = BASE_DIR+'/VERSION'
+    version_filename = f"{BASE_DIR}/VERSION"
     if os.path.exists(version_filename):
         version_file = open(version_filename, "r")
         this.scanner["version"] = version_file.read().rstrip('\n')
@@ -73,6 +74,7 @@ def loadconfig():
 
 @app.route('/engines/nmap/reloadconfig')
 def reloadconfig():
+    """Reload configuration route."""
     res = {"page": "reloadconfig"}
     loadconfig()
     res.update({"config": this.scanner})
@@ -174,7 +176,7 @@ def _scan_thread(scan_id):
     hosts = list(set(hosts))
 
     # write hosts in a file (cleaner and doesn't break with shell arguments limit (for thousands of hosts)
-    hosts_filename = BASE_DIR+"/tmp/engine_nmap_hosts_file_scan_id_{}.tmp".format(scan_id)
+    hosts_filename = f"{BASE_DIR}/tmp/engine_nmap_hosts_file_scan_id_{scan_id}.tmp"
     with open(hosts_filename, 'w') as hosts_file:
         for item in hosts:
             hosts_file.write("%s\n" % item)
@@ -193,7 +195,7 @@ def _scan_thread(scan_id):
 
     log_path = BASE_DIR + "/logs/" + scan_id + ".error"
 
-    cmd = this.scanner['path'] + " -vvv" + " -oX " +BASE_DIR+"/results/nmap_" + scan_id + ".xml"
+    cmd = f"{this.scanner['path']} -vvv -oX {BASE_DIR}/results/nmap_{scan_id}.xml"
 
     # Check options
     for opt_key in options.keys():
@@ -353,7 +355,7 @@ def scan_status(scan_id):
 @app.route('/engines/nmap/status')
 def status():
     res = {"page": "status"}
-    if not os.path.exists(BASE_DIR+'/nmap.json'):
+    if not os.path.exists(f'{BASE_DIR}/nmap.json'):
         app.logger.error("nmap.json config file not found")
         this.scanner['status'] = "ERROR"
 
@@ -500,10 +502,15 @@ def _parse_report(filename, scan_id):
         if has_hostnames:
             for hostnames in host.findall('hostnames'):
                 for hostname in list(hostnames):
+                    ip_address = str(host.find('address').get('addr'))
                     res.append(deepcopy(_add_issue(scan_id, target, ts,
                         "Host '{}' has ip: '{}'".format(hostname.get('name'), host.find('address').get('addr')),
                         "The scan detected that the host {} has IP '{}'".format(hostname.get('name'), host.find('address').get('addr')),
-                        type="host_availability", raw=str(host.find('address').get('addr')))))
+                        type="host_ip", raw=ip_address)))
+
+                    addr_list.append(ip_address)
+                    addr_list = list(set(addr_list))
+                    target.update({"addr": addr_list})
 
         # Add the addr_list to identified_assets (post exec: spot unresolved domains)
         unresolved_domains = unresolved_domains.difference(set(addr_list))
@@ -531,24 +538,19 @@ def _parse_report(filename, scan_id):
                 proto = port.get('protocol')
                 portid = port.get('portid')
                 port_state = port.find('state').get('state')
-
-                target.update({
+                port_data = {
                     "protocol": proto,
                     "port_id": portid,
-                    "port_state": port_state})
+                    "port_state": port_state
+                }
 
-                if port_state not in ["filtered", "closed"]:
-                    openports = True
-                    res.append(deepcopy(_add_issue(scan_id, target, ts,
-                    "Port '{}/{}' is {}".format(proto, portid, port_state),
-                    "The scan detected that the port '{}/{}' was {}".format(
-                        proto, portid, port_state),
-                    type="port_status", raw=str(portid))))
+                target.update(port_data)
 
                 # get service information if available
                 if port.find('service') is not None and port.find('state').get('state') not in ["filtered", "closed"]:
                     svc_name = port.find('service').get('name')
                     target.update({"service": svc_name})
+                    port_data.update({"service": svc_name})
 
                     # Check if a CPE has been identified
                     cpe_info = ""
@@ -557,12 +559,37 @@ def _parse_report(filename, scan_id):
                     if port.find('service').find("cpe") is not None:
                         cpe_vector = port.find('service').find("cpe").text
                         cpe_link = _get_cpe_link(cpe_vector)
-                        cpe_info = "\n The following CPE vector has been identified: {}".format(cpe_vector)
+                        cpe_info = f"\n The following CPE vector has been identified: {cpe_vector}"
                         cpe_refs = {"CPE": [cpe_vector]}
+                        port_data.update({"cpe": [cpe_vector]})
 
                     # <service name="http" product="Pulse Secure VPN gateway http config" devicetype="security-misc" tunnel="ssl" method="probed" conf="10"/>
+                    # Detection method
                     try:
-                        product = "\nProduct: {}".format(port.find('service').get('product'))
+                        detection_method = port.find('service').get('method')
+                        port_data.update({"detection_method": detection_method})
+                    except Exception:
+                        pass
+
+                    # Version
+                    try:
+                        svc_version = port.find('service').get('version')
+                        port_data.update({"version": svc_version})
+                    except Exception:
+                        pass
+
+                    # Extra info
+                    try:
+                        svc_extrainfo = port.find('service').get('extrainfo')
+                        port_data.update({"extrainfo": svc_extrainfo})
+                    except Exception:
+                        pass
+
+                    # Product
+                    try:
+                        p = port.find('service').get('product')
+                        product = f"\nProduct: {p}"
+                        port_data.update({"product": p})
                     except Exception:
                         product = ""
 
@@ -571,8 +598,17 @@ def _parse_report(filename, scan_id):
                         "The scan detected that the service '{}' is running on port '{}/{}'. {}\n{}"
                             .format(svc_name, proto, portid, cpe_info, product),
                         type="port_info",
+                        raw=port_data,
                         links=[cpe_link],
                         vuln_refs=cpe_refs)))
+
+                if port_state not in ["filtered", "closed"]:
+                    openports = True
+                    res.append(deepcopy(_add_issue(scan_id, target, ts,
+                    "Port '{}/{}' is {}".format(proto, portid, port_state),
+                    "The scan detected that the port '{}/{}' was {}".format(
+                        proto, portid, port_state),
+                    type="port_status", raw=port_data)))
 
                 for port_script in port.findall('script'):
                     script_id = port_script.get('id')
@@ -618,17 +654,17 @@ def _parse_report(filename, scan_id):
                 res.append(deepcopy(_add_issue(scan_id, target, ts,
                 "All Ports are closed",
                 "The scan detected that all ports are closed or filtered",
-                type="port_status")))
+                type="port_status_closed")))
 
         # get host status
         status = host.find('status').get('state')
-        if openports: # There are open ports so it must be up
+        if openports:  # There are open ports so it must be up
             res.append(deepcopy(_add_issue(scan_id, target, ts,
                                            "Host '{}' is up".format(addr),
                                            "The scan detected that the host {} was up".format(addr),
                                            type="host_availability")))
         elif status and status == "up" and "no_ping" in this.scans[scan_id]["options"].keys() and this.scans[scan_id]["options"]["no_ping"] == '0': #if no_ping (-Pn) is used all hosts are always up even if they are not
-            if "no_ping" in this.scans[scan_id]["options"].keys() and this.scans[scan_id]["options"]["no_ping"]=='0':
+            if "no_ping" in this.scans[scan_id]["options"].keys() and this.scans[scan_id]["options"]["no_ping"] == '0':
                 res.append(deepcopy(_add_issue(scan_id, target, ts,
                     "Host '{}' is up".format(addr),
                     "The scan detected that the host {} was up".format(addr),
@@ -751,7 +787,7 @@ def getfindings(scan_id):
     }
 
     # Store the findings in a file
-    with open(BASE_DIR+"/results/nmap_"+scan_id+".json", 'w') as report_file:
+    with open(f"{BASE_DIR}/results/nmap_{scan_id}.json", 'w') as report_file:
         json.dump({
             "scan": scan,
             "summary": summary,
@@ -759,7 +795,7 @@ def getfindings(scan_id):
         }, report_file, default=_json_serial)
 
     # Delete the tmp hosts file (used with -iL argument upon launching nmap)
-    hosts_filename = BASE_DIR+"/tmp/engine_nmap_hosts_file_scan_id_{}.tmp".format(scan_id)
+    hosts_filename = f"{BASE_DIR}/tmp/engine_nmap_hosts_file_scan_id_{scan_id}.tmp"
     if os.path.exists(hosts_filename):
         os.remove(hosts_filename)
 
@@ -775,19 +811,20 @@ def getfindings(scan_id):
 @app.route('/engines/nmap/getreport/<scan_id>')
 def getreport(scan_id):
     if scan_id not in this.scans.keys():
-        return jsonify({"status": "ERROR", "reason": "scan_id '{}' not found".format(scan_id)})
+        return jsonify({"status": "ERROR", "reason": f"scan_id '{scan_id}' not found"})
 
     # remove the scan from the active scan list
     clean_scan(scan_id)
 
-    filepath = BASE_DIR+"/results/nmap_"+scan_id+".json"
+    # filepath = BASE_DIR+"/results/nmap_"+scan_id+".json"
+    filepath = f"{BASE_DIR}/results/nmap_{scan_id}.json"
     if not os.path.exists(filepath):
-        return jsonify({"status": "ERROR", "reason": "report file for scan_id '{}' not found".format(scan_id)})
+        return jsonify({"status": "ERROR", "reason": f"report file for scan_id '{scan_id}' not found"})
 
     return send_file(
         filepath,
         mimetype='application/json',
-        download_name='nmap_'+str(scan_id)+".json",
+        download_name=f"nmap_{scan_id}.json",
         as_attachment=True
     )
 
@@ -817,10 +854,10 @@ def main():
     if os.getuid() != 0:
         app.logger.error("Start the NMAP engine using root privileges !")
 #        sys.exit(-1)
-    if not os.path.exists(BASE_DIR+"/results"):
-        os.makedirs(BASE_DIR+"/results")
-    if not os.path.exists(BASE_DIR+"/tmp"):
-        os.makedirs(BASE_DIR+"/tmp")
+    if not os.path.exists(f"{BASE_DIR}/results"):
+        os.makedirs(f"{BASE_DIR}/results")
+    if not os.path.exists(f"{BASE_DIR}/tmp"):
+        os.makedirs(f"{BASE_DIR}/tmp")
     loadconfig()
 
 

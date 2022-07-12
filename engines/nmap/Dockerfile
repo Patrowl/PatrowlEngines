@@ -1,7 +1,7 @@
 FROM alpine:latest
 
 MAINTAINER Patrowl.io "getsupport@patrowl.io"
-LABEL Name="Nmap\ \(Patrowl engine\)" Version="1.4.33"
+LABEL Name="Nmap\ \(Patrowl engine\)" Version="1.4.34"
 
 # Set the working directory
 RUN mkdir -p /opt/patrowl-engines/nmap
