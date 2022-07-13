@@ -441,7 +441,7 @@ def _parse_results(scan_id):
                         "addr": [asset],
                         "protocol": "domain"
                     },
-                    "title": "IP Reputation Check",
+                    "title": "Domain Reputation Check",
                     "description": f"Domain Reputation Check for '{asset}'\n\nSee raw_data",
                     "solution": "n/a",
                     "metadata": {
