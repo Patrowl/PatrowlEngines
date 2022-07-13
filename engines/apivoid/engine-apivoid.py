@@ -6,13 +6,14 @@ import os
 import sys
 import json
 import time
-import threading
 import requests
 import re
 from urllib.parse import urlparse
 from flask import Flask, request, jsonify
+from concurrent.futures import ThreadPoolExecutor
+from ratelimit import limits, sleep_and_retry
 
-from PatrowlEnginesUtils.PatrowlEngine import _json_serial
+
 from PatrowlEnginesUtils.PatrowlEngine import PatrowlEngine
 from PatrowlEnginesUtils.PatrowlEngineExceptions import PatrowlEngineExceptions
 
@@ -23,7 +24,7 @@ APP_PORT = 5022
 APP_MAXSCANS = int(os.environ.get('APP_MAXSCANS', 25))
 APP_ENGINE_NAME = "apivoid"
 APP_BASE_DIR = os.path.dirname(os.path.realpath(__file__))
-VERSION = "1.4.18"
+VERSION = "1.4.19"
 
 engine = PatrowlEngine(
     app=app,
@@ -35,6 +36,7 @@ engine = PatrowlEngine(
 
 this = sys.modules[__name__]
 this.keys = []
+this.pool = ThreadPoolExecutor(5)
 
 
 @app.errorhandler(404)
@@ -100,15 +102,64 @@ def clean_scan(scan_id):
 
 
 @app.route('/engines/apivoid/status')
-def UpdateEngineStatus():
-    """Get status on engine and all scans."""
-    return engine.getstatus()
+def status():
+    res = {"page": "status"}
+
+    if len(engine.scans) == APP_MAXSCANS * 2:
+        engine.scanner['status'] = "BUSY"
+    else:
+        engine.scanner['status'] = "READY"
+
+    scans = []
+    for scan_id in engine.scans.keys():
+        status_scan(scan_id)
+        scans.append({scan_id: {
+            "status": engine.scans[scan_id]['status'],
+            "started_at": engine.scans[scan_id]['started_at'],
+            "assets": engine.scans[scan_id]['assets']
+        }})
+
+    res.update({
+        "nb_scans": len(engine.scans),
+        "status": engine.scanner['status'],
+        "scanner": engine.scanner,
+        "scans": scans})
+
+    # print("thread-count:", threading.active_count())
+    # for thread in threading.enumerate():
+    #     print("{}:{}".format(thread.name, thread.native_id))
+    return jsonify(res)
 
 
 @app.route('/engines/apivoid/status/<scan_id>')
 def status_scan(scan_id):
     """Get status on scan identified by id."""
-    return engine.getstatus_scan(scan_id)
+    # return engine.getstatus_scan(scan_id)
+    if scan_id not in engine.scans.keys():
+        return jsonify({
+            "status": "ERROR",
+            "details": "scan_id '{}' not found".format(scan_id)
+        })
+
+    all_threads_finished = True
+
+    if 'futures' in engine.scans[scan_id]:
+        for f in engine.scans[scan_id]['futures']:
+            if not f.done():
+                engine.scans[scan_id]['status'] = "SCANNING"
+                all_threads_finished = False
+                break
+            else:
+                engine.scans[scan_id]['futures'].remove(f)
+
+    try:
+        if all_threads_finished and len(engine.scans[scan_id]['threads']) == 0 and len(engine.scans[scan_id]['futures']) == 0:
+            engine.scans[scan_id]['status'] = "FINISHED"
+            engine.scans[scan_id]['finished_at'] = int(time.time() * 1000)
+    except Exception:
+        pass
+
+    return jsonify({"status": engine.scans[scan_id]['status']})
 
 
 @app.route('/engines/apivoid/stopscans')
@@ -169,7 +220,7 @@ def start_scan():
         })
         return jsonify(res)
 
-    UpdateEngineStatus()
+    status()
     if engine.scanner['status'] != "READY":
         res.update({
             "status": "refused",
@@ -194,7 +245,6 @@ def start_scan():
                 "reason": "scan_id missing"
             }})
         return jsonify(res)
-
 
     assets = []
     for asset in data["assets"]:
@@ -234,6 +284,7 @@ def start_scan():
     scan = {
         'assets': assets,
         'threads': [],
+        'futures': [],
         'options': data['options'],
         'scan_id': scan_id,
         'status': "STARTED",
@@ -242,9 +293,21 @@ def start_scan():
     }
 
     engine.scans.update({scan_id: scan})
-    th = threading.Thread(target=_scan_urls, args=(scan_id,))
-    th.start()
-    engine.scans[scan_id]['threads'].append(th)
+    # th = threading.Thread(target=_scan_ip_reputation, args=(scan_id,))
+    # th.start()
+    # engine.scans[scan_id]['threads'].append(th)
+
+    if 'ip_reputation' in scan['options'].keys() and data['options']['ip_reputation']:
+        for asset in data["assets"]:
+            if asset["datatype"] == "ip":
+                th = this.pool.submit(_scan_ip_reputation, scan_id, asset["value"])
+                engine.scans[scan_id]['futures'].append(th)
+
+    if 'domain_reputation' in scan['options'].keys() and data['options']['domain_reputation']:
+        for asset in data["assets"]:
+            if asset["datatype"] == "domain":
+                th = this.pool.submit(_scan_domain_reputation, scan_id, asset["value"])
+                engine.scans[scan_id]['futures'].append(th)
 
     res.update({
         "status": "accepted",
@@ -256,67 +319,86 @@ def start_scan():
     return jsonify(res)
 
 
-def _scan_urls(scan_id):
-    assets = []
-
-    for asset in engine.scans[scan_id]['assets']:
-        assets.append(asset)
-
-    for asset in assets:
-        apikey = this.keys
-        if asset not in engine.scans[scan_id]["findings"]:
-            engine.scans[scan_id]["findings"][asset] = {}
-        try:
-            engine.scans[scan_id]["findings"][asset]['issues'] = get_report(scan_id, asset, apikey)
-        except Exception as ex:
-            app.logger.error("_scan_urls failed {}".format(re.sub(r'/' + apikey + '/', r'/***/', ex.__str__())))
-            return False
+def _scan_ip_reputation(scan_id, asset):
+    apikey = this.keys
+    if asset not in engine.scans[scan_id]["findings"]:
+        engine.scans[scan_id]["findings"][asset] = {}
+    try:
+        engine.scans[scan_id]["findings"][asset]['ip_reputation'] = get_report_ip_reputation(scan_id, asset, apikey)
+    except Exception as ex:
+        app.logger.error("_scan_ip_reputation failed {}".format(re.sub(r'/' + apikey + '/', r'/***/', ex.__str__())))
+        return False
 
     return True
 
 
-def get_filename(scan_id, extension):
-    output_dir = APP_BASE_DIR + "/results/"
+def _scan_domain_reputation(scan_id, asset):
+    apikey = this.keys
+    if asset not in engine.scans[scan_id]["findings"]:
+        engine.scans[scan_id]["findings"][asset] = {}
+    try:
+        engine.scans[scan_id]["findings"][asset]['domain_reputation'] = get_report_domain_reputation(scan_id, asset, apikey)
+    except Exception as ex:
+        app.logger.error("_scan_domain_reputation failed {}".format(re.sub(r'/' + apikey + '/', r'/***/', ex.__str__())))
+        return False
 
-    return "{}apivoid_{}.{}".format(
-        output_dir,
-        scan_id,
-        extension)
+    return True
+
+#
+# def get_filename(scan_id, extension):
+#     output_dir = f"{APP_BASE_DIR}/results/"
+#
+#     return "{}apivoid_{}.{}".format(
+#         output_dir,
+#         scan_id,
+#         extension)
+
+#
+# def get_findingsfile(scan_id):
+#     return get_filename(scan_id, "json")
 
 
-def get_findingsfile(scan_id):
-    return get_filename(scan_id, "json")
+@sleep_and_retry
+@limits(calls=2, period=1)
+def check_limit():
+    """Empty function just to check for calls to API."""
+    return
 
 
-def get_outputfile(scan_id):
-    return get_filename(scan_id, "tmp")
+def get_report_ip_reputation(scan_id, asset, apikey):
+    """Get APIvoid ip reputation report."""
+    check_limit()
+    scan_url = f"https://endpoint.apivoid.com/iprep/v1/pay-as-you-go/?key={apikey}&ip={asset}"
 
-
-def get_report(scan_id, asset, apikey):
-    """Get APIvoid json report."""
-    scan_url = "https://endpoint.apivoid.com/iprep/v1/pay-as-you-go/?key={}&host={}".format(apikey, asset)
-
-    issues = []
     try:
         response = requests.get(scan_url)
-        open(get_outputfile(scan_id), 'wb').write(response.content)
+        # print(response.content)
     except Exception as ex:
-        app.logger.error("get_report failed {}".format(re.sub(r'/' + apikey + '/', r'/***/', ex.__str__())))
-        # return issues
+        app.logger.error("get_report_ip_reputation failed {}".format(re.sub(r'/' + apikey + '/', r'/***/', ex.__str__())))
+        return []
 
-    # tree = ElementTree.fromstring(xml.text)
-    # if tree.find("detections/engines") is not None:
-    #    for child in tree.find("detections/engines"):
-    #        issues.append(child.text)
+    return response.content
 
-    return issues
+
+def get_report_domain_reputation(scan_id, asset, apikey):
+    """Get APIvoid domain report."""
+    check_limit()
+    scan_url = f"https://endpoint.apivoid.com/domainbl/v1/pay-as-you-go/?key={apikey}&host={asset}"
+
+    try:
+        response = requests.get(scan_url)
+        # print(response.content)
+    except Exception as ex:
+        app.logger.error("get_report_domain_reputation failed {}".format(re.sub(r'/' + apikey + '/', r'/***/', ex.__str__())))
+        return []
+
+    return response.content
 
 
 def _parse_results(scan_id):
     status = {"status": "success"}
     issues = []
     summary = {}
-    json_data = {}
     nb_vulns = {
         "info": 0,
         "low": 0,
@@ -326,73 +408,60 @@ def _parse_results(scan_id):
     }
     ts = int(time.time() * 1000)
 
-    try:
-        output_file = get_outputfile(scan_id)
-        output_file = "/home/test/PatrowlEngines/engines/apivoid/results/apivoid_134.tmp"
-        with open(output_file, 'r') as fd:
-            json_data = json.loads(fd.read())
-    except Exception as ex:
-        message = "scan#" + scan_id + " parsing {} failed {}".format(output_file, ex.__str__())
-        app.logger.error(message)
-        status = {"status": "error", "reason": message}
-        return status, issues, summary
+    for asset in engine.scans[scan_id]["findings"]:
+        if 'ip_reputation' in engine.scans[scan_id]["findings"][asset].keys():
+            res = json.loads(engine.scans[scan_id]["findings"][asset]['ip_reputation'])
+            if 'data' in res:
+                nb_vulns['info'] += 1
+                issues.append({
+                    "issue_id": len(issues) + 1,
+                    "severity": "info", "confidence": "certain",
+                    "target": {
+                        "addr": [asset],
+                        "protocol": "domain"
+                    },
+                    "title": "IP Reputation Check",
+                    "description": f"IP Reputation Check for '{asset}'\n\nSee raw_data",
+                    "solution": "n/a",
+                    "metadata": {
+                        "tags": ["ip", "reputation"]
+                    },
+                    "type": "ip_reputation",
+                    "raw": res['data'],
+                    "timestamp": ts
+                })
+        if 'domain_reputation' in engine.scans[scan_id]["findings"][asset].keys():
+            res = json.loads(engine.scans[scan_id]["findings"][asset]['domain_reputation'])
+            if 'data' in res:
+                nb_vulns['info'] += 1
+                issues.append({
+                    "issue_id": len(issues) + 1,
+                    "severity": "info", "confidence": "certain",
+                    "target": {
+                        "addr": [asset],
+                        "protocol": "domain"
+                    },
+                    "title": "IP Reputation Check",
+                    "description": f"Domain Reputation Check for '{asset}'\n\nSee raw_data",
+                    "solution": "n/a",
+                    "metadata": {
+                        "tags": ["domain", "reputation"]
+                    },
+                    "type": "ip_reputation",
+                    "raw": res['data'],
+                    "timestamp": ts
+                })
 
-    if "error" in json_data.keys():
-        message = "scan#" + scan_id + " error {}".format(json_data["error"])
-        app.logger.error(message)
-        status = {"status": "error", "reason": message}
-        return status, issues, summary
-
-    try:
-        detections = json_data["data"]["report"]["blacklists"]["detections"]
-        asset = json_data["data"]["report"]["host"]
-        if detections>0:
-            description = "The host '{}' appear in {} blacklist engines or online reputation tools".format(
-                asset,
-                detections
-            )
-            nb_vulns["high"] += 1
-            issues.append({
-                  "issue_id": len(issues) + 1,
-                  "severity": "high", "confidence": "certain",
-                  "target": {"addr": [asset], "protocol": "http"},
-                  "title": "'{}' identified in apivoid".format(asset),
-                  "solution": "n/a",
-                  "metadata": {"tags": ["http"]},
-                  "type": "apivoid_report",
-                  "timestamp": ts,
-                  "description": description
-              })
-        else:
-            nb_vulns["info"] += 1
-            issues.append({
-                              "issue_id": len(issues) + 1,
-                              "severity": "info", "confidence": "certain",
-                              "target": {"addr": [asset], "protocol": "http"},
-                              "title": "'{}' have not been identified in apivoid".format(asset),
-                              "solution": "n/a",
-                              "metadata": {"tags": ["http"]},
-                              "type": "apivoid_report",
-                              "timestamp": ts,
-                              "description": "{} have not identified in blacklist engines or online reputation tools".format(asset)
-                          })
-
-        summary = {
-            "nb_issues": len(issues),
-            "nb_info": nb_vulns["info"],
-            "nb_low": nb_vulns["low"],
-            "nb_medium": nb_vulns["medium"],
-            "nb_high": nb_vulns["high"],
-            "nb_critical": nb_vulns["critical"],
-            "engine_name": "apivoid",
-            "engine_version": engine.scanner["version"]
-        }
-    except Exception as ex:
-        issues = []
-        summary = {}
-        message = "scan#" + scan_id + " error {}".format(ex.__str__())
-        app.logger.error(message)
-        status = {"status": "error", "reason": message}
+    summary = {
+        "nb_issues": len(issues),
+        "nb_info": nb_vulns["info"],
+        "nb_low": nb_vulns["low"],
+        "nb_medium": nb_vulns["medium"],
+        "nb_high": nb_vulns["high"],
+        "nb_critical": nb_vulns["critical"],
+        "engine_name": "apivoid",
+        "engine_version": engine.scanner["version"]
+    }
 
     return status, issues, summary
 
@@ -403,15 +472,14 @@ def getfindings(scan_id):
 
     # check if the scan_id exists
     if scan_id not in engine.scans.keys():
-        res.update({"status": "error", "reason": "scan_id '{}' not found".format(scan_id)})
+        res.update({"status": "error", "reason": f"scan_id '{scan_id}' not found"})
         return jsonify(res)
 
     # check if the scan is finished
-    UpdateEngineStatus()
+    status_scan(scan_id)
     if engine.scans[scan_id]['status'] != "FINISHED":
         res.update({"status": "error",
-                    "reason": "scan_id '{}' not finished (status={})".format(scan_id,
-                                                                             engine.scans[scan_id]['status'])})
+                    "reason": f"scan_id '{scan_id}' not finished (status={engine.scans[scan_id]['status']})"})
         return jsonify(res)
 
     status, issues, summary = _parse_results(scan_id)
@@ -425,13 +493,13 @@ def getfindings(scan_id):
     }
 
     scan.update(status)
-    # Store the findings in a file
-    with open(get_findingsfile(scan_id), 'w') as report_file:
-        json.dump({
-            "scan": scan,
-            "summary": summary,
-            "issues": issues
-        }, report_file, default=_json_serial)
+    # # Store the findings in a file
+    # with open(get_findingsfile(scan_id), 'w') as report_file:
+    #     json.dump({
+    #         "scan": scan,
+    #         "summary": summary,
+    #         "issues": issues
+    #     }, report_file, default=_json_serial)
 
     # remove the scan from the active scan list
     clean_scan(scan_id)
@@ -444,7 +512,6 @@ def getfindings(scan_id):
 @app.before_first_request
 def main():
     """First function called."""
-
     if not os.path.exists(APP_BASE_DIR + "/results"):
         os.makedirs(APP_BASE_DIR + "/results")
     _loadconfig()
