@@ -585,6 +585,13 @@ def _parse_report(filename, scan_id):
                     except Exception:
                         pass
 
+                    # SSL Tunnel
+                    try:
+                        svc_tunnel = port.find('service').get('tunnel')
+                        port_data.update({"tunnel": svc_tunnel})
+                    except Exception:
+                        pass
+
                     # Product
                     try:
                         p = port.find('service').get('product')
