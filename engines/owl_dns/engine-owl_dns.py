@@ -4,6 +4,7 @@ import os, sys, json, time, urllib, hashlib, threading, datetime, copy, dns.reso
 from flask import Flask, request, jsonify, redirect, url_for, send_from_directory
 import validators
 import whois
+from ipwhois import IPWhois
 from modules.dnstwist import dnstwist
 from concurrent.futures import ThreadPoolExecutor
 
@@ -42,7 +43,7 @@ def index():
 
 
 def _loadconfig():
-    conf_file = BASE_DIR+'/owl_dns.json'
+    conf_file = f'{BASE_DIR}/owl_dns.json'
     if os.path.exists(conf_file):
         json_data = open(conf_file)
         this.scanner = json.load(json_data)
@@ -55,7 +56,7 @@ def _loadconfig():
         print("Error: config file '{}' not found".format(conf_file))
         return {"status": "error", "reason": "config file not found"}
 
-    version_filename = BASE_DIR+'/VERSION'
+    version_filename = f'{BASE_DIR}/VERSION'
     if os.path.exists(version_filename):
         version_file = open(version_filename, "r")
         this.scanner["version"] = version_file.read().rstrip('\n')
@@ -77,7 +78,6 @@ def start_scan():
 
     # check the scanner is ready to start a new scan
     if len(this.scans) == APP_MAXSCANS*2:
-    # if len(this.scans) == APP_MAXSCANS:
         res.update({
             "status": "error",
             "reason": "Scan refused: max concurrent active scans reached ({})".format(APP_MAXSCANS)
@@ -345,14 +345,20 @@ def _get_whois(scan_id, asset):
     if not __is_domain(asset) and not __is_ip_addr(asset):
         return res
 
-    w = whois.whois(str(asset))
-    if w.domain_name is None:
+    if __is_domain(asset):
+        w = whois.whois(str(asset))
+        if w.domain_name is None:
+            res.update({
+                asset: {"errors": w}
+            })
+        else:
+            res.update({
+                asset: {"raw": {'dict': w, 'text': w.text}, "text": w.text, "type": "domain"}
+            })
+    if __is_ip_addr(asset):
+        w = IPWhois(str(asset).strip()).lookup_rdap()
         res.update({
-            asset: {"errors": w}
-        })
-    else:
-        res.update({
-            asset: {"raw": {'dict': w, 'text': w.text}, "text": w.text}
+            asset: {"raw": {'dict': w, 'text': "see raw"}, "text": "see raw", "type": "ip"}
         })
 
     scan_lock = threading.RLock()
@@ -852,7 +858,7 @@ def _parse_results(scan_id):
                     "description": "No Whois data available for domain '{}'. Note that Whois is available for registered domains only (not sub-domains): \n{}".format(asset, scan['findings']['whois'][asset]['errors']),
                     "solution": "n/a",
                     "metadata": {
-                        "tags": ["domains", "whois"]
+                        "tags": ["whois"]
                     },
                     "type": "whois_domain_error",
                     "raw": scan['findings']['whois'][asset]['errors'],
@@ -871,9 +877,9 @@ def _parse_results(scan_id):
                     "description": "Whois Info (raw): \n\n{}".format(str(scan['findings']['whois'][asset]['text'])),
                     "solution": "n/a",
                     "metadata": {
-                        "tags": ["domains", "whois"]
+                        "tags": ["whois", scan['findings']['whois'][asset]['type']]
                     },
-                    "type": "whois_fullinfo",
+                    "type": f"whois_{scan['findings']['whois'][asset]['type']}_fullinfo",
                     "raw": scan['findings']['whois'][asset]['raw'],
                     "timestamp": ts
                 })
@@ -892,7 +898,7 @@ def _parse_results(scan_id):
                     },
                     "solution": "n/a",
                     "metadata": {
-                        "tags": ["domains", "whois"]
+                        "tags": ["whois"]
                     },
                     "timestamp": ts
                 }
@@ -1090,14 +1096,14 @@ def getfindings(scan_id):
 
     # check if the scan_id exists
     if scan_id not in this.scans.keys():
-        res.update({"status": "error", "reason": "scan_id '{}' not found".format(scan_id)})
+        res.update({"status": "error", "reason": f"scan_id '{scan_id}' not found"})
         return jsonify(res)
 
     # check if the scan is finished
     # status()
     scan_status(scan_id)
     if this.scans[scan_id]['status'] != "FINISHED":
-        res.update({"status": "error", "reason": "scan_id '{}' not finished (status={})".format(scan_id, this.scans[scan_id]['status'])})
+        res.update({"status": "error", "reason": f"scan_id '{scan_id}' not finished (status={this.scans[scan_id]['status']})"})
         return jsonify(res)
 
     issues, summary = _parse_results(scan_id)
@@ -1106,7 +1112,7 @@ def getfindings(scan_id):
     }
 
     # Store the findings in a file
-    with open(BASE_DIR+"/results/owl_dns_"+scan_id+".json", 'w') as report_file:
+    with open(f"{BASE_DIR}/results/owl_dns_{scan_id}.json", 'w') as report_file:
         json.dump({
             "scan": scan,
             "summary": summary,
@@ -1122,12 +1128,12 @@ def getfindings(scan_id):
 
 @app.route('/engines/owl_dns/getreport/<scan_id>')
 def getreport(scan_id):
-    filepath = BASE_DIR+"/results/owl_dns_"+scan_id+".json"
+    filepath = f"{BASE_DIR}/results/owl_dns_{scan_id}.json"
 
     if not os.path.exists(filepath):
-        return jsonify({"status": "error", "reason": "report file for scan_id '{}' not found".format(scan_id)})
+        return jsonify({"status": "error", "reason": f"report file for scan_id '{scan_id}' not found"})
 
-    return send_from_directory(BASE_DIR+"/results/", "owl_dns_"+scan_id+".json")
+    return send_from_directory(f"{BASE_DIR}/results/", "owl_dns_{scan_id}.json")
 
 
 def _json_serial(obj):
