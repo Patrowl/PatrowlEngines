@@ -184,6 +184,10 @@ def start_scan():
                 th = this.pool.submit(_dns_resolve, scan_id, asset["value"], False)
                 this.scans[scan_id]['futures'].append(th)
 
+    if 'do_spf_check' in scan['options'].keys() and data['options']['do_spf_check']:
+        for asset in data["assets"]:
+            if asset["datatype"] == "domain":
+
                 th = this.pool.submit(_perform_spf_check, scan_id, asset["value"])
                 this.scans[scan_id]['futures'].append(th)
 
@@ -735,7 +739,6 @@ def _parse_results(scan_id):
             dns_resolve_hash = hashlib.sha1(dns_resolve_str.encode("utf-8")).hexdigest()[:6]
 
             dns_records = scan['findings']['dns_resolve'][asset]
-            spf_check = scan['findings']['spf_dict'][asset]
             nb_vulns['info'] += 1
             issues.append({
                 "issue_id": len(issues) + 1,
@@ -753,7 +756,30 @@ def _parse_results(scan_id):
                 },
                 "type": "dns_resolve",
                 "raw": scan['findings']['dns_resolve'][asset],
-                "spf" : spf_check,
+                "timestamp": ts
+            })
+
+    if 'spf_dict' in scan['findings'].keys():
+        for asset in scan['findings']['spf_dict'].keys():
+            spf_check = scan['findings']['spf_dict'][asset]
+            # TODO find a good hash for this one
+            spf_hash = hashlib.sha1("test".encode("utf-8")).hexdigest()[:6]
+            issues.append({
+                "issue_id": len(issues) + 1,
+                "severity": "info", "confidence": "certain",
+                "target": {
+                    "addr": [asset],
+                    "protocol": "domain"
+                },
+                "title": "SPF check for '{}' (HASH: {})".format(
+                    asset, spf_hash),
+                "description": "DNS Resolution entries for '{}':\n\n{}".format(asset, spf_hash),
+                "solution": "n/a",
+                "metadata": {
+                    "tags": ["domains", "dns", "resolution"]
+                },
+                "type": "spf_check",
+                "raw": scan['findings']['spf_dict'][asset],
                 "timestamp": ts
             })
 
