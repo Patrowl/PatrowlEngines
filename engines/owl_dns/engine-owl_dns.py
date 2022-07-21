@@ -7,7 +7,7 @@ import whois
 from ipwhois import IPWhois
 from modules.dnstwist import dnstwist
 from concurrent.futures import ThreadPoolExecutor
-
+import re
 
 app = Flask(__name__)
 APP_DEBUG = False
@@ -184,6 +184,9 @@ def start_scan():
                 th = this.pool.submit(_dns_resolve, scan_id, asset["value"], False)
                 this.scans[scan_id]['futures'].append(th)
 
+                th = this.pool.submit(_perform_spf_check, scan_id, asset["value"])
+                this.scans[scan_id]['futures'].append(th)
+
     if 'do_subdomain_bruteforce' in scan['options'].keys() and data['options']['do_subdomain_bruteforce']:
         for asset in data["assets"]:
             if asset["datatype"] == "domain":
@@ -263,21 +266,54 @@ def __is_domain(host):
         pass
     return res
 
-def _perform_spf_check(dns_records):
-    print(dns_records)
+def _recursive_spf_lookups(spf_line):
     spf_lookups = 0
+    for word in spf_line.split(" "):
+        if "include:" in word:
+            url = word.replace("include:","")
+            dns_resolve = __dns_resolve_asset(url)
+            for record in dns_resolve:
+                for value in record["values"]:
+                    if "spf" in value:
+                        spf_lookups += _recursive_spf_lookups(value)
+        elif "ip4:" in word:
+            spf_lookups+=1
+    return spf_lookups
+
+def _perform_spf_check(scan_id,asset_value):
+    dns_records = __dns_resolve_asset(asset_value)
     spf_dict = {
             "no_spf_found" : True,
             "no_spf_all_or_?all": False,
             "+all_spf_found":False,
             "~all_spf_found":False,
             "spf_too_many_lookups":False,
+            "no_dmarc_record":True,
+            "insecure_dmarc_policy":False,
+            "insecure_dmarc_subdomain_sp":False,
+            "dmarc_partial_coverage":False,
             }
     for record in dns_records:
         for value in record["values"]:
+            if "DMARC" in value:
+                spf_dict["no_dmarc_record"] = False
+                if "p=none" in value:
+                    spf_dict["insecure_dmarc_policy"] = True
+                if "sp=none" in value:
+                    spf_dict["insecure_dmarc_subdomain_sp"] = True
+                for word in value.split(" "):
+                    if "pct=" in word:
+                        num = int(re.sub('\D', '', word))
+                        if num < 100:
+                            spf_dict["dmarc_partial_coverage"] = True
+
             if "spf" in value:
-                spf_lookups += 1
                 spf_dict["no_spf_found"] = False
+
+                spf_lookups = _recursive_spf_lookups(value)
+                spf_dict["spf_num"] = spf_lookups
+                if spf_lookups > 10:
+                    spf_dict["spf_too_many_lookups"] = True
                 if "+all" in value:
                     spf_dict["+all_spf_found"] = True
                 elif "~all" in value:
@@ -286,8 +322,9 @@ def _perform_spf_check(dns_records):
                     spf_dict["no_spf_all_or_?all"] = True
                 elif "all" in value:
                     spf_dict["no_spf_all_or_?all"] = True
-    if spf_lookups > 10:
-        spf_dict["spf_too_many_lookups"] = True
+
+    with this.scan_lock:
+        this.scans[scan_id]["findings"]["spf_dict"] = {asset_value:spf_dict}
     return spf_dict
 
 
@@ -698,7 +735,7 @@ def _parse_results(scan_id):
             dns_resolve_hash = hashlib.sha1(dns_resolve_str.encode("utf-8")).hexdigest()[:6]
 
             dns_records = scan['findings']['dns_resolve'][asset]
-            spf_check = _perform_spf_check(dns_records)
+            spf_check = scan['findings']['spf_dict'][asset]
             nb_vulns['info'] += 1
             issues.append({
                 "issue_id": len(issues) + 1,
