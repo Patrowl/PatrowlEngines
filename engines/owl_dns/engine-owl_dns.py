@@ -265,15 +265,18 @@ def __is_domain(host):
 
 def _perform_spf_check(dns_records):
     print(dns_records)
+    spf_lookups = 0
     spf_dict = {
             "no_spf_found" : True,
             "no_spf_all_or_?all": False,
             "+all_spf_found":False,
             "~all_spf_found":False,
+            "spf_too_many_lookups":False,
             }
     for record in dns_records:
         for value in record["values"]:
             if "spf" in value:
+                spf_lookups += 1
                 spf_dict["no_spf_found"] = False
                 if "+all" in value:
                     spf_dict["+all_spf_found"] = True
@@ -283,6 +286,8 @@ def _perform_spf_check(dns_records):
                     spf_dict["no_spf_all_or_?all"] = True
                 elif "all" in value:
                     spf_dict["no_spf_all_or_?all"] = True
+    if spf_lookups > 10:
+        spf_dict["spf_too_many_lookups"] = True
     return spf_dict
 
 
