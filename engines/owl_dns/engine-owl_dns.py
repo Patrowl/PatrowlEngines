@@ -277,11 +277,11 @@ def _perform_spf_check(dns_records):
                 spf_dict["no_spf_found"] = False
                 if "+all" in value:
                     spf_dict["+all_spf_found"] = True
-                else if "~all" in value:
+                elif "~all" in value:
                     spf_dict["~all_spf_found"] = True
-                else if "?all" in value:
+                elif "?all" in value:
                     spf_dict["no_spf_all_or_?all"] = True
-                else if "all" in value:
+                elif "all" in value:
                     spf_dict["no_spf_all_or_?all"] = True
     return spf_dict
 
