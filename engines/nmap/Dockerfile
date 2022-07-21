@@ -12,6 +12,7 @@ WORKDIR /opt/patrowl-engines/nmap
 # Copy the current directory contents into the container at /
 COPY __init__.py .
 COPY engine-nmap.py .
+COPY banner.py .
 COPY nmap.json.sample nmap.json
 COPY requirements.txt .
 COPY README.md .

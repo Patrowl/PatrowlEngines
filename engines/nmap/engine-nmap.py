@@ -16,12 +16,14 @@ from urllib.parse import urlparse
 from copy import deepcopy
 from flask import Flask, request, jsonify, redirect, url_for, send_file
 import xml.etree.ElementTree as ET
+import banner
 
 app = Flask(__name__)
 APP_DEBUG = os.environ.get('DEBUG', '').lower() in ['true', '1', 'yes', 'y', 'on']
 APP_HOST = "0.0.0.0"
 APP_PORT = 5001
 APP_MAXSCANS = int(os.environ.get('APP_MAXSCANS', 5))
+APP_SCAN_TIMEOUT_DEFAULT = int(os.environ.get('APP_SCAN_TIMEOUT_DEFAULT', 7200))
 
 BASE_DIR = os.path.dirname(os.path.realpath(__file__))
 this = sys.modules[__name__]
@@ -86,10 +88,10 @@ def start():
     res = {"page": "startscan"}
 
     # check the scanner is ready to start a new scan
-    if len(this.scans) >= APP_MAXSCANS+5:
+    if len(this.scans) >= APP_MAXSCANS + 5:
         res.update({
             "status": "error",
-            "reason": "Scan refused: max concurrent active scans reached ({})".format(APP_MAXSCANS)
+            "reason": f"Scan refused: max concurrent active scans reached ({APP_MAXSCANS})"
         })
         return jsonify(res), 503
 
@@ -120,7 +122,7 @@ def start():
         res.update({
             "status": "refused",
             "details": {
-                "reason": "scan '{}' already launched".format(data['scan_id']),
+                "reason": f"scan '{data['scan_id']}' already launched",
             }})
         return jsonify(res), 503
 
@@ -135,6 +137,7 @@ def start():
         'options': data['options'],
         'scan_id': scan_id,
         'status': "STARTED",
+        'issues_available': False,
         'started_at': int(time.time() * 1000),
         'nb_findings': 0
     }
@@ -163,7 +166,7 @@ def _scan_thread(scan_id):
             return jsonify({
                 "status": "refused",
                 "details": {
-                    "reason": "datatype '{}' not supported for the asset {}.".format(asset["datatype"], asset["value"])
+                    "reason": f"datatype '{asset['datatype']}' not supported for the asset {asset['value']}."
                 }})
         else:
             # extract the net location from urls if needed
@@ -193,7 +196,7 @@ def _scan_thread(scan_id):
 
     app.logger.debug('options: %s', options)
 
-    log_path = BASE_DIR + "/logs/" + scan_id + ".error"
+    log_path = f"{BASE_DIR}/logs/{scan_id}.error"
 
     cmd = f"{this.scanner['path']} -vvv -oX {BASE_DIR}/results/nmap_{scan_id}.xml"
 
@@ -234,6 +237,37 @@ def _scan_thread(scan_id):
         )
     this.scans[scan_id]["proc_cmd"] = cmd
 
+    proc = this.scans[scan_id]["proc"]
+
+    # Define max timeout
+    max_timeout = APP_SCAN_TIMEOUT_DEFAULT
+    timeout = time.time() + max_timeout
+
+    while time.time() < timeout:
+        if hasattr(proc, 'pid') and psutil.pid_exists(proc.pid) and psutil.Process(proc.pid).status() in ["sleeping", "running"]:
+            # print("in progress")
+            time.sleep(3)
+        else:
+            # print("finished !")
+
+            # Check if the report is available (exists && scan finished)
+            report_filename = f"{BASE_DIR}/results/nmap_{scan_id}.xml"
+            if not os.path.exists(report_filename):
+                return False
+
+            issues, raw_hosts = _parse_report(report_filename, scan_id)
+
+            # Check if banner grabbing is requested
+            if "banner" in options.keys() and options["banner"] in [True, 1, "true", "1", "y", "yes", "on"]:
+                extra_issues = get_service_banner(scan_id, raw_hosts)
+                issues.extend(extra_issues)
+
+            this.scans[scan_id]["issues"] = deepcopy(issues)
+            this.scans[scan_id]["issues_available"] = True
+            this.scans[scan_id]["status"] = "FINISHED"
+
+            break
+
     return True
 
 
@@ -252,7 +286,7 @@ def clean_scan(scan_id):
     res.update({"scan_id": scan_id})
 
     if scan_id not in this.scans.keys():
-        res.update({"status": "error", "reason": "scan_id '{}' not found".format(scan_id)})
+        res.update({"status": "error", "reason": f"scan_id '{scan_id}' not found"})
         return jsonify(res)
 
     this.scans.pop(scan_id)
@@ -278,7 +312,7 @@ def stop_scan(scan_id):
     res = {"page": "stopscan"}
 
     if scan_id not in this.scans.keys():
-        res.update({"status": "error", "reason": "scan_id '{}' not found".format(scan_id)})
+        res.update({"status": "error", "reason": f"scan_id '{scan_id}' not found"})
         return jsonify(res)
 
     proc = this.scans[scan_id]["proc"]
@@ -305,7 +339,7 @@ def stop_scan(scan_id):
 def scan_status(scan_id):
     res = {"page": "status", "status": "UNKNOWN"}
     if scan_id not in this.scans.keys():
-        res.update({"status": "error", "reason": "scan_id '{}' not found".format(scan_id)})
+        res.update({"status": "error", "reason": f"scan_id '{scan_id}' not found"})
         return jsonify(res)
 
     proc = this.scans[scan_id]["proc"]
@@ -318,7 +352,8 @@ def scan_status(scan_id):
         res.update({"status": "ERROR", "reason": "No PID found"})
         return jsonify(res)
 
-    if not psutil.pid_exists(proc.pid):
+    # if not psutil.pid_exists(proc.pid):
+    if not psutil.pid_exists(proc.pid) and this.scans[scan_id]["issues_available"] is True:
         res.update({"status": "FINISHED"})
         this.scans[scan_id]["status"] = "FINISHED"
 
@@ -329,7 +364,8 @@ def scan_status(scan_id):
                 "pid": proc.pid,
                 "cmd": this.scans[scan_id]["proc_cmd"]}
         })
-    elif psutil.pid_exists(proc.pid) and psutil.Process(proc.pid).status() == "zombie":
+    # elif psutil.pid_exists(proc.pid) and psutil.Process(proc.pid).status() == "zombie":
+    elif psutil.pid_exists(proc.pid) and psutil.Process(proc.pid).status() == "zombie" and this.scans[scan_id]["issues_available"] is True:
         res.update({"status": "FINISHED"})
         this.scans[scan_id]["status"] = "FINISHED"
         psutil.Process(proc.pid).terminate()
@@ -418,6 +454,36 @@ def info():
     return jsonify(res)
 
 
+def get_service_banner(scan_id, raw_hosts):
+    ts = int(time.time() * 1000)
+    res = []
+
+    for host in raw_hosts.keys():
+        ports = raw_hosts[host]
+        # print(host, ports)
+
+        target = {
+            "addr": [host],
+            "addr_type": 'ipv4',
+        }
+        for port in ports:
+            port_banner = banner.grab_banner(host, int(port))
+            # print(port_banner)
+            if port_banner == '':
+                continue
+
+            res.append(deepcopy(_add_issue(
+                scan_id=scan_id,
+                target=target,
+                ts=ts,
+                title=f"Service banner for {host}:{port}",
+                desc=f"Service banner:\n\n{port_banner}",
+                type="port_banner",
+                raw=port_banner)))
+
+    return res
+
+
 def _add_issue(scan_id, target, ts, title, desc, type, severity="info", confidence="certain", vuln_refs={}, links=[], tags=[], risk={}, raw=[]):
     this.scans[scan_id]["nb_findings"] = this.scans[scan_id]["nb_findings"] + 1
     issue = {
@@ -446,11 +512,13 @@ def _parse_report(filename, scan_id):
     """Parse the nmap report."""
     res = []
     target = {}
+    raw_hosts = {}
     try:
         tree = ET.parse(filename)
     except Exception:
         # No Element found in XML file
-        return {"status": "ERROR", "reason": "no issues found"}
+        # return {"status": "ERROR", "reason": "no issues found"}
+        return res, raw_hosts
 
     if tree.find("taskbegin") is not None:
         ts = tree.find("taskbegin").get("time")
@@ -467,16 +535,12 @@ def _parse_report(filename, scan_id):
             down_ips.add(a["value"])
 
     for host in tree.findall('host'):
-        #  get startdate of the host scan
-        #  ts = host.get('starttime')
-
         addr_list = []
         addr_type = host.find('address').get('addrtype')
 
         has_hostnames = False
         # Find hostnames
         for hostnames in host.findall('hostnames'):
-            # for hostname in hostnames.getchildren():
             for hostname in list(hostnames):
                 if hostname.get("type") in ["user", "PTR"]:
                     has_hostnames = True
@@ -512,6 +576,10 @@ def _parse_report(filename, scan_id):
                     addr_list = list(set(addr_list))
                     target.update({"addr": addr_list})
 
+        for a in addr_list:
+            if a not in raw_hosts.keys():
+                raw_hosts.update({a: []})
+
         # Add the addr_list to identified_assets (post exec: spot unresolved domains)
         unresolved_domains = unresolved_domains.difference(set(addr_list))
         # Add the addr_list to identified_assets (post exec: spot ips that are down. Not added to nmap xml if --open is used)
@@ -545,6 +613,11 @@ def _parse_report(filename, scan_id):
                 }
 
                 target.update(port_data)
+
+                if port_state == 'open':
+                    for t in target["addr"]:
+                        if portid not in raw_hosts[t]:
+                            raw_hosts[t].append(portid)
 
                 # get service information if available
                 if port.find('service') is not None and port.find('state').get('state') not in ["filtered", "closed"]:
@@ -726,7 +799,7 @@ def _parse_report(filename, scan_id):
                                            type="host_availability",
                                            severity="low")))
 
-    return res
+    return res, raw_hosts
 
 
 def _get_cpe_link(cpe):
@@ -761,7 +834,7 @@ def getfindings(scan_id):
         res.update({"status": "error", "reason": "scan_id must be numeric digits only"})
         return jsonify(res)
     if scan_id not in this.scans.keys():
-        res.update({"status": "error", "reason": "scan_id '{}' not found".format(scan_id)})
+        res.update({"status": "error", "reason": f"scan_id '{scan_id}' not found"})
         return jsonify(res)
 
     proc = this.scans[scan_id]["proc"]
@@ -779,7 +852,12 @@ def getfindings(scan_id):
         res.update({"status": "error", "reason": "Report file not available"})
         return jsonify(res)
 
-    issues = _parse_report(report_filename, scan_id)
+    # issues = _parse_report(report_filename, scan_id)
+    if "issues" not in this.scans[scan_id].keys():
+        res.update({"status": "error", "reason": "Issues not available yet"})
+        return jsonify(res)
+
+    issues = this.scans[scan_id]["issues"]
     scan = {
         "scan_id": scan_id
     }
