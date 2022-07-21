@@ -263,6 +263,28 @@ def __is_domain(host):
         pass
     return res
 
+def _perform_spf_check(dns_records):
+    print(dns_records)
+    spf_dict = {
+            "no_spf_found" : True,
+            "no_spf_all_or_?all": False,
+            "+all_spf_found":False,
+            "~all_spf_found":False,
+            }
+    for record in dns_records:
+        for value in record["values"]:
+            if "spf" in value:
+                spf_dict["no_spf_found"] = False
+                if "+all" in value:
+                    spf_dict["+all_spf_found"] = True
+                else if "~all" in value:
+                    spf_dict["~all_spf_found"] = True
+                else if "?all" in value:
+                    spf_dict["no_spf_all_or_?all"] = True
+                else if "all" in value:
+                    spf_dict["no_spf_all_or_?all"] = True
+    return spf_dict
+
 
 def _dns_resolve(scan_id, asset, check_subdomains=False):
     res = {}
@@ -670,6 +692,8 @@ def _parse_results(scan_id):
 
             dns_resolve_hash = hashlib.sha1(dns_resolve_str.encode("utf-8")).hexdigest()[:6]
 
+            dns_records = scan['findings']['dns_resolve'][asset]
+            spf_check = _perform_spf_check(dns_records)
             nb_vulns['info'] += 1
             issues.append({
                 "issue_id": len(issues) + 1,
@@ -687,6 +711,7 @@ def _parse_results(scan_id):
                 },
                 "type": "dns_resolve",
                 "raw": scan['findings']['dns_resolve'][asset],
+                "spf" : spf_check,
                 "timestamp": ts
             })
 
