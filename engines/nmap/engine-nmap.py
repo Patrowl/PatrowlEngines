@@ -460,7 +460,6 @@ def get_service_banner(scan_id, raw_hosts):
 
     for host in raw_hosts.keys():
         ports = raw_hosts[host]
-        # print(host, ports)
 
         target = {
             "addr": [host],
@@ -468,7 +467,6 @@ def get_service_banner(scan_id, raw_hosts):
         }
         for port in ports:
             port_banner = banner.grab_banner(host, int(port))
-            # print(port_banner)
             if port_banner == '':
                 continue
 
@@ -479,7 +477,12 @@ def get_service_banner(scan_id, raw_hosts):
                 title=f"Service banner for {host}:{port}",
                 desc=f"Service banner:\n\n{port_banner}",
                 type="port_banner",
-                raw=port_banner)))
+                raw={
+                    "banner": port_banner,
+                    "host": host,
+                    "port": port
+                }
+            )))
 
     return res
 
