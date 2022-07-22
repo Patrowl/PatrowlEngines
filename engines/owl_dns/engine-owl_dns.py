@@ -188,8 +188,9 @@ def start_scan():
         for asset in data["assets"]:
             if asset["datatype"] == "domain":
 
-                th = this.pool.submit(_perform_spf_check, scan_id, asset["value"])
-                this.scans[scan_id]['futures'].append(th)
+                th = threading.Thread(target=_perform_spf_check, args=(scan_id, asset["value"]))
+                th.start()
+                this.scans[scan_id]['threads'].append(th)
 
     if 'do_subdomain_bruteforce' in scan['options'].keys() and data['options']['do_subdomain_bruteforce']:
         for asset in data["assets"]:
@@ -277,7 +278,7 @@ def _recursive_spf_lookups(spf_line):
         if "include:" in word:
             url = word.replace("include:","")
             spf_lookups += 1
-            dns_resolve = __dns_resolve_asset(url)
+            dns_resolve = __dns_resolve_asset(url,"TXT")
             print("SPF LINE : ",url)
             for record in dns_resolve:
                 for value in record["values"]:
@@ -286,7 +287,7 @@ def _recursive_spf_lookups(spf_line):
     return spf_lookups
 
 def _perform_spf_check(scan_id,asset_value):
-    dns_records = __dns_resolve_asset(asset_value)
+    dns_records = __dns_resolve_asset(asset_value,"TXT")
     spf_dict = {"no_spf_found":"high",
                 "no_dmarc_record": "high",
                 "spf_lookups": 0
@@ -352,10 +353,13 @@ def _dns_resolve(scan_id, asset, check_subdomains=False):
     return res
 
 
-def __dns_resolve_asset(asset):
+def __dns_resolve_asset(asset,type_of_record=False):
     sub_res = []
     try:
-        for record_type in ["CNAME", "A", "AAAA", "MX", "NS", "TXT", "SOA", "SRV"]:
+        record_types = ["CNAME", "A", "AAAA", "MX", "NS", "TXT", "SOA", "SRV"]
+        if type_of_record:
+            record_types = [type_of_record]
+        for record_type in record_types:
             try:
                 answers = this.resolver.query(asset, record_type)
                 sub_res.append({
@@ -708,6 +712,7 @@ def _parse_results(scan_id):
     ts = int(time.time() * 1000)
 
     # dnstwist
+
     if 'dnstwist' in this.scans[scan_id].keys():
         for asset in this.scans[scan_id]['dnstwist'].keys():
             try:
