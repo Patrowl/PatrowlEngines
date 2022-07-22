@@ -286,13 +286,7 @@ def _recursive_spf_lookups(spf_line):
                         spf_lookups += _recursive_spf_lookups(value)
     return spf_lookups
 
-def _perform_spf_check(scan_id,asset_value):
-    dns_records = __dns_resolve_asset(asset_value,"TXT")
-    spf_dict = {"no_spf_found":"high",
-                "no_dmarc_record": "high",
-                "spf_lookups": 0
-            }
-    print("dns records for {} : {}".format(asset_value,dns_records))
+def _do_dmarc_check(spf_dict,dns_records):
     for record in dns_records:
         for value in record["values"]:
             if "DMARC" in value:
@@ -307,9 +301,20 @@ def _perform_spf_check(scan_id,asset_value):
                         if num < 100:
                             spf_dict["dmarc_partial_coverage"] = "medium"
 
+def _perform_spf_check(scan_id,asset_value):
+    dns_records = __dns_resolve_asset(asset_value,"TXT")
+    dmarc_records = __dns_resolve_asset("_dmarc."+asset_value,"TXT")
+    spf_dict = {"no_spf_found":"high",
+                "no_dmarc_record": "high",
+                "spf_lookups": 0
+            }
+    print("dns records for {} : {}".format(asset_value,dns_records))
+    _do_dmarc_check(spf_dict,dns_records)
+    _do_dmarc_check(spf_dict,dmarc_records)
+    for record in dns_records:
+        for value in record["values"]:
             if "spf" in value:
                 spf_dict.pop("no_spf_found")
-
                 spf_lookups = _recursive_spf_lookups(value)
                 spf_dict["spf_lookups"] = spf_lookups
                 if spf_lookups > 10:
