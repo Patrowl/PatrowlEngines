@@ -275,13 +275,13 @@ def _recursive_spf_lookups(spf_line):
     for word in spf_line.split(" "):
         if "include:" in word:
             url = word.replace("include:","")
+            spf_lookups += 1
             dns_resolve = __dns_resolve_asset(url)
+            print("SPF LINE : ",url)
             for record in dns_resolve:
                 for value in record["values"]:
                     if "spf" in value:
                         spf_lookups += _recursive_spf_lookups(value)
-        elif "ip4:" in word:
-            spf_lookups+=1
     return spf_lookups
 
 def _perform_spf_check(scan_id,asset_value):
