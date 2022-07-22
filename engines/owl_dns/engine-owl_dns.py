@@ -271,6 +271,7 @@ def __is_domain(host):
     return res
 
 def _recursive_spf_lookups(spf_line):
+    print("spf found :",spf_line)
     spf_lookups = 0
     for word in spf_line.split(" "):
         if "include:" in word:
@@ -286,46 +287,40 @@ def _recursive_spf_lookups(spf_line):
 
 def _perform_spf_check(scan_id,asset_value):
     dns_records = __dns_resolve_asset(asset_value)
-    spf_dict = {
-            "no_spf_found" : True,
-            "no_spf_all_or_?all": False,
-            "+all_spf_found":False,
-            "~all_spf_found":False,
-            "spf_too_many_lookups":False,
-            "no_dmarc_record":True,
-            "insecure_dmarc_policy":False,
-            "insecure_dmarc_subdomain_sp":False,
-            "dmarc_partial_coverage":False,
+    spf_dict = {"no_spf_found":"high",
+                "no_dmarc_record": "high",
+                "spf_lookups": 0
             }
+    print("dns records for {} : {}".format(asset_value,dns_records))
     for record in dns_records:
         for value in record["values"]:
             if "DMARC" in value:
-                spf_dict["no_dmarc_record"] = False
+                spf_dict.pop("no_dmarc_record")
                 if "p=none" in value:
-                    spf_dict["insecure_dmarc_policy"] = True
+                    spf_dict["insecure_dmarc_policy"] = "high"
                 if "sp=none" in value:
-                    spf_dict["insecure_dmarc_subdomain_sp"] = True
+                    spf_dict["insecure_dmarc_subdomain_sp"] = "high"
                 for word in value.split(" "):
                     if "pct=" in word:
                         num = int(re.sub('\D', '', word))
                         if num < 100:
-                            spf_dict["dmarc_partial_coverage"] = True
+                            spf_dict["dmarc_partial_coverage"] = "medium"
 
             if "spf" in value:
-                spf_dict["no_spf_found"] = False
+                spf_dict.pop("no_spf_found")
 
                 spf_lookups = _recursive_spf_lookups(value)
-                spf_dict["spf_num"] = spf_lookups
+                spf_dict["spf_lookups"] = spf_lookups
                 if spf_lookups > 10:
-                    spf_dict["spf_too_many_lookups"] = True
+                    spf_dict["spf_too_many_lookups"] = "medium"
                 if "+all" in value:
-                    spf_dict["+all_spf_found"] = True
+                    spf_dict["+all_spf_found"] = "very high"
                 elif "~all" in value:
-                    spf_dict["~all_spf_found"] = True
+                    spf_dict["~all_spf_found"] = "medium"
                 elif "?all" in value:
-                    spf_dict["no_spf_all_or_?all"] = True
-                elif "all" in value:
-                    spf_dict["no_spf_all_or_?all"] = True
+                    spf_dict["no_spf_all_or_?all"] = "high"
+                elif "all" not in value:
+                    spf_dict["no_spf_all_or_?all"] = "high"
 
     with this.scan_lock:
         this.scans[scan_id]["findings"]["spf_dict"] = {asset_value:spf_dict}
