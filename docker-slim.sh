@@ -45,7 +45,7 @@ wpscan"
 engine_list="apivoid
 owl_dns"
 
-for i in $test; 
+for i in $engine_list; 
     do docker_build_and_run $i;
 done
 
