@@ -16,6 +16,7 @@ COPY urlvoid.json.sample urlvoid.json
 COPY requirements.txt .
 COPY README.md .
 COPY VERSION .
+COPY tests/ tests/
 
 # Install any needed packages specified in requirements.txt
 RUN apk add --update --no-cache \

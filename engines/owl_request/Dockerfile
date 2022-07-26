@@ -16,6 +16,7 @@ COPY owl_request.json.sample owl_request.json
 COPY requirements.txt .
 COPY README.md .
 COPY VERSION .
+COPY tests/ tests/
 
 # Install any needed packages specified in requirements.txt
 RUN mkdir -p results

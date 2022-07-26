@@ -26,6 +26,7 @@ COPY owl_dns.json.sample owl_dns.json
 COPY requirements.txt .
 COPY README.md .
 COPY VERSION .
+COPY tests/ tests/
 COPY etc/ etc/
 COPY modules/ modules/
 

@@ -33,6 +33,7 @@ COPY eyewitness.json.sample eyewitness.json
 COPY requirements.txt .
 COPY README.md .
 COPY VERSION .
+COPY tests/ tests/
 
 RUN pip3 install --no-cache-dir -r requirements.txt
 

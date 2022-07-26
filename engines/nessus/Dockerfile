@@ -20,6 +20,7 @@ COPY nessus.json.sample nessus.json
 COPY requirements.txt .
 COPY README.md .
 COPY VERSION .
+COPY tests/ tests/
 COPY etc/ ./etc/
 
 RUN apk add --update \

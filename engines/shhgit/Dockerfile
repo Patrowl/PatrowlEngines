@@ -31,6 +31,7 @@ COPY shhgit.json.sample shhgit.json
 COPY requirements.txt .
 COPY README.md .
 COPY VERSION .
+COPY tests/ tests/
 
 # Install python requirements
 RUN pip3 install --upgrade pip

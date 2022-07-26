@@ -17,6 +17,7 @@ COPY nmap.json.sample nmap.json
 COPY requirements.txt .
 COPY README.md .
 COPY VERSION .
+COPY tests/ tests/
 COPY libs/ libs/
 
 # Install any needed packages specified in requirements.txt

@@ -16,6 +16,7 @@ WORKDIR /opt/patrowl-engines/pastebin_monitor
 
 COPY . .
 COPY pastebin_monitor.json.sample pastebin_monitor.json
+COPY tests/ tests/
 
 RUN pip3 install --no-cache-dir --upgrade pip
 RUN pip3 install --no-cache-dir --trusted-host pypi.python.org -r requirements.txt
