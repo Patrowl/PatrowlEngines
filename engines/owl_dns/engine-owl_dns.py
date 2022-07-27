@@ -6,6 +6,7 @@ import validators
 import whois
 from ipwhois import IPWhois
 from modules.dnstwist import dnstwist
+from modules.dkimsignatures import dkimlist
 from concurrent.futures import ThreadPoolExecutor
 import re
 
@@ -272,14 +273,12 @@ def __is_domain(host):
     return res
 
 def _recursive_spf_lookups(spf_line):
-    print("spf found :",spf_line)
     spf_lookups = 0
     for word in spf_line.split(" "):
         if "include:" in word:
             url = word.replace("include:","")
             spf_lookups += 1
             dns_resolve = __dns_resolve_asset(url,"TXT")
-            print("SPF LINE : ",url)
             for record in dns_resolve:
                 for value in record["values"]:
                     if "spf" in value:
@@ -301,14 +300,20 @@ def _do_dmarc_check(spf_dict,dns_records):
                         if num < 100:
                             spf_dict["dmarc_partial_coverage"] = "medium"
 
+def _do_dkim_check(domain_name):
+    for dkim in dkimlist:
+        dkim_record = dkim + "._domainkey." + domain_name
+        dns_records = __dns_resolve_asset(dkim_record,"TXT")
+        print(dkim,dns_records)
+
 def _perform_spf_check(scan_id,asset_value):
+    _do_dkim_check(asset_value)
     dns_records = __dns_resolve_asset(asset_value,"TXT")
     dmarc_records = __dns_resolve_asset("_dmarc."+asset_value,"TXT")
     spf_dict = {"no_spf_found":"high",
                 "no_dmarc_record": "high",
                 "spf_lookups": 0
             }
-    print("dns records for {} : {}".format(asset_value,dns_records))
     _do_dmarc_check(spf_dict,dns_records)
     _do_dmarc_check(spf_dict,dmarc_records)
     for record in dns_records:
