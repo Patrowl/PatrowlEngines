@@ -300,14 +300,24 @@ def _do_dmarc_check(spf_dict,dns_records):
                         if num < 100:
                             spf_dict["dmarc_partial_coverage"] = "medium"
 
-def _do_dkim_check(domain_name):
-    for dkim in dkimlist:
-        dkim_record = dkim + "._domainkey." + domain_name
+def _do_dkim_check(spf_dict,domain_name):
+    found_dkim = False
+    dkim_found_list = {}
+    for selector in dkimlist:
+        dkim_record = selector + "._domainkey." + domain_name
         dns_records = __dns_resolve_asset(dkim_record,"TXT")
-        print(dkim,dns_records)
+        if len(dns_records) > 0:
+            found_dkim = True
+            for dns_record in dns_records:
+                for value in dns_record["values"]:
+                    dkim_found_list[selector] = value
+    if not found_dkim:
+        spf_dict["dkim"] = "couldn't find the selector in our list"
+    else:
+        spf_dict["dkim"] = dkim_found_list
+
 
 def _perform_spf_check(scan_id,asset_value):
-    _do_dkim_check(asset_value)
     dns_records = __dns_resolve_asset(asset_value,"TXT")
     dmarc_records = __dns_resolve_asset("_dmarc."+asset_value,"TXT")
     spf_dict = {"no_spf_found":"high",
@@ -316,6 +326,7 @@ def _perform_spf_check(scan_id,asset_value):
             }
     _do_dmarc_check(spf_dict,dns_records)
     _do_dmarc_check(spf_dict,dmarc_records)
+    _do_dkim_check(spf_dict,asset_value)
     for record in dns_records:
         for value in record["values"]:
             if "spf" in value:

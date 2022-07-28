@@ -1,4 +1,6 @@
 dkimlist=[
+    "s1",
+    "s2",
     "selector1",
     "selector2",
     "everlytickey1",
