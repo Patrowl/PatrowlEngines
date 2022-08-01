@@ -103,8 +103,6 @@ def start_scan():
         'assets': data['assets'],
     }})
 
-    # print(f"Scan job '{scan_id}' reserved !")
-
     status()
     if this.scanner['status'] != "READY":
         res.update({
@@ -258,7 +256,7 @@ def __is_ip_addr(host):
 def __is_domain(host):
     res = False
     try:
-        res = validators.domain(host) == True
+        res = validators.domain(host) is True
     except Exception:
         pass
     return res
@@ -271,20 +269,6 @@ def _dns_resolve(scan_id, asset, check_subdomains=False):
 
     with this.scan_lock:
         this.scans[scan_id]["findings"]["dns_resolve"] = res
-
-    if check_subdomains:
-        res_dom = {}
-        subdomains = _subdomain_enum(scan_id, asset)
-        for a in subdomains.keys():
-            for s in subdomains[a]:
-                data = __dns_resolve_asset(s)
-                if len(data) > 0:
-                    res_dom.update({asset: {s: data}})
-
-        with this.scan_lock:
-            if 'subdomains_resolve' not in this.scans[scan_id]['findings'].keys():
-                this.scans[scan_id]['findings']['subdomains_resolve'] = {}
-            this.scans[scan_id]["findings"]["subdomains_resolve"].update(res_dom)
 
     return res
 
@@ -406,19 +390,17 @@ def _subdomain_bruteforce(scan_id, asset):
             valid_sudoms.append(subdom)
 
     # add the subdomain in scan['findings']['subdomains_list'] if not exists
-    # @todo: mutex on this.scans[scan_id]['findings']['subdomains_list']
-    if 'subdomains_list' in this.scans[scan_id]['findings'].keys():
-        if asset in this.scans[scan_id]['findings']['subdomains_list']:
-            if subdom not in this.scans[scan_id]['findings']['subdomains_list'][asset]:
-                this.scans[scan_id]['findings']['subdomains_list'][asset].extend(valid_sudoms)
-                # this.scans[scan_id]['findings']['subdomains_list'][asset].update(valid_sudoms)
-        else:
-            this.scans[scan_id]['findings']['subdomains_list'][asset] = valid_sudoms
-    else:
-        this.scans[scan_id]['findings']['subdomains_list'] = {}
-        this.scans[scan_id]['findings']['subdomains_list'][asset] = valid_sudoms
-
-    # @todo: add the subdomain resolve in scan['findings']['subdomains_resolve'] if not exists
+    # if 'do_subdomains_resolve' in this.scans[scan_id]['options'].keys() and this.scans[scan_id]['options']['do_subdomains_resolve']:
+    #     print("passe la")
+    #     if 'subdomains_list' in this.scans[scan_id]['findings'].keys():
+    #         if asset in this.scans[scan_id]['findings']['subdomains_list']:
+    #             if subdom not in this.scans[scan_id]['findings']['subdomains_list'][asset]:
+    #                 this.scans[scan_id]['findings']['subdomains_list'][asset].extend(valid_sudoms)
+    #         else:
+    #             this.scans[scan_id]['findings']['subdomains_list'][asset] = valid_sudoms
+    #     else:
+    #         this.scans[scan_id]['findings']['subdomains_list'] = {}
+    #         this.scans[scan_id]['findings']['subdomains_list'][asset] = valid_sudoms
     # @todo: mutex on this.scans[scan_id]['findings']['subdomains_resolve']
 
     return res
@@ -447,14 +429,25 @@ def _subdomain_enum(scan_id, asset):
                 if subdom not in this.scans[scan_id]['findings']['subdomains_list'][asset]:
                     this.scans[scan_id]['findings']['subdomains_list'][asset].extend(sub_res)
         else:
-            # with this.scan_lock:
             this.scans[scan_id]['findings']['subdomains_list'][asset] = list(sub_res)
     else:
-        # with this.scan_lock:
         this.scans[scan_id]['findings']['subdomains_list'] = {}
         this.scans[scan_id]['findings']['subdomains_list'][asset] = list(sub_res)
 
-    # time.sleep(2)
+    if 'do_subdomains_resolve' in this.scans[scan_id]['options'].keys() and this.scans[scan_id]['options']['do_subdomains_resolve']:
+        res_subdomains = {}
+        for s in sub_res:
+            data = __dns_resolve_asset(s)
+            if len(data) > 0:
+                res_subdomains.update({s: data})
+
+        # with this.scan_lock:
+        if 'subdomains_resolve' not in this.scans[scan_id]['findings'].keys():
+            this.scans[scan_id]['findings']['subdomains_resolve'] = {}
+        if asset not in this.scans[scan_id]['findings']['subdomains_resolve'].keys():
+            this.scans[scan_id]['findings']['subdomains_resolve'][asset] = {}
+        this.scans[scan_id]["findings"]["subdomains_resolve"][asset].update(res_subdomains)
+
     return res
 
 
@@ -598,7 +591,7 @@ def scan_status(scan_id):
 def status():
     res = {"page": "status"}
 
-    if len(this.scans) == APP_MAXSCANS*2:
+    if len(this.scans) == APP_MAXSCANS * 2:
         this.scanner['status'] = "BUSY"
     else:
         this.scanner['status'] = "READY"
@@ -695,18 +688,24 @@ def _parse_results(scan_id):
         for asset in scan['findings']['subdomains_resolve'].keys():
             for subdom in scan['findings']['subdomains_resolve'][asset].keys():
                 subdom_resolve_str = ""
-                for record in sorted(scan['findings']['subdomains_resolve'][asset][subdom]):
+                for record in scan['findings']['subdomains_resolve'][asset][subdom]:
                     entry = "Record type '{}': {}".format(
                         record['record_type'], ", ".join(record['values']))
                     subdom_resolve_str = "".join((subdom_resolve_str, entry+"\n"))
 
                 subdom_resolve_hash = hashlib.sha1(subdom_resolve_str.encode("utf-8")).hexdigest()[:6]
 
+                raw_record = {
+                    'dns_record': scan['findings']['subdomains_resolve'][asset][subdom],
+                    'subdomain': subdom
+                }
+
                 nb_vulns['info'] += 1
                 issues.append({
                     "issue_id": len(issues) + 1,
                     "severity": "info", "confidence": "certain",
                     "target": {
+                        # "addr": [asset, subdom],
                         "addr": [asset],
                         "protocol": "domain"
                     },
@@ -716,10 +715,10 @@ def _parse_results(scan_id):
                         subdom, subdom_resolve_str),
                     "solution": "n/a",
                     "metadata": {
-                        "tags": ["domains", "dns", "resolution", "subdomains"]
+                        "tags": ["dns", "resolution", "subdomain"]
                     },
                     "type": "subdomains_resolve",
-                    "raw": scan['findings']['subdomains_resolve'][asset][subdom],
+                    "raw": raw_record,
                     "timestamp": ts
                 })
 

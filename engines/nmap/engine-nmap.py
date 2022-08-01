@@ -697,10 +697,10 @@ def _parse_report(filename, scan_id):
                     script_id = port_script.get('id')
                     script_output = port_script.get('output')
                     # Disable hash for some script_id
-                    if script_id in ["fingerprint-strings"]:
-                        script_hash = "None"
-                    else:
-                        script_hash = hashlib.sha1(str(script_output).encode('utf-8')).hexdigest()[:6]
+                    # if script_id in ["fingerprint-strings"]:
+                    #     script_hash = "None"
+                    # else:
+                    #     script_hash = hashlib.sha1(str(script_output).encode('utf-8')).hexdigest()[:6]
 
                     if script_id == "vulners":
                         port_max_cvss, port_cve_list, port_cve_links, port_cpe = _get_vulners_findings(script_output)
