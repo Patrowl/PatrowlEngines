@@ -185,7 +185,6 @@ def _scan_thread(scan_id):
             app.logger.debug('asset: %s', item)
 
     # Sanitize args :
-    # options = json.loads(this.scans[scan_id]['options'])
     options = this.scans[scan_id]['options']
 
     ports = None
@@ -244,10 +243,10 @@ def _scan_thread(scan_id):
 
     while time.time() < timeout:
         if hasattr(proc, 'pid') and psutil.pid_exists(proc.pid) and psutil.Process(proc.pid).status() in ["sleeping", "running"]:
-            # print("in progress")
+            # Scan is still in progress
             time.sleep(3)
         else:
-            # print("finished !")
+            # Scan is finished
 
             # Check if the report is available (exists && scan finished)
             report_filename = f"{BASE_DIR}/results/nmap_{scan_id}.xml"
@@ -425,8 +424,6 @@ def status():
         scan_status(scan)
         scans.update({scan: {
             "status": this.scans[scan]["status"],
-            # "proc_cmd": this.scans[scan]["proc_cmd"],
-            # "assets": this.scans[scan]["assets"],
             "options": this.scans[scan]["options"],
             "nb_findings": this.scans[scan]["nb_findings"],
         }})
@@ -519,7 +516,6 @@ def _parse_report(filename, scan_id):
         tree = ET.parse(filename)
     except Exception:
         # No Element found in XML file
-        # return {"status": "ERROR", "reason": "no issues found"}
         return res, raw_hosts
 
     if tree.find("taskbegin") is not None:
@@ -850,7 +846,6 @@ def getfindings(scan_id):
     # check if the scan is finished
     status()
     if hasattr(proc, 'pid') and psutil.pid_exists(proc.pid) and psutil.Process(proc.pid).status() in ["sleeping", "running"]:
-        # print "scan not finished"
         res.update({"status": "error", "reason": "Scan in progress"})
         return jsonify(res)
 
@@ -860,7 +855,6 @@ def getfindings(scan_id):
         res.update({"status": "error", "reason": "Report file not available"})
         return jsonify(res)
 
-    # issues = _parse_report(report_filename, scan_id)
     if "issues" not in this.scans[scan_id].keys():
         res.update({"status": "error", "reason": "Issues not available yet"})
         return jsonify(res)
@@ -909,7 +903,6 @@ def getreport(scan_id):
     # remove the scan from the active scan list
     clean_scan(scan_id)
 
-    # filepath = BASE_DIR+"/results/nmap_"+scan_id+".json"
     filepath = f"{BASE_DIR}/results/nmap_{scan_id}.json"
     if not os.path.exists(filepath):
         return jsonify({"status": "ERROR", "reason": f"report file for scan_id '{scan_id}' not found"})
