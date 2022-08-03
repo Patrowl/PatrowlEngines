@@ -9,7 +9,6 @@ import optparse
 import threading
 import urllib
 import time
-import hashlib
 import datetime
 from shlex import split
 from urllib.parse import urlparse
@@ -746,17 +745,23 @@ def _parse_report(filename, scan_id):
                                            "Host '{}' is up".format(addr),
                                            "The scan detected that the host {} was up".format(addr),
                                            type="host_availability")))
-        elif status and status == "up" and "no_ping" in this.scans[scan_id]["options"].keys() and this.scans[scan_id]["options"]["no_ping"] == '0': #if no_ping (-Pn) is used all hosts are always up even if they are not
-            if "no_ping" in this.scans[scan_id]["options"].keys() and this.scans[scan_id]["options"]["no_ping"] == '0':
-                res.append(deepcopy(_add_issue(scan_id, target, ts,
-                    "Host '{}' is up".format(addr),
-                    "The scan detected that the host {} was up".format(addr),
-                    type="host_availability")))
-        else:
+        # elif status and status == "up" and "no_ping" in this.scans[scan_id]["options"].keys() and this.scans[scan_id]["options"]["no_ping"] == '0': #if no_ping (-Pn) is used all hosts are always up even if they are not
+        elif status and status == "up":  # if no_ping (-Pn) is used all hosts are always up even if they are not
+            # if "no_ping" in this.scans[scan_id]["options"].keys() and this.scans[scan_id]["options"]["no_ping"] == '0':
+            res.append(deepcopy(_add_issue(scan_id, target, ts,
+                "Host '{}' is up".format(addr),
+                "The scan detected that the host {} was up".format(addr),
+                type="host_availability")))
+        if status and status == "down":
             res.append(deepcopy(_add_issue(scan_id, target, ts,
                 "Host '{}' is down".format(addr),
                 "The scan detected that the host {} was down".format(addr),
                 type="host_availability")))
+        # else:
+        #     res.append(deepcopy(_add_issue(scan_id, target, ts,
+        #         "Host '{}' is down".format(addr),
+        #         "The scan detected that the host {} was down (allegedly)".format(addr),
+        #         type="host_availability")))
 
         # get script results - generate issues
         if host.find('hostscript') is not None:
