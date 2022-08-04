@@ -87,7 +87,7 @@ def start():
     res = {"page": "startscan"}
 
     # check the scanner is ready to start a new scan
-    if len(this.scans) >= APP_MAXSCANS + 5:
+    if len(this.scans) >= APP_MAXSCANS + 1:
         res.update({
             "status": "error",
             "reason": f"Scan refused: max concurrent active scans reached ({APP_MAXSCANS})"
@@ -178,7 +178,7 @@ def _scan_thread(scan_id):
     hosts = list(set(hosts))
 
     # write hosts in a file (cleaner and doesn't break with shell arguments limit (for thousands of hosts)
-    hosts_filename = f"{BASE_DIR}/tmp/engine_nmap_hosts_file_scan_id_{scan_id}.tmp"
+    hosts_filename = f"{BASE_DIR}/tmp/engine_nmap_hosts_{scan_id}.tmp"
     with open(hosts_filename, 'w') as hosts_file:
         for item in hosts:
             hosts_file.write("%s\n" % item)
@@ -231,7 +231,8 @@ def _scan_thread(scan_id):
         this.scans[scan_id]["proc"] = subprocess.Popen(
             cmd_sec,
             shell=False,
-            stdout=open("/dev/null", "w"), stderr=stderr
+            # stdout=open("/dev/null", "w"), stderr=stderr
+            stdout=open("/dev/null", "w"), stderr=open("/dev/null", "w")
         )
     this.scans[scan_id]["proc_cmd"] = cmd
 
@@ -245,8 +246,10 @@ def _scan_thread(scan_id):
         if hasattr(proc, 'pid') and psutil.pid_exists(proc.pid) and psutil.Process(proc.pid).status() in ["sleeping", "running"]:
             # Scan is still in progress
             time.sleep(3)
+            # print(f'scan {scan_id} still running...')
         else:
             # Scan is finished
+            # print(f'scan {scan_id} is finished !')
 
             # Check if the report is available (exists && scan finished)
             report_filename = f"{BASE_DIR}/results/nmap_{scan_id}.xml"
@@ -335,25 +338,25 @@ def stop_scan(scan_id):
 
 @app.route('/engines/nmap/status/<scan_id>')
 def scan_status(scan_id):
-    res = {"page": "status", "status": "UNKNOWN"}
+    res = {"page": "status", "status": "SCANNING"}
     if scan_id not in this.scans.keys():
         res.update({"status": "error", "reason": f"scan_id '{scan_id}' not found"})
-        return jsonify(res)
-
-    proc = this.scans[scan_id]["proc"]
+        return jsonify(res), 404
 
     if this.scans[scan_id]["status"] == "ERROR":
         res.update({"status": "error", "reason": "todo"})
-        return jsonify(res)
+        return jsonify(res), 503
 
+    proc = this.scans[scan_id]["proc"]
     if not hasattr(proc, "pid"):
         res.update({"status": "ERROR", "reason": "No PID found"})
-        return jsonify(res)
+        return jsonify(res), 503
 
     # if not psutil.pid_exists(proc.pid):
     if not psutil.pid_exists(proc.pid) and this.scans[scan_id]["issues_available"] is True:
         res.update({"status": "FINISHED"})
         this.scans[scan_id]["status"] = "FINISHED"
+        # print(f"scan_status/scan '{scan_id}' is finished")
 
     elif psutil.pid_exists(proc.pid) and psutil.Process(proc.pid).status() in ["sleeping", "running"]:
         res.update({
@@ -362,27 +365,13 @@ def scan_status(scan_id):
                 "pid": proc.pid,
                 "cmd": this.scans[scan_id]["proc_cmd"]}
         })
-    # elif psutil.pid_exists(proc.pid) and psutil.Process(proc.pid).status() == "zombie":
+        # print(f"scan_status/scan '{scan_id}' is still SCANNING")
     elif psutil.pid_exists(proc.pid) and psutil.Process(proc.pid).status() == "zombie" and this.scans[scan_id]["issues_available"] is True:
         res.update({"status": "FINISHED"})
         this.scans[scan_id]["status"] = "FINISHED"
         psutil.Process(proc.pid).terminate()
-        # Check for errors
-        # log_path = BASE_DIR+"/logs/" + scan_id +".error"
-        #
-        # if os.path.isfile(log_path) and os.stat(log_path).st_size != 0:
-        #     error = open(log_path, 'r')
-        #     res.update({
-        #         "status" : "error",
-        #         "details": {
-        #             "error_output" : error.read(),
-        #             "scan_id": scan_id,
-        #             "cmd": this.scans[scan_id]["proc_cmd"] }
-        #     })
-        #     stop()
-        #     os.remove(log_path)
-        #     res.update({"status": "READY"})
 
+    # print(scan_id, res['status'], psutil.pid_exists(proc.pid), hasattr(proc, "pid"), this.scans[scan_id]["issues_available"], psutil.Process(proc.pid).status())
     return jsonify(res)
 
 
@@ -620,6 +609,8 @@ def _parse_report(filename, scan_id):
                 # get service information if available
                 if port.find('service') is not None and port.find('state').get('state') not in ["filtered", "closed"]:
                     svc_name = port.find('service').get('name')
+                    if svc_name == "tcpwrapped":  # Classic shit with WAF and Firewalls
+                        continue
                     target.update({"service": svc_name})
                     port_data.update({"service": svc_name})
 
@@ -882,7 +873,7 @@ def getfindings(scan_id):
         }, report_file, default=_json_serial)
 
     # Delete the tmp hosts file (used with -iL argument upon launching nmap)
-    hosts_filename = f"{BASE_DIR}/tmp/engine_nmap_hosts_file_scan_id_{scan_id}.tmp"
+    hosts_filename = f"{BASE_DIR}/tmp/engine_nmap_hosts_{scan_id}.tmp"
     if os.path.exists(hosts_filename):
         os.remove(hosts_filename)
 
