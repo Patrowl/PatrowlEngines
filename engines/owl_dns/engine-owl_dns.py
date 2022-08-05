@@ -26,7 +26,7 @@ this.scan_lock = threading.RLock()
 this.resolver = dns.resolver.Resolver()
 this.resolver.lifetime = this.resolver.timeout = 5.0
 
-list_nameservers = [os.environ.get('NAMESERVER','8.8.8.8') ]
+list_nameservers = os.environ.get('NAMESERVER','8.8.8.8,8.8.4.4').split(",")
 this.resolver.nameservers = list_nameservers
 
 this.pool = ThreadPoolExecutor(5)
@@ -349,6 +349,7 @@ def _perform_spf_check(scan_id,asset_value):
 
     with this.scan_lock:
         this.scans[scan_id]["findings"]["spf_dict"] = {asset_value:spf_dict}
+        this.scans[scan_id]["findings"]["spf_dict_dns_records"] = {asset_value:dns_records}
     return spf_dict
 
 
@@ -786,8 +787,8 @@ def _parse_results(scan_id):
     if 'spf_dict' in scan['findings'].keys():
         for asset in scan['findings']['spf_dict'].keys():
             spf_check = scan['findings']['spf_dict'][asset]
-            # TODO find a good hash for this one
-            spf_hash = hashlib.sha1("test".encode("utf-8")).hexdigest()[:6]
+            spf_check_dns_records = scan['findings']['spf_dict_dns_records'][asset]
+            spf_hash = hashlib.sha1(str(spf_check_dns_records).encode("utf-8")).hexdigest()[:6]
             issues.append({
                 "issue_id": len(issues) + 1,
                 "severity": "info", "confidence": "certain",
