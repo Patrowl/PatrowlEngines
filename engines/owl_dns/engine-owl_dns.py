@@ -26,6 +26,13 @@ this.scan_lock = threading.RLock()
 this.resolver = dns.resolver.Resolver()
 this.resolver.lifetime = this.resolver.timeout = 5.0
 
+def create_new_resolver(nameserver):
+    new_resolver = dns.resolver.Resolver()
+    new_resolver.lifetime = 5.0
+    new_resolver.timeout = 5.0
+    new_resolver.nameservers = [ nameserver ]
+    return new_resolver
+
 this.pool = ThreadPoolExecutor(5)
 
 
@@ -278,7 +285,7 @@ def _recursive_spf_lookups(spf_line):
         if "include:" in word:
             url = word.replace("include:","")
             spf_lookups += 1
-            dns_resolve = __dns_resolve_asset(url,"TXT")
+            dns_resolve = __dns_resolve_asset(url,"TXT",nameserver="8.8.8.8")
             for record in dns_resolve:
                 for value in record["values"]:
                     if "spf" in value:
@@ -305,7 +312,7 @@ def _do_dkim_check(spf_dict,domain_name):
     dkim_found_list = {}
     for selector in dkimlist:
         dkim_record = selector + "._domainkey." + domain_name
-        dns_records = __dns_resolve_asset(dkim_record,"TXT")
+        dns_records = __dns_resolve_asset(dkim_record,"TXT",nameserver="8.8.8.8")
         if len(dns_records) > 0:
             found_dkim = True
             for dns_record in dns_records:
@@ -318,8 +325,9 @@ def _do_dkim_check(spf_dict,domain_name):
 
 
 def _perform_spf_check(scan_id,asset_value):
-    dns_records = __dns_resolve_asset(asset_value,"TXT")
-    dmarc_records = __dns_resolve_asset("_dmarc."+asset_value,"TXT")
+    dns_records = __dns_resolve_asset(asset_value,"TXT",nameserver="8.8.8.8")
+    print(dns_records)
+    dmarc_records = __dns_resolve_asset("_dmarc."+asset_value,"TXT",nameserver="8.8.8.8")
     spf_dict = {"no_spf_found":"high",
                 "no_dmarc_record": "high",
                 "spf_lookups": 0
@@ -374,15 +382,18 @@ def _dns_resolve(scan_id, asset, check_subdomains=False):
     return res
 
 
-def __dns_resolve_asset(asset,type_of_record=False):
+def __dns_resolve_asset(asset,type_of_record=False,nameserver=None):
     sub_res = []
+    dns_resolver = this.resolver
+    if nameserver is not None:
+        dns_resolver = create_new_resolver(nameserver)
     try:
         record_types = ["CNAME", "A", "AAAA", "MX", "NS", "TXT", "SOA", "SRV"]
         if type_of_record:
             record_types = [type_of_record]
         for record_type in record_types:
             try:
-                answers = this.resolver.query(asset, record_type)
+                answers = dns_resolver.query(asset, record_type)
                 sub_res.append({
                     "record_type": record_type,
                     "values": [str(rdata) for rdata in answers]
