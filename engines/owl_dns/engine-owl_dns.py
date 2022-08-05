@@ -361,7 +361,7 @@ def _subdomain_bruteforce(scan_id, asset):
         "ftp", "ftp1", "ftp2", "ftp3", "sftp",
         "mail", "mail1", "mail2", "mail3", "webmail", "smtp", "mx", "email", "owa", "imap",
         "prod", "dev", "pro", "test", "demo", "demo1", "demo2", "beta", "pre-prod", "preprod",
-        "int", "acc",
+        "int", "acc", "uat", "stg",
         "intra", "intranet", "internal", "backup", "backups", "share",
         "db", "db1", "db2", "data", "mysql", "oracle", "pg",
         "ldap", "ldap2", "open", "survey",
@@ -370,8 +370,10 @@ def _subdomain_bruteforce(scan_id, asset):
         "vpn", "vpn2", "support", "web", "api", "cdn", "ssh", "admin", "adm",
         "int", "rec", "recette", "re7", "pp", "stag", "staging",
         "video", "videos", "mob", "mobile", "mobi", "ws", "ad", "doc", "docs",
+        "new", "news", "mysql", "db", "cpanel", "static",
         "store", "feeds", "rss", "files",
-        "mantis", "nagios", "outlook", "zabbix"
+        "mantis", "nagios", "outlook", "zabbix",
+        "it", "pt", "es", "uk", "us", "pt", "ir", "ch", "de", "br", "in"
     ]
 
     # Check wildcard domain
