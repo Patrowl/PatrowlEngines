@@ -755,6 +755,7 @@ def _parse_results(scan_id):
         "Sublist3r recommends",
         "API count exceeded",
         "Too Many Requests",
+        "error invalid host",
         "<", ">",
     ]
     if 'subdomains_list' in scan['findings'].keys():
