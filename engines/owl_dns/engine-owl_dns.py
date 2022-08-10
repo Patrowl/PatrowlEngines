@@ -196,6 +196,22 @@ def start_scan():
                 th.start()
                 this.scans[scan_id]['threads'].append(th)
 
+    if 'do_dkim_check' in scan['options'].keys() and data['options']['do_dkim_check']:
+        for asset in data["assets"]:
+            if asset["datatype"] == "domain":
+
+                th = threading.Thread(target=_do_dkim_check, args=(scan_id, asset["value"]))
+                th.start()
+                this.scans[scan_id]['threads'].append(th)
+
+    if 'do_dmarc_check' in scan['options'].keys() and data['options']['do_dmarc_check']:
+        for asset in data["assets"]:
+            if asset["datatype"] == "domain":
+
+                th = threading.Thread(target=_do_dmarc_check, args=(scan_id, asset["value"]))
+                th.start()
+                this.scans[scan_id]['threads'].append(th)
+
     if 'do_subdomain_bruteforce' in scan['options'].keys() and data['options']['do_subdomain_bruteforce']:
         for asset in data["assets"]:
             if asset["datatype"] == "domain":
@@ -288,48 +304,57 @@ def _recursive_spf_lookups(spf_line):
                         spf_lookups += _recursive_spf_lookups(value)
     return spf_lookups
 
-def _do_dmarc_check(spf_dict,dns_records):
+def _do_dmarc_check(scan_id,asset_value):
+    dmarc_dict = {"no_dmarc_record": "high"}
+    dns_records = __dns_resolve_asset(asset_value,"TXT")
     for record in dns_records:
         for value in record["values"]:
             if "DMARC" in value:
-                spf_dict.pop("no_dmarc_record")
+                dmarc_dict.pop("no_dmarc_record")
                 if "p=none" in value:
-                    spf_dict["insecure_dmarc_policy"] = "high"
+                    dmarc_dict["insecure_dmarc_policy"] = "high"
                 if "sp=none" in value:
-                    spf_dict["insecure_dmarc_subdomain_sp"] = "high"
+                    dmarc_dict["insecure_dmarc_subdomain_sp"] = "high"
                 for word in value.split(" "):
                     if "pct=" in word:
                         num = int(re.sub('\D', '', word))
                         if num < 100:
-                            spf_dict["dmarc_partial_coverage"] = "medium"
+                            dmarc_dict["dmarc_partial_coverage"] = "medium"
 
-def _do_dkim_check(spf_dict,domain_name):
+    with this.scan_lock:
+        this.scans[scan_id]["findings"]["dmarc_dict"] = {asset_value:dmarc_dict}
+        this.scans[scan_id]["findings"]["dmarc_dict_dns_records"] = {asset_value:dns_records}
+
+def _do_dkim_check(scan_id, asset_value):
+    dkim_dict = {}
     found_dkim = False
     dkim_found_list = {}
     for selector in dkimlist:
-        dkim_record = selector + "._domainkey." + domain_name
-        dns_records = __dns_resolve_asset(dkim_record,"TXT")
+        dkim_record = selector + "._domainkey." + asset_value
+        dns_records = __dns_resolve_asset(dkim_record)
         if len(dns_records) > 0:
             found_dkim = True
             for dns_record in dns_records:
                 for value in dns_record["values"]:
                     dkim_found_list[selector] = value
     if not found_dkim:
-        spf_dict["dkim"] = "couldn't find the selector in our list"
+        dkim_dict["dkim"] = "couldn't find the selector in our list"
     else:
-        spf_dict["dkim"] = dkim_found_list
+        dkim_dict["dkim"] = dkim_found_list
 
+    with this.scan_lock:
+        this.scans[scan_id]["findings"]["dkim_dict"] = {asset_value:dkim_dict}
+        this.scans[scan_id]["findings"]["dkim_dict_dns_records"] = {asset_value:dns_records}
 
 def _perform_spf_check(scan_id,asset_value):
     dns_records = __dns_resolve_asset(asset_value,"TXT")
-    dmarc_records = __dns_resolve_asset("_dmarc."+asset_value,"TXT")
+    #dmarc_records = __dns_resolve_asset("_dmarc."+asset_value,"TXT")
     spf_dict = {"no_spf_found":"high",
-                "no_dmarc_record": "high",
                 "spf_lookups": 0
             }
-    _do_dmarc_check(spf_dict,dns_records)
-    _do_dmarc_check(spf_dict,dmarc_records)
-    _do_dkim_check(spf_dict,asset_value)
+    #_do_dmarc_check(spf_dict,dns_records)
+    #_do_dmarc_check(spf_dict,dmarc_records)
+    #_do_dkim_check(spf_dict,asset_value)
     for record in dns_records:
         for value in record["values"]:
             if "spf" in value:
@@ -798,15 +823,64 @@ def _parse_results(scan_id):
                 },
                 "title": "SPF check for '{}' (HASH: {})".format(
                     asset, spf_hash),
-                "description": "DNS Resolution entries for '{}':\n\n{}".format(asset, spf_hash),
+                "description": "SPF check for '{}':\n\n{}".format(asset, spf_hash),
                 "solution": "n/a",
                 "metadata": {
-                    "tags": ["domains", "dns", "resolution"]
+                    "tags": ["domains", "spf"]
                 },
                 "type": "spf_check",
                 "raw": scan['findings']['spf_dict'][asset],
                 "timestamp": ts
             })
+
+    if 'dkim_dict' in scan['findings'].keys():
+        for asset in scan['findings']['dkim_dict'].keys():
+            dkim_check = scan['findings']['dkim_dict'][asset]
+            dkim_check_dns_records = scan['findings']['dkim_dict_dns_records'][asset]
+            dkim_hash = hashlib.sha1(str(dkim_check_dns_records).encode("utf-8")).hexdigest()[:6]
+            issues.append({
+                "issue_id": len(issues) + 1,
+                "severity": "info", "confidence": "certain",
+                "target": {
+                    "addr": [asset],
+                    "protocol": "domain"
+                },
+                "title": "DKIM check for '{}' (HASH: {})".format(
+                    asset, dkim_hash),
+                "description": "DKIM check for '{}':\n\n{}".format(asset, dkim_hash),
+                "solution": "n/a",
+                "metadata": {
+                    "tags": ["domains", "dkim"]
+                },
+                "type": "dkim_check",
+                "raw": scan['findings']['dkim_dict'][asset],
+                "timestamp": ts
+            })
+
+    if 'dmarc_dict' in scan['findings'].keys():
+        for asset in scan['findings']['dmarc_dict'].keys():
+            dmarc_check = scan['findings']['dmarc_dict'][asset]
+            dmarc_check_dns_records = scan['findings']['dmarc_dict_dns_records'][asset]
+            dmarc_hash = hashlib.sha1(str(dmarc_check_dns_records).encode("utf-8")).hexdigest()[:6]
+            issues.append({
+                "issue_id": len(issues) + 1,
+                "severity": "info", "confidence": "certain",
+                "target": {
+                    "addr": [asset],
+                    "protocol": "domain"
+                },
+                "title": "SPF check for '{}' (HASH: {})".format(
+                    asset, dmarc_hash),
+                "description": "SPF check for '{}':\n\n{}".format(asset, dmarc_hash),
+                "solution": "n/a",
+                "metadata": {
+                    "tags": ["domains", "dmarc"]
+                },
+                "type": "dmarc_check",
+                "raw": scan['findings']['dmarc_dict'][asset],
+                "timestamp": ts
+            })
+
 
     # subdomain resolve
     if 'subdomains_resolve' in scan['findings'].keys():
