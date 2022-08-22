@@ -823,7 +823,7 @@ def _parse_results(scan_id):
                 },
                 "title": "SPF check for '{}' (HASH: {})".format(
                     asset, spf_hash),
-                "description": "SPF check for '{}':\n\n{}".format(asset, spf_hash),
+                "description": "SPF check for '{}':\n\n{}".format(asset, str(spf_check)),
                 "solution": "n/a",
                 "metadata": {
                     "tags": ["domains", "spf"]
@@ -847,7 +847,7 @@ def _parse_results(scan_id):
                 },
                 "title": "DKIM check for '{}' (HASH: {})".format(
                     asset, dkim_hash),
-                "description": "DKIM check for '{}':\n\n{}".format(asset, dkim_hash),
+                "description": "DKIM check for '{}':\n\n{}".format(asset, str(dkim_check)),
                 "solution": "n/a",
                 "metadata": {
                     "tags": ["domains", "dkim"]
@@ -869,9 +869,9 @@ def _parse_results(scan_id):
                     "addr": [asset],
                     "protocol": "domain"
                 },
-                "title": "SPF check for '{}' (HASH: {})".format(
+                "title": "DMARC check for '{}' (HASH: {})".format(
                     asset, dmarc_hash),
-                "description": "SPF check for '{}':\n\n{}".format(asset, dmarc_hash),
+                "description": "DMARC check for '{}':\n\n{}".format(asset, str(dmarc_check)),
                 "solution": "n/a",
                 "metadata": {
                     "tags": ["domains", "dmarc"]
