@@ -19,7 +19,7 @@ from PatrowlEnginesUtils.PatrowlEngine import PatrowlEngine
 from PatrowlEnginesUtils.PatrowlEngine import PatrowlEngineFinding
 from PatrowlEnginesUtils.PatrowlEngineExceptions import PatrowlEngineExceptions
 
-APP_DEBUG = False
+APP_DEBUG = os.environ.get('DEBUG', '').lower() in ['true', '1', 'yes', 'y', 'on']
 APP_HOST = "0.0.0.0"
 APP_PORT = 5012
 APP_MAXSCANS = int(os.environ.get('APP_MAXSCANS', 5))
