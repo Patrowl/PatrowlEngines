@@ -14,6 +14,9 @@
 		"do_subdomain_bruteforce":{ "required": false, "value": "boolean" },
 		"do_reverse_dns": 	{ "required": false, "value": "boolean" },
 		"do_dns_resolve": 	{ "required": false, "value": "boolean" },
+		"do_spf_check": 	{ "required": false, "value": "boolean" },
+		"do_dmarc_check": 	{ "required": false, "value": "boolean" },
+		"do_dkim_check": 	{ "required": false, "value": "boolean" },
 		"do_subdomains_resolve": 	{ "required": false, "value": "boolean" },
 		"max_results": 	{ "required": false, "value": "int|str" }
 	}
