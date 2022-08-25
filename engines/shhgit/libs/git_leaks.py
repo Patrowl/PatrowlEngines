@@ -9,7 +9,8 @@ from .sast_git_leaks import sast_git_leaks
 from .sast_git_leaks.config import variables
 
 
-def clone_repository(logger, clone_url, repository_name, token, path):
+def clone_repository(clone_url, repository_name, token, path):
+    logger = logging.getLogger(__name__)
     repository_path = path / f'{repository_name}_{hashlib.md5(clone_url.encode("utf-8")).hexdigest()}'
     logger.info(f'{repository_path = }')
     if repository_path.exists():
@@ -29,12 +30,12 @@ def clone_repository(logger, clone_url, repository_name, token, path):
     return repository_path
 
 
-def get_leaks_from_repository(logger, path, output):
+def get_leaks_from_repository(path, output):
+    logger = logging.getLogger(__name__)
     if not path.exists():
         logger.error(f'Unable to find repository path {path}')
         return False
     leaks = sast_git_leaks.process(
-        logger,
         path,
         str(output.absolute()),
         variables,

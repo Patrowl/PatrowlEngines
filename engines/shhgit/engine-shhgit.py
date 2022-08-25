@@ -38,7 +38,7 @@ DATA_BASE_PATH = APP_BASE_DIR / 'data'
 REPO_BASE_PATH = DATA_BASE_PATH / 'repositories'
 OUTPUT_BASE_PATH = DATA_BASE_PATH / 'results'
 
-VERSION = "1.1.0"
+VERSION = "1.2.0"
 
 logging.basicConfig(level=(logging.DEBUG if APP_DEBUG else logging.INFO))
 LOGGER = logging.getLogger('shhgit')
@@ -193,11 +193,9 @@ def _loadconfig():
                     LOGGER.error('Malformed github_group')
                     return {'status': 'error', 'reason': 'you have to define valid github_accounts'}
 
-    version_filename = APP_BASE_DIR+'/VERSION'
-    if os.path.exists(version_filename):
-        version_file = open(version_filename, "r")
-        engine.version = version_file.read().rstrip('\n')
-        version_file.close()
+    version_filename = APP_BASE_DIR / 'VERSION'
+    if version_filename.exists():
+        engine.version = version_filename.read_text().rstrip('\n')
 
 
 @app.route('/engines/shhgit/reloadconfig', methods=['GET'])
@@ -273,7 +271,7 @@ def start_scan():
 def check_repositories(scan_id):
     repositories_to_check = []
     for github_account in engine.scanner['options']['github_accounts']:
-        repositories = get_github_repositories(LOGGER, github_account)
+        repositories = get_github_repositories(github_account)
         if not repositories:
             continue
         else:
@@ -282,14 +280,10 @@ def check_repositories(scan_id):
                 'group_name': github_account['patrowl_group'],
                 'repositories': repositories
             })
-        repositories_to_check.append({
-            'group_name': github_account['patrowl_group'],
-            'repositories': repositories,
-            'github_token': github_account['github_key']
-        })
         LOGGER.info(f'Repositories found for {github_account["patrowl_group"]}: {len(repositories)}')
     engine.scans[scan_id]['output_paths'] = {}
     for data in repositories_to_check:
+        LOGGER.info(f'group name: {data["group_name"]}')
         output_path = OUTPUT_BASE_PATH / github_account['patrowl_group']
         if not output_path.exists():
             try:
@@ -302,7 +296,6 @@ def check_repositories(scan_id):
             engine.scans[scan_id]['output_paths'][github_account['patrowl_group']] = []
         for repository in data['repositories']:
             repository_path = clone_repository(
-                LOGGER,
                 repository['clone_url'],
                 repository['name'],
                 data['github_token'],
@@ -311,7 +304,6 @@ def check_repositories(scan_id):
             if not repository_path:
                 continue
             leaks = get_leaks_from_repository(
-                LOGGER,
                 repository_path,
                 output_path / f'{repository["name"]}_{repository["id"]}.json'
             )
