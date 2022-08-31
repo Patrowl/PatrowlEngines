@@ -2,7 +2,7 @@
   "name": "APIVOID",
   "version": "1.4.28",
   "description": "APIVoid reputation API",
-  "allowed_asset_types": ["domain", "ip", "url"],
+  "allowed_asset_types": ["domain", "ip", "url", "ip-subnet"],
   "apikeys": [
     "xx",
     "yy"

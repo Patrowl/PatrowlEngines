@@ -12,7 +12,8 @@ from urllib.parse import urlparse
 from flask import Flask, request, jsonify
 from concurrent.futures import ThreadPoolExecutor
 from ratelimit import limits, sleep_and_retry
-
+from netaddr import IPNetwork
+from netaddr.core import AddrFormatError
 
 from PatrowlEnginesUtils.PatrowlEngine import PatrowlEngine
 from PatrowlEnginesUtils.PatrowlEngineExceptions import PatrowlEngineExceptions
@@ -24,7 +25,7 @@ APP_PORT = 5022
 APP_MAXSCANS = int(os.environ.get('APP_MAXSCANS', 25))
 APP_ENGINE_NAME = "apivoid"
 APP_BASE_DIR = os.path.dirname(os.path.realpath(__file__))
-VERSION = "1.4.19"
+VERSION = "1.4.28"
 
 engine = PatrowlEngine(
     app=app,
@@ -213,6 +214,7 @@ def start_scan():
     res = {"page": "startscan"}
 
     # Check the scanner is ready to start a new scan
+    # print(len(engine.scans))
     if len(engine.scans) == APP_MAXSCANS:
         res.update({
             "status": "error",
@@ -221,6 +223,7 @@ def start_scan():
         return jsonify(res)
 
     status()
+    # print(engine.scanner['status'])
     if engine.scanner['status'] != "READY":
         res.update({
             "status": "refused",
@@ -230,6 +233,7 @@ def start_scan():
         return jsonify(res)
 
     data = json.loads(request.data)
+    # print(data)
     if 'assets' not in data.keys():
         res.update({
             "status": "refused",
@@ -263,6 +267,11 @@ def start_scan():
                 "reason": "asset '{}' datatype '{}' not supported".format(asset["value"],asset["datatype"])
             })
             return jsonify(res)
+        
+        if asset["datatype"] == "ip-subnet":
+            for ip in get_ips_from_subnet(asset["value"]):
+                assets.append(str(ip))
+            continue
 
         if asset["datatype"] == "url":
             parsed_uri = urlparse(asset["value"])
@@ -302,6 +311,10 @@ def start_scan():
             if asset["datatype"] == "ip":
                 th = this.pool.submit(_scan_ip_reputation, scan_id, asset["value"])
                 engine.scans[scan_id]['futures'].append(th)
+            elif asset["datatype"] == "ip-subnet":
+                for ip in get_ips_from_subnet(asset["value"]):
+                    th = this.pool.submit(_scan_ip_reputation, scan_id, ip)
+                    engine.scans[scan_id]['futures'].append(th)
 
     if 'domain_reputation' in scan['options'].keys() and data['options']['domain_reputation']:
         for asset in data["assets"]:
@@ -315,7 +328,6 @@ def start_scan():
             "scan_id": scan['scan_id']
         }
     })
-
     return jsonify(res)
 
 
@@ -507,6 +519,22 @@ def getfindings(scan_id):
     res.update({"scan": scan, "summary": summary, "issues": issues})
     res.update(status)
     return jsonify(res)
+
+
+def is_valid_subnet(subnet):
+    try:
+        IPNetwork(subnet)
+    except (TypeError, ValueError, AddrFormatError):
+        return False
+    if "/" not in subnet:
+        return False
+    return True
+
+
+def get_ips_from_subnet(subnet):
+    if is_valid_subnet(subnet) is False:
+        return []
+    return [str(ip) for ip in IPNetwork(subnet)]
 
 
 @app.before_first_request
