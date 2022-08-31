@@ -410,7 +410,7 @@ def _scan_urls(scan_id, asset):
     return True
 
 
-def get_report(asset, scan_id):
+def get_report(scan_id):
     """Get report."""
     result = dict()
     try:

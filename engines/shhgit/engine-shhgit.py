@@ -328,7 +328,7 @@ def check_repositories(scan_id):
     return True
 
 
-def get_report(asset, scan_id):
+def get_report(scan_id):
     """Get report."""
     result = dict()
     result_file = APP_BASE_DIR / 'results' / f'shhgit_{scan_id}.json'

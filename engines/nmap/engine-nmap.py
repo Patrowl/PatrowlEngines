@@ -13,7 +13,7 @@ import datetime
 from shlex import split
 from urllib.parse import urlparse
 from copy import deepcopy
-from flask import Flask, request, jsonify, redirect, url_for, send_file
+from flask import Flask, request, jsonify, redirect, url_for, send_from_directory
 import xml.etree.ElementTree as ET
 import banner
 
@@ -898,10 +898,11 @@ def getreport(scan_id):
     if not os.path.exists(filepath):
         return jsonify({"status": "ERROR", "reason": f"report file for scan_id '{scan_id}' not found"})
 
-    return send_file(
-        filepath,
+    return send_from_directory(
+        f"{BASE_DIR}/results",
+        f"nmap_{scan_id}.json",
         mimetype='application/json',
-        download_name=f"nmap_{scan_id}.json",
+        attachment_filename=f"nmap_{scan_id}.json",
         as_attachment=True
     )
 

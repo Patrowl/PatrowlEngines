@@ -126,16 +126,12 @@ def status():
         "scanner": engine.scanner,
         "scans": scans})
 
-    # print("thread-count:", threading.active_count())
-    # for thread in threading.enumerate():
-    #     print("{}:{}".format(thread.name, thread.native_id))
     return jsonify(res)
 
 
 @app.route('/engines/apivoid/status/<scan_id>')
 def status_scan(scan_id):
     """Get status on scan identified by id."""
-    # return engine.getstatus_scan(scan_id)
     if scan_id not in engine.scans.keys():
         return jsonify({
             "status": "ERROR",
@@ -214,7 +210,6 @@ def start_scan():
     res = {"page": "startscan"}
 
     # Check the scanner is ready to start a new scan
-    # print(len(engine.scans))
     if len(engine.scans) == APP_MAXSCANS:
         res.update({
             "status": "error",
@@ -270,7 +265,7 @@ def start_scan():
         
         if asset["datatype"] == "ip-subnet":
             for ip in get_ips_from_subnet(asset["value"]):
-                assets.append(str(ip))
+                assets.append(ip)
             continue
 
         if asset["datatype"] == "url":
@@ -302,9 +297,6 @@ def start_scan():
     }
 
     engine.scans.update({scan_id: scan})
-    # th = threading.Thread(target=_scan_ip_reputation, args=(scan_id,))
-    # th.start()
-    # engine.scans[scan_id]['threads'].append(th)
 
     if 'ip_reputation' in scan['options'].keys() and data['options']['ip_reputation']:
         for asset in data["assets"]:
@@ -356,25 +348,12 @@ def _scan_domain_reputation(scan_id, asset):
 
     return True
 
-#
-# def get_filename(scan_id, extension):
-#     output_dir = f"{APP_BASE_DIR}/results/"
-#
-#     return "{}apivoid_{}.{}".format(
-#         output_dir,
-#         scan_id,
-#         extension)
-
-#
-# def get_findingsfile(scan_id):
-#     return get_filename(scan_id, "json")
-
 
 @sleep_and_retry
 @limits(calls=2, period=1)
 def check_limit():
     """Empty function just to check for calls to API."""
-    return
+    pass
 
 
 def get_report_ip_reputation(scan_id, asset, apikey):
@@ -505,13 +484,6 @@ def getfindings(scan_id):
     }
 
     scan.update(status)
-    # # Store the findings in a file
-    # with open(get_findingsfile(scan_id), 'w') as report_file:
-    #     json.dump({
-    #         "scan": scan,
-    #         "summary": summary,
-    #         "issues": issues
-    #     }, report_file, default=_json_serial)
 
     # remove the scan from the active scan list
     clean_scan(scan_id)
