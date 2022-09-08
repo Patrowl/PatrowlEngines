@@ -4,12 +4,14 @@ import os, sys, json, time, urllib, hashlib, threading, datetime, copy, dns.reso
 from flask import Flask, request, jsonify, redirect, url_for, send_from_directory
 import validators
 import whois
+from ipwhois import IPWhois
 from modules.dnstwist import dnstwist
+from modules.dkimsignatures import dkimlist
 from concurrent.futures import ThreadPoolExecutor
-
+import re
 
 app = Flask(__name__)
-APP_DEBUG = False
+APP_DEBUG = os.environ.get('DEBUG', '').lower() in ['true', '1', 'yes', 'y', 'on']
 APP_HOST = "0.0.0.0"
 APP_PORT = 5006
 APP_MAXSCANS = int(os.environ.get('APP_MAXSCANS', 3))
@@ -23,6 +25,9 @@ this.scan_lock = threading.RLock()
 
 this.resolver = dns.resolver.Resolver()
 this.resolver.lifetime = this.resolver.timeout = 5.0
+
+list_nameservers = os.environ.get('NAMESERVER','8.8.8.8,8.8.4.4').split(",")
+this.resolver.nameservers = list_nameservers
 
 this.pool = ThreadPoolExecutor(5)
 
@@ -42,7 +47,7 @@ def index():
 
 
 def _loadconfig():
-    conf_file = BASE_DIR+'/owl_dns.json'
+    conf_file = f'{BASE_DIR}/owl_dns.json'
     if os.path.exists(conf_file):
         json_data = open(conf_file)
         this.scanner = json.load(json_data)
@@ -55,7 +60,7 @@ def _loadconfig():
         print("Error: config file '{}' not found".format(conf_file))
         return {"status": "error", "reason": "config file not found"}
 
-    version_filename = BASE_DIR+'/VERSION'
+    version_filename = f'{BASE_DIR}/VERSION'
     if os.path.exists(version_filename):
         version_file = open(version_filename, "r")
         this.scanner["version"] = version_file.read().rstrip('\n')
@@ -77,7 +82,6 @@ def start_scan():
 
     # check the scanner is ready to start a new scan
     if len(this.scans) == APP_MAXSCANS*2:
-    # if len(this.scans) == APP_MAXSCANS:
         res.update({
             "status": "error",
             "reason": "Scan refused: max concurrent active scans reached ({})".format(APP_MAXSCANS)
@@ -102,8 +106,6 @@ def start_scan():
         'started_at': int(time.time() * 1000),
         'assets': data['assets'],
     }})
-
-    # print(f"Scan job '{scan_id}' reserved !")
 
     status()
     if this.scanner['status'] != "READY":
@@ -138,7 +140,7 @@ def start_scan():
 
     if 'do_whois' in scan['options'].keys() and data['options']['do_whois']:
         for asset in data["assets"]:
-            if asset["datatype"] == "domain":
+            if asset["datatype"] in ["domain", "ip"]:
                 # th = threading.Thread(target=_get_whois, args=(scan_id, asset["value"],))
                 # th.start()
                 # this.scans[scan_id]['threads'].append(th)
@@ -183,6 +185,30 @@ def start_scan():
                 # this.scans[scan_id]['threads'].append(th)
                 th = this.pool.submit(_dns_resolve, scan_id, asset["value"], False)
                 this.scans[scan_id]['futures'].append(th)
+
+    if 'do_spf_check' in scan['options'].keys() and data['options']['do_spf_check']:
+        for asset in data["assets"]:
+            if asset["datatype"] == "domain":
+
+                th = threading.Thread(target=_perform_spf_check, args=(scan_id, asset["value"]))
+                th.start()
+                this.scans[scan_id]['threads'].append(th)
+
+    if 'do_dkim_check' in scan['options'].keys() and data['options']['do_dkim_check']:
+        for asset in data["assets"]:
+            if asset["datatype"] == "domain":
+
+                th = threading.Thread(target=_do_dkim_check, args=(scan_id, asset["value"]))
+                th.start()
+                this.scans[scan_id]['threads'].append(th)
+
+    if 'do_dmarc_check' in scan['options'].keys() and data['options']['do_dmarc_check']:
+        for asset in data["assets"]:
+            if asset["datatype"] == "domain":
+
+                th = threading.Thread(target=_do_dmarc_check, args=(scan_id, asset["value"]))
+                th.start()
+                this.scans[scan_id]['threads'].append(th)
 
     if 'do_subdomain_bruteforce' in scan['options'].keys() and data['options']['do_subdomain_bruteforce']:
         for asset in data["assets"]:
@@ -258,10 +284,96 @@ def __is_ip_addr(host):
 def __is_domain(host):
     res = False
     try:
-        res = validators.domain(host)
+        res = validators.domain(host) is True
     except Exception:
         pass
     return res
+
+def _recursive_spf_lookups(spf_line):
+    spf_lookups = 0
+    for word in spf_line.split(" "):
+        if "include:" in word:
+            url = word.replace("include:","")
+            spf_lookups += 1
+            dns_resolve = __dns_resolve_asset(url,"TXT")
+            for record in dns_resolve:
+                for value in record["values"]:
+                    if "spf" in value:
+                        spf_lookups += _recursive_spf_lookups(value)
+    return spf_lookups
+
+def _do_dmarc_check(scan_id,asset_value):
+    dmarc_dict = {"no_dmarc_record": "high"}
+    dns_records = __dns_resolve_asset(asset_value,"TXT")
+    for record in dns_records:
+        for value in record["values"]:
+            if "DMARC" in value:
+                dmarc_dict.pop("no_dmarc_record")
+                if "p=none" in value:
+                    dmarc_dict["insecure_dmarc_policy"] = "high"
+                if "sp=none" in value:
+                    dmarc_dict["insecure_dmarc_subdomain_sp"] = "high"
+                for word in value.split(" "):
+                    if "pct=" in word:
+                        num = int(re.sub('\D', '', word))
+                        if num < 100:
+                            dmarc_dict["dmarc_partial_coverage"] = "medium"
+
+    with this.scan_lock:
+        this.scans[scan_id]["findings"]["dmarc_dict"] = {asset_value:dmarc_dict}
+        this.scans[scan_id]["findings"]["dmarc_dict_dns_records"] = {asset_value:dns_records}
+
+def _do_dkim_check(scan_id, asset_value):
+    dkim_dict = {}
+    found_dkim = False
+    dkim_found_list = {}
+    for selector in dkimlist:
+        dkim_record = selector + "._domainkey." + asset_value
+        dns_records = __dns_resolve_asset(dkim_record)
+        if len(dns_records) > 0:
+            found_dkim = True
+            for dns_record in dns_records:
+                for value in dns_record["values"]:
+                    dkim_found_list[selector] = value
+    if not found_dkim:
+        dkim_dict["dkim"] = "couldn't find the selector in our list"
+    else:
+        dkim_dict["dkim"] = dkim_found_list
+
+    with this.scan_lock:
+        this.scans[scan_id]["findings"]["dkim_dict"] = {asset_value:dkim_dict}
+        this.scans[scan_id]["findings"]["dkim_dict_dns_records"] = {asset_value:dns_records}
+
+def _perform_spf_check(scan_id,asset_value):
+    dns_records = __dns_resolve_asset(asset_value,"TXT")
+    #dmarc_records = __dns_resolve_asset("_dmarc."+asset_value,"TXT")
+    spf_dict = {"no_spf_found":"high",
+                "spf_lookups": 0
+            }
+    #_do_dmarc_check(spf_dict,dns_records)
+    #_do_dmarc_check(spf_dict,dmarc_records)
+    #_do_dkim_check(spf_dict,asset_value)
+    for record in dns_records:
+        for value in record["values"]:
+            if "spf" in value:
+                spf_dict.pop("no_spf_found")
+                spf_lookups = _recursive_spf_lookups(value)
+                spf_dict["spf_lookups"] = spf_lookups
+                if spf_lookups > 10:
+                    spf_dict["spf_too_many_lookups"] = "medium"
+                if "+all" in value:
+                    spf_dict["+all_spf_found"] = "very high"
+                elif "~all" in value:
+                    spf_dict["~all_spf_found"] = "medium"
+                elif "?all" in value:
+                    spf_dict["no_spf_all_or_?all"] = "high"
+                elif "all" not in value:
+                    spf_dict["no_spf_all_or_?all"] = "high"
+
+    with this.scan_lock:
+        this.scans[scan_id]["findings"]["spf_dict"] = {asset_value:spf_dict}
+        this.scans[scan_id]["findings"]["spf_dict_dns_records"] = {asset_value:dns_records}
+    return spf_dict
 
 
 def _dns_resolve(scan_id, asset, check_subdomains=False):
@@ -272,25 +384,16 @@ def _dns_resolve(scan_id, asset, check_subdomains=False):
     with this.scan_lock:
         this.scans[scan_id]["findings"]["dns_resolve"] = res
 
-    if check_subdomains:
-        res_dom = {}
-        subdomains = _subdomain_enum(scan_id, asset)
-        for a in subdomains.keys():
-            for s in subdomains[a]:
-                data = __dns_resolve_asset(s)
-                if len(data) > 0:
-                    res_dom.update({asset: {s: data}})
-
-        with this.scan_lock:
-            this.scans[scan_id]["findings"]["subdomains_resolve"] = res_dom
-
     return res
 
 
-def __dns_resolve_asset(asset):
+def __dns_resolve_asset(asset,type_of_record=False):
     sub_res = []
     try:
-        for record_type in ["CNAME", "A", "AAAA", "MX", "NS", "TXT", "SOA", "SRV"]:
+        record_types = ["CNAME", "A", "AAAA", "MX", "NS", "TXT", "SOA", "SRV"]
+        if type_of_record:
+            record_types = [type_of_record]
+        for record_type in record_types:
             try:
                 answers = this.resolver.query(asset, record_type)
                 sub_res.append({
@@ -329,7 +432,9 @@ def _reverse_dns(scan_id, asset):
 
     scan_lock = threading.RLock()
     with scan_lock:
-        this.scans[scan_id]["findings"]["reverse_dns"] = res
+        if 'reverse_dns' not in this.scans[scan_id]['findings'].keys():
+            this.scans[scan_id]['findings']['reverse_dns'] = {}
+        this.scans[scan_id]["findings"]["reverse_dns"].update(res)
 
     return res
 
@@ -337,23 +442,31 @@ def _reverse_dns(scan_id, asset):
 def _get_whois(scan_id, asset):
     res = {}
 
-    # check the asset is a valid domain name
-    if not __is_domain(asset):
+    # Check the asset is a valid domain name or IP Address
+    if not __is_domain(asset) and not __is_ip_addr(asset):
         return res
 
-    w = whois.whois(str(asset))
-    if w.domain_name is None:
+    if __is_domain(asset):
+        w = whois.whois(str(asset))
+        if w.domain_name is None:
+            res.update({
+                asset: {"errors": w}
+            })
+        else:
+            res.update({
+                asset: {"raw": {'dict': w, 'text': w.text}, "text": w.text, "type": "domain"}
+            })
+    if __is_ip_addr(asset):
+        w = IPWhois(str(asset).strip()).lookup_rdap()
         res.update({
-            asset: {"errors": w}
-        })
-    else:
-        res.update({
-            asset: {"raw": w, "text": w.text}
+            asset: {"raw": {'dict': w, 'text': "see raw"}, "text": "see raw", "type": "ip"}
         })
 
     scan_lock = threading.RLock()
     with scan_lock:
-        this.scans[scan_id]["findings"]["whois"] = res
+        if 'whois' not in this.scans[scan_id]['findings'].keys():
+            this.scans[scan_id]['findings']['whois'] = {}
+        this.scans[scan_id]['findings']['whois'].update(res)
 
     return res
 
@@ -365,7 +478,7 @@ def _subdomain_bruteforce(scan_id, asset):
         "ftp", "ftp1", "ftp2", "ftp3", "sftp",
         "mail", "mail1", "mail2", "mail3", "webmail", "smtp", "mx", "email", "owa", "imap",
         "prod", "dev", "pro", "test", "demo", "demo1", "demo2", "beta", "pre-prod", "preprod",
-        "int", "acc",
+        "int", "acc", "uat", "stg",
         "intra", "intranet", "internal", "backup", "backups", "share",
         "db", "db1", "db2", "data", "mysql", "oracle", "pg",
         "ldap", "ldap2", "open", "survey",
@@ -374,8 +487,10 @@ def _subdomain_bruteforce(scan_id, asset):
         "vpn", "vpn2", "support", "web", "api", "cdn", "ssh", "admin", "adm",
         "int", "rec", "recette", "re7", "pp", "stag", "staging",
         "video", "videos", "mob", "mobile", "mobi", "ws", "ad", "doc", "docs",
+        "new", "news", "mysql", "db", "cpanel", "static",
         "store", "feeds", "rss", "files",
-        "mantis", "nagios", "outlook", "zabbix"
+        "mantis", "nagios", "outlook", "zabbix",
+        "it", "pt", "es", "uk", "us", "pt", "ir", "ch", "de", "br", "in"
     ]
 
     # Check wildcard domain
@@ -394,19 +509,17 @@ def _subdomain_bruteforce(scan_id, asset):
             valid_sudoms.append(subdom)
 
     # add the subdomain in scan['findings']['subdomains_list'] if not exists
-    # @todo: mutex on this.scans[scan_id]['findings']['subdomains_list']
-    if 'subdomains_list' in this.scans[scan_id]['findings'].keys():
-        if asset in this.scans[scan_id]['findings']['subdomains_list']:
-            if subdom not in this.scans[scan_id]['findings']['subdomains_list'][asset]:
-                this.scans[scan_id]['findings']['subdomains_list'][asset].extend(valid_sudoms)
-                # this.scans[scan_id]['findings']['subdomains_list'][asset].update(valid_sudoms)
-        else:
-            this.scans[scan_id]['findings']['subdomains_list'][asset] = valid_sudoms
-    else:
-        this.scans[scan_id]['findings']['subdomains_list'] = {}
-        this.scans[scan_id]['findings']['subdomains_list'][asset] = valid_sudoms
-
-    # @todo: add the subdomain resolve in scan['findings']['subdomains_resolve'] if not exists
+    # if 'do_subdomains_resolve' in this.scans[scan_id]['options'].keys() and this.scans[scan_id]['options']['do_subdomains_resolve']:
+    #     print("passe la")
+    #     if 'subdomains_list' in this.scans[scan_id]['findings'].keys():
+    #         if asset in this.scans[scan_id]['findings']['subdomains_list']:
+    #             if subdom not in this.scans[scan_id]['findings']['subdomains_list'][asset]:
+    #                 this.scans[scan_id]['findings']['subdomains_list'][asset].extend(valid_sudoms)
+    #         else:
+    #             this.scans[scan_id]['findings']['subdomains_list'][asset] = valid_sudoms
+    #     else:
+    #         this.scans[scan_id]['findings']['subdomains_list'] = {}
+    #         this.scans[scan_id]['findings']['subdomains_list'][asset] = valid_sudoms
     # @todo: mutex on this.scans[scan_id]['findings']['subdomains_resolve']
 
     return res
@@ -435,14 +548,25 @@ def _subdomain_enum(scan_id, asset):
                 if subdom not in this.scans[scan_id]['findings']['subdomains_list'][asset]:
                     this.scans[scan_id]['findings']['subdomains_list'][asset].extend(sub_res)
         else:
-            # with this.scan_lock:
             this.scans[scan_id]['findings']['subdomains_list'][asset] = list(sub_res)
     else:
-        # with this.scan_lock:
         this.scans[scan_id]['findings']['subdomains_list'] = {}
         this.scans[scan_id]['findings']['subdomains_list'][asset] = list(sub_res)
 
-    # time.sleep(2)
+    if 'do_subdomains_resolve' in this.scans[scan_id]['options'].keys() and this.scans[scan_id]['options']['do_subdomains_resolve']:
+        res_subdomains = {}
+        for s in sub_res:
+            data = __dns_resolve_asset(s)
+            if len(data) > 0:
+                res_subdomains.update({s: data})
+
+        # with this.scan_lock:
+        if 'subdomains_resolve' not in this.scans[scan_id]['findings'].keys():
+            this.scans[scan_id]['findings']['subdomains_resolve'] = {}
+        if asset not in this.scans[scan_id]['findings']['subdomains_resolve'].keys():
+            this.scans[scan_id]['findings']['subdomains_resolve'][asset] = {}
+        this.scans[scan_id]["findings"]["subdomains_resolve"][asset].update(res_subdomains)
+
     return res
 
 
@@ -586,7 +710,7 @@ def scan_status(scan_id):
 def status():
     res = {"page": "status"}
 
-    if len(this.scans) == APP_MAXSCANS*2:
+    if len(this.scans) == APP_MAXSCANS * 2:
         this.scanner['status'] = "BUSY"
     else:
         this.scanner['status'] = "READY"
@@ -633,10 +757,15 @@ def _parse_results(scan_id):
     ts = int(time.time() * 1000)
 
     # dnstwist
+
     if 'dnstwist' in this.scans[scan_id].keys():
         for asset in this.scans[scan_id]['dnstwist'].keys():
-            dnstwist_issues = dnstwist.parse_results(
-                ts, asset, this.scans[scan_id]['dnstwist'][asset])
+            try:
+                dnstwist_issues = dnstwist.parse_results(
+                    ts, asset, this.scans[scan_id]['dnstwist'][asset])
+            except KeyError:
+                app.logger.error("dnstwist: missing result (domain-name)")
+                dnstwist_issues = []
             for dnstwist_issue in dnstwist_issues:
                 nb_vulns[dnstwist_issue['severity']] += 1
                 issues.append(dnstwist_issue)
@@ -654,6 +783,7 @@ def _parse_results(scan_id):
 
             dns_resolve_hash = hashlib.sha1(dns_resolve_str.encode("utf-8")).hexdigest()[:6]
 
+            dns_records = scan['findings']['dns_resolve'][asset]
             nb_vulns['info'] += 1
             issues.append({
                 "issue_id": len(issues) + 1,
@@ -674,23 +804,102 @@ def _parse_results(scan_id):
                 "timestamp": ts
             })
 
+    if 'spf_dict' in scan['findings'].keys():
+        for asset in scan['findings']['spf_dict'].keys():
+            spf_check = scan['findings']['spf_dict'][asset]
+            spf_check_dns_records = scan['findings']['spf_dict_dns_records'][asset]
+            spf_hash = hashlib.sha1(str(spf_check_dns_records).encode("utf-8")).hexdigest()[:6]
+            issues.append({
+                "issue_id": len(issues) + 1,
+                "severity": "info", "confidence": "certain",
+                "target": {
+                    "addr": [asset],
+                    "protocol": "domain"
+                },
+                "title": "SPF check for '{}' (HASH: {})".format(
+                    asset, spf_hash),
+                "description": "SPF check for '{}':\n\n{}".format(asset, str(spf_check)),
+                "solution": "n/a",
+                "metadata": {
+                    "tags": ["domains", "spf"]
+                },
+                "type": "spf_check",
+                "raw": scan['findings']['spf_dict'][asset],
+                "timestamp": ts
+            })
+
+    if 'dkim_dict' in scan['findings'].keys():
+        for asset in scan['findings']['dkim_dict'].keys():
+            dkim_check = scan['findings']['dkim_dict'][asset]
+            dkim_check_dns_records = scan['findings']['dkim_dict_dns_records'][asset]
+            dkim_hash = hashlib.sha1(str(dkim_check_dns_records).encode("utf-8")).hexdigest()[:6]
+            issues.append({
+                "issue_id": len(issues) + 1,
+                "severity": "info", "confidence": "certain",
+                "target": {
+                    "addr": [asset],
+                    "protocol": "domain"
+                },
+                "title": "DKIM check for '{}' (HASH: {})".format(
+                    asset, dkim_hash),
+                "description": "DKIM check for '{}':\n\n{}".format(asset, str(dkim_check)),
+                "solution": "n/a",
+                "metadata": {
+                    "tags": ["domains", "dkim"]
+                },
+                "type": "dkim_check",
+                "raw": scan['findings']['dkim_dict'][asset],
+                "timestamp": ts
+            })
+
+    if 'dmarc_dict' in scan['findings'].keys():
+        for asset in scan['findings']['dmarc_dict'].keys():
+            dmarc_check = scan['findings']['dmarc_dict'][asset]
+            dmarc_check_dns_records = scan['findings']['dmarc_dict_dns_records'][asset]
+            dmarc_hash = hashlib.sha1(str(dmarc_check_dns_records).encode("utf-8")).hexdigest()[:6]
+            issues.append({
+                "issue_id": len(issues) + 1,
+                "severity": "info", "confidence": "certain",
+                "target": {
+                    "addr": [asset],
+                    "protocol": "domain"
+                },
+                "title": "DMARC check for '{}' (HASH: {})".format(
+                    asset, dmarc_hash),
+                "description": "DMARC check for '{}':\n\n{}".format(asset, str(dmarc_check)),
+                "solution": "n/a",
+                "metadata": {
+                    "tags": ["domains", "dmarc"]
+                },
+                "type": "dmarc_check",
+                "raw": scan['findings']['dmarc_dict'][asset],
+                "timestamp": ts
+            })
+
+
     # subdomain resolve
     if 'subdomains_resolve' in scan['findings'].keys():
         for asset in scan['findings']['subdomains_resolve'].keys():
             for subdom in scan['findings']['subdomains_resolve'][asset].keys():
                 subdom_resolve_str = ""
-                for record in sorted(scan['findings']['subdomains_resolve'][asset][subdom]):
+                for record in scan['findings']['subdomains_resolve'][asset][subdom]:
                     entry = "Record type '{}': {}".format(
                         record['record_type'], ", ".join(record['values']))
                     subdom_resolve_str = "".join((subdom_resolve_str, entry+"\n"))
 
                 subdom_resolve_hash = hashlib.sha1(subdom_resolve_str.encode("utf-8")).hexdigest()[:6]
 
+                raw_record = {
+                    'dns_record': scan['findings']['subdomains_resolve'][asset][subdom],
+                    'subdomain': subdom
+                }
+
                 nb_vulns['info'] += 1
                 issues.append({
                     "issue_id": len(issues) + 1,
                     "severity": "info", "confidence": "certain",
                     "target": {
+                        # "addr": [asset, subdom],
                         "addr": [asset],
                         "protocol": "domain"
                     },
@@ -700,10 +909,10 @@ def _parse_results(scan_id):
                         subdom, subdom_resolve_str),
                     "solution": "n/a",
                     "metadata": {
-                        "tags": ["domains", "dns", "resolution", "subdomains"]
+                        "tags": ["dns", "resolution", "subdomain"]
                     },
                     "type": "subdomains_resolve",
-                    "raw": scan['findings']['subdomains_resolve'][asset][subdom],
+                    "raw": raw_record,
                     "timestamp": ts
                 })
 
@@ -740,6 +949,7 @@ def _parse_results(scan_id):
         "Sublist3r recommends",
         "API count exceeded",
         "Too Many Requests",
+        "error invalid host",
         "<", ">",
     ]
     if 'subdomains_list' in scan['findings'].keys():
@@ -842,7 +1052,7 @@ def _parse_results(scan_id):
                     "description": "No Whois data available for domain '{}'. Note that Whois is available for registered domains only (not sub-domains): \n{}".format(asset, scan['findings']['whois'][asset]['errors']),
                     "solution": "n/a",
                     "metadata": {
-                        "tags": ["domains", "whois"]
+                        "tags": ["whois"]
                     },
                     "type": "whois_domain_error",
                     "raw": scan['findings']['whois'][asset]['errors'],
@@ -861,9 +1071,9 @@ def _parse_results(scan_id):
                     "description": "Whois Info (raw): \n\n{}".format(str(scan['findings']['whois'][asset]['text'])),
                     "solution": "n/a",
                     "metadata": {
-                        "tags": ["domains", "whois"]
+                        "tags": ["whois", scan['findings']['whois'][asset]['type']]
                     },
-                    "type": "whois_fullinfo",
+                    "type": f"whois_{scan['findings']['whois'][asset]['type']}_fullinfo",
                     "raw": scan['findings']['whois'][asset]['raw'],
                     "timestamp": ts
                 })
@@ -882,7 +1092,7 @@ def _parse_results(scan_id):
                     },
                     "solution": "n/a",
                     "metadata": {
-                        "tags": ["domains", "whois"]
+                        "tags": ["whois"]
                     },
                     "timestamp": ts
                 }
@@ -1080,14 +1290,14 @@ def getfindings(scan_id):
 
     # check if the scan_id exists
     if scan_id not in this.scans.keys():
-        res.update({"status": "error", "reason": "scan_id '{}' not found".format(scan_id)})
+        res.update({"status": "error", "reason": f"scan_id '{scan_id}' not found"})
         return jsonify(res)
 
     # check if the scan is finished
     # status()
     scan_status(scan_id)
     if this.scans[scan_id]['status'] != "FINISHED":
-        res.update({"status": "error", "reason": "scan_id '{}' not finished (status={})".format(scan_id, this.scans[scan_id]['status'])})
+        res.update({"status": "error", "reason": f"scan_id '{scan_id}' not finished (status={this.scans[scan_id]['status']})"})
         return jsonify(res)
 
     issues, summary = _parse_results(scan_id)
@@ -1096,7 +1306,7 @@ def getfindings(scan_id):
     }
 
     # Store the findings in a file
-    with open(BASE_DIR+"/results/owl_dns_"+scan_id+".json", 'w') as report_file:
+    with open(f"{BASE_DIR}/results/owl_dns_{scan_id}.json", 'w') as report_file:
         json.dump({
             "scan": scan,
             "summary": summary,
@@ -1112,12 +1322,12 @@ def getfindings(scan_id):
 
 @app.route('/engines/owl_dns/getreport/<scan_id>')
 def getreport(scan_id):
-    filepath = BASE_DIR+"/results/owl_dns_"+scan_id+".json"
+    filepath = f"{BASE_DIR}/results/owl_dns_{scan_id}.json"
 
     if not os.path.exists(filepath):
-        return jsonify({"status": "error", "reason": "report file for scan_id '{}' not found".format(scan_id)})
+        return jsonify({"status": "error", "reason": f"report file for scan_id '{scan_id}' not found"})
 
-    return send_from_directory(BASE_DIR+"/results/", "owl_dns_"+scan_id+".json")
+    return send_from_directory(f"{BASE_DIR}/results/", "owl_dns_{scan_id}.json")
 
 
 def _json_serial(obj):

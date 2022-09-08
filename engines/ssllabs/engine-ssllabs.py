@@ -19,7 +19,7 @@ from PatrowlEnginesUtils.PatrowlEngine import PatrowlEngine
 from PatrowlEnginesUtils.PatrowlEngineExceptions import PatrowlEngineExceptions
 
 app = Flask(__name__)
-APP_DEBUG = False
+APP_DEBUG = os.environ.get('DEBUG', '').lower() in ['true', '1', 'yes', 'y', 'on']
 APP_HOST = "0.0.0.0"
 APP_PORT = 5004
 APP_MAXSCANS = int(os.environ.get('APP_MAXSCANS', 25))

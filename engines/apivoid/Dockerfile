@@ -1,6 +1,6 @@
 FROM alpine:latest
 MAINTAINER Patrowl.io "getsupport@patrowl.io"
-LABEL Name="APIVoid\ \(Patrowl engine\)" Version="1.4.18"
+LABEL Name="APIVoid\ \(Patrowl engine\)" Version="1.4.28"
 
 # Create the target repo
 RUN mkdir -p /opt/patrowl-engines/apivoid

@@ -1,5 +1,5 @@
 click
-flask==2.0.1
+flask==2.1.2
 gunicorn
 itsdangerous
 Jinja2
@@ -9,3 +9,4 @@ psutil
 urllib3
 werkzeug
 requests
+gevent

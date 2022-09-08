@@ -1,0 +1,86 @@
+version: '3'
+networks:
+  patrowl-net:
+    external: true
+
+services:
+  engine-nmap-1:
+    build: ./engines/nmap/
+    image: engine-nmap:latest
+    container_name: engine-nmap
+    expose:
+      - '5001'
+    networks:
+      - patrowl-net
+
+  engine-owl_dns-1:
+    build: ./engines/owl_dns/
+    image: engine-owl_dns:latest
+    container_name: engine-owl_dns
+    expose:
+      - '5006'
+    networks:
+      - patrowl-net
+
+  engine-droopescan-1:
+    build: ./engines/droopescan/
+    image: engine-droopescan:latest
+    container_name: engine-droopescan
+    expose:
+      - '5021'
+    networks:
+      - patrowl-net
+
+  engine-nessus-1:
+    build: ./engines/nessus/
+    image: engine-nessus:latest
+    container_name: engine-nessus
+    expose:
+      - '5002'
+    networks:
+      - patrowl-net
+
+  engine-openvas-1:
+    build: ./engines/openvas/
+    image: engine-openvas:latest
+    container_name: engine-openvas
+    expose:
+      - '5016'
+    networks:
+      - patrowl-net
+
+  engine-owl_leaks-1:
+    build: ./engines/owl_leaks/
+    image: engine-owl_leaks:latest
+    container_name: engine-owl_leaks
+    expose:
+      - '5012'
+    networks:
+      - patrowl-net
+
+  engine-sslscan-1:
+    build: ./engines/sslscan/
+    image: engine-sslscan:latest
+    container_name: engine-sslscan
+    expose:
+      - '5014'
+    networks:
+      - patrowl-net
+
+  engine-ssllabs-1:
+    build: ./engines/ssllabs/
+    image: engine-ssllabs:latest
+    container_name: engine-ssllabs
+    expose:
+      - '5004'
+    networks:
+      - patrowl-net
+
+  engine-wpscan-1:
+    build: ./engines/wpscan/
+    image: engine-wpscan:latest
+    container_name: engine-wpscan
+    expose:
+      - '5023'
+    networks:
+      - patrowl-net

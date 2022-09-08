@@ -19,14 +19,14 @@ from PatrowlEnginesUtils.PatrowlEngine import PatrowlEngine
 from PatrowlEnginesUtils.PatrowlEngine import PatrowlEngineFinding
 from PatrowlEnginesUtils.PatrowlEngineExceptions import PatrowlEngineExceptions
 
-APP_DEBUG = False
+APP_DEBUG = os.environ.get('DEBUG', '').lower() in ['true', '1', 'yes', 'y', 'on']
 APP_HOST = "0.0.0.0"
 APP_PORT = 5012
-APP_MAXSCANS = int(os.environ.get('APP_MAXSCANS', 25))
+APP_MAXSCANS = int(os.environ.get('APP_MAXSCANS', 5))
 APP_SEARCH_TWITTER_MAX_COUNT_DEFAULT = 100
 APP_ENGINE_NAME = "owl_leaks"
 APP_BASE_DIR = os.path.dirname(os.path.realpath(__file__))
-VERSION = "1.4.18"
+VERSION = "1.4.28"
 
 app = Flask(__name__)
 engine = PatrowlEngine(
@@ -399,7 +399,7 @@ def main():
     if not os.path.exists(APP_BASE_DIR+"/results"):
         os.makedirs(APP_BASE_DIR+"/results")
     engine._loadconfig()
-    
+
     version_filename = APP_BASE_DIR+'/VERSION'
     if os.path.exists(version_filename):
         version_file = open(version_filename, "r")

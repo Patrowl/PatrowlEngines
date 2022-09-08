@@ -1,10 +1,14 @@
 {
   "name": "APIVOID",
-  "version": "1.0.1",
+  "version": "1.4.28",
   "description": "APIVoid reputation API",
-  "allowed_asset_types": ["domain"],
+  "allowed_asset_types": ["domain", "ip", "url", "ip-subnet"],
   "apikeys": [
-    "xxx"
+    "xx",
+    "yy"
   ],
-  "options": {}
+  "options": {
+    "ip_reputation": {"required": false, "value": "boolean", "asset_types": ["ip"]},
+    "domain_reputation": {"required": false, "value": "boolean", "asset_types": ["domain"]}
+  }
 }
