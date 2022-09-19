@@ -1236,6 +1236,8 @@ def _parse_results(scan_id):
 @app.route('/engines/owl_dns/getfindings/<scan_id>')
 def getfindings(scan_id):
     res = {"page": "getfindings", "scan_id": scan_id}
+    if not scan_id.isdecimal():
+        return jsonify({"status": "error", "reason": "scan_id must be numeric digits only"})
 
     # check if the scan_id exists
     if scan_id not in this.scans.keys():
@@ -1271,6 +1273,8 @@ def getfindings(scan_id):
 
 @app.route('/engines/owl_dns/getreport/<scan_id>')
 def getreport(scan_id):
+    if not scan_id.isdecimal():
+        return jsonify({"status": "error", "reason": "scan_id must be numeric digits only"})
     filepath = f"{BASE_DIR}/results/owl_dns_{scan_id}.json"
 
     if not os.path.exists(filepath):
@@ -1284,7 +1288,6 @@ def _json_serial(obj):
         JSON serializer for objects not serializable by default json code
         Used for datetime serialization when the results are written in file
     """
-
     if isinstance(obj, datetime.datetime) or isinstance(obj, datetime.date):
         serial = obj.isoformat()
         return serial
