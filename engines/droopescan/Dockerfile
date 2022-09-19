@@ -1,6 +1,5 @@
 FROM alpine:latest
-MAINTAINER Patrowl.io "getsupport@patrowl.io"
-LABEL Name="droopescan\ \(Patrowl engine\)" Version="1.4.29"
+LABEL Name="droopescan\ \(Patrowl engine\)" Version="1.4.30"
 
 # Set the working directory
 RUN mkdir -p /opt/patrowl-engines/droopescan

@@ -258,12 +258,12 @@ def start_scan():
 
     scan = {
         'assets': asset_groups,
-        'threads':      [],
-        'options':      data['options'],
-        'scan_id':      scan_id,
-        'status':       "STARTED",
-        'started_at':   int(time.time() * 1000),
-        'findings':     []
+        'threads': [],
+        'options': data['options'],
+        'scan_id': scan_id,
+        'status': "STARTED",
+        'started_at': int(time.time() * 1000),
+        'findings': []
     }
 
     engine.scans.update({scan_id: scan})
@@ -309,8 +309,8 @@ def _scan_malicious_websites(scan_id):
     engine.scans[scan_id]['finished_at'] = int(time.time() * 1000)
     return True
 
-
-def get_report(asset, scan_id):
+@app.route('/engines/cybelangel/getreport/<scan_id>')
+def get_report(scan_id):
     """Get report."""
     result = dict()
     result_file = APP_BASE_DIR / 'results' / f'cybelangel_{scan_id}.json'
@@ -337,16 +337,16 @@ def _parse_results(scan_id):
     for finding in engine.scans[scan_id]["findings"]:
         nb_vulns['medium'] +=  1
         issues.append({
-                "issue_id": len(issues)+1,
-                "severity": "medium",
-                "confidence": "certain",
-                "target": {"addr": [finding['domain']], "protocol": "http", "parent": finding['asset_group']},
-                "title": f"[CybelAngel] New asset found on: {finding['domain']}",
-                "solution": "n/a",
-                "metadata": {"risk": {"criticity": "medium"}},
-                "type": "cybelangel_report",
-                "timestamp": timestamp,
-                "description": f"Domain {finding['domain']} found as a malicious domain name by Cybel Angel",
+            "issue_id": len(issues)+1,
+            "severity": "medium",
+            "confidence": "certain",
+            "target": {"addr": [finding['domain']], "protocol": "http", "parent": finding['asset_group']},
+            "title": f"[CybelAngel] New asset found on: {finding['domain']}",
+            "solution": "n/a",
+            "metadata": {"risk": {"criticity": "medium"}},
+            "type": "cybelangel_report",
+            "timestamp": timestamp,
+            "description": f"Domain {finding['domain']} found as a malicious domain name by Cybel Angel",
         })
 
     summary = {
@@ -403,7 +403,7 @@ def getfindings(scan_id):
     finally:
         # remove the scan from the active scan list
         clean_scan(scan_id)
-        return jsonify(res)
+    return jsonify(res)
 
 
 @app.before_first_request

@@ -125,7 +125,6 @@ class PatrowlEngineTest:
             try:
                 # check the file name & siza !!
                 assert True == True
-                #assert r.json()['scan']['status'] == "FINISHED"
             except AssertionError:
                 print(r.json())
                 assert False

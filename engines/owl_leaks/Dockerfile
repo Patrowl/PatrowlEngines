@@ -1,5 +1,4 @@
 FROM alpine:latest
-MAINTAINER Patrowl.io "getsupport@patrowl.io"
 LABEL Name="Patrowl\ Data\ Leaks\ \(Patrowl engine\)" Version="1.4.28"
 
 # Install dependencies

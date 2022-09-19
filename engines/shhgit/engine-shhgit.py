@@ -37,8 +37,7 @@ APP_BASE_DIR = Path(__file__).parent
 DATA_BASE_PATH = APP_BASE_DIR / 'data'
 REPO_BASE_PATH = DATA_BASE_PATH / 'repositories'
 OUTPUT_BASE_PATH = DATA_BASE_PATH / 'results'
-
-VERSION = "1.2.0"
+VERSION = "1.4.31"
 
 logging.basicConfig(level=(logging.DEBUG if APP_DEBUG else logging.INFO))
 LOGGER = logging.getLogger('shhgit')
@@ -432,7 +431,7 @@ def getfindings(scan_id):
     finally:
         # remove the scan from the active scan list
         clean_scan(scan_id)
-        return jsonify(res)
+    return jsonify(res)
 
 
 @app.before_first_request

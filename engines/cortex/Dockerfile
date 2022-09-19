@@ -1,5 +1,4 @@
 FROM alpine:latest
-MAINTAINER Patrowl.io "getsupport@patrowl.io"
 LABEL Name="Cortex\ \(Patrowl engine\)" Version="1.4.27"
 
 # Set the working directory

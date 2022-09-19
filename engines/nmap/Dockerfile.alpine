@@ -1,6 +1,4 @@
 FROM alpine:3.13.5
-
-MAINTAINER Patrowl.io "getsupport@patrowl.io"
 LABEL Name="Nmap\ \(Patrowl engine\)" Version="1.0.0"
 
 ARG nmap_ver=7.91

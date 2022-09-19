@@ -1,5 +1,4 @@
 FROM alpine:latest
-MAINTAINER Patrowl.io "getsupport@patrowl.io"
 LABEL Name="OpenVAS\ \(Patrowl engine\)" Version="1.4.31"
 
 ENV CRYPTOGRAPHY_DONT_BUILD_RUST=1

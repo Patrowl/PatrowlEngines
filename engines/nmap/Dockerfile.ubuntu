@@ -1,6 +1,4 @@
 FROM ubuntu:20.04
-
-MAINTAINER Patrowl.io "getsupport@patrowl.io"
 LABEL Name="Nmap\ \(Patrowl engine\)" Version="1.0.0"
 
 # Set the working directory

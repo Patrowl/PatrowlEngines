@@ -1,4 +1,3 @@
-# FROM ubuntu:18.04
 FROM ubuntu:20.04
 LABEL Name="Patrowl\ DNS\ \(Patrowl engine\)" Version="1.4.33"
 
