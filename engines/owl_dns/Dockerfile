@@ -1,7 +1,6 @@
 # FROM ubuntu:18.04
 FROM ubuntu:20.04
-MAINTAINER Patrowl.io "getsupport@patrowl.io"
-LABEL Name="Patrowl\ DNS\ \(Patrowl engine\)" Version="1.4.32"
+LABEL Name="Patrowl\ DNS\ \(Patrowl engine\)" Version="1.4.33"
 
 # Install dependencies
 RUN apt-get update && \
