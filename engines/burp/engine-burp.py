@@ -205,7 +205,7 @@ def _addto_scanqueue(base_url = None):
     res = {"page": "_addto_scanqueue"}
     url = this.scanurl + '/burp/scanner/scans/active'
     if not (request.args.get('base_url') or base_url):
-        print "_addto_scanqueue(): 'base_url' parameter not set"
+        print("_addto_scanqueue(): 'base_url' parameter not set")
         res.update({"status": "error", "reason": "'base_url' parameter not set"})
         return jsonify(res)
 
