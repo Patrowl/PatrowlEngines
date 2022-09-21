@@ -700,7 +700,7 @@ def _requestor_d(key):
                     if this.scans[action['scan_id']]['totalLeft'] == 0:
                         this.scans[action['scan_id']]['finished_at'] = int(time.time() * 1000)
             except Exception:
-                print sys.exc_info()
+                print(sys.exc_info())
         else:
             time.sleep(1)
 
@@ -718,7 +718,7 @@ def _search_cert(keyword,scan_id, key):
             return False
         except Exception:
             time.sleep(1)
-            print sys.exc_info()
+            print(sys.exc_info())
 
     # for all certificates
     try:
@@ -747,7 +747,7 @@ def _get_view_cert(cert_sha, key):
             return False
         except Exception:
             time.sleep(1)
-            print sys.exc_info()
+            print(sys.exc_info())
     return views
 
 
@@ -888,7 +888,7 @@ def _still_exist(url, serial, port, scan_id):
             break;
         except Exception:
             pass
-            #print sys.exc_info()
+            #print(sys.exc_info())
     return new_serial == int(serial)
 
 
@@ -965,7 +965,7 @@ def _ca_trusted(views,scan_id,keyword,key,chain=[]):
                     return False
                 except Exception:
                     time.sleep(1)
-                    print sys.exc_info()
+                    print(sys.exc_info())
             i = 0
             for ct in cert:
                 if i == 0:
@@ -985,7 +985,7 @@ def _ca_trusted(views,scan_id,keyword,key,chain=[]):
                 return False
             except :
                 time.sleep(1)
-                print sys.exc_info()
+                print(sys.exc_info())
         _ca_trusted(views2,scan_id,keyword,key,chain=chain)
 
     return False
@@ -1014,7 +1014,7 @@ def page_not_found(e):
     return jsonify({"page": "not found"})
 
 def _exit_thread(signum, frame):
-    print "\nClean Thread then exit ..."
+    print("\nClean Thread then exit ...")
     for resq in this.requestor:
         resq._Thread__stop()
     sys.exit(1)
