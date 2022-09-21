@@ -1,7 +1,8 @@
 #!/usr/bin/python3
 # -*- coding: utf-8 -*-
-import censys.certificates
-import time, OpenSSL, json, os, sys, requests, Queue, threading, ssl, socket, hashlib, urlparse, signal, optparse
+import censys
+import time, OpenSSL, json, os, sys, requests, queue, threading, ssl, socket, hashlib, signal, optparse
+from urllib.parse import urlparse
 from datetime import datetime, timedelta, date
 from flask import Flask, redirect, url_for, jsonify, request, send_from_directory
 
