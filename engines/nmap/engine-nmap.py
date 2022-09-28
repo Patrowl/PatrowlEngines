@@ -250,24 +250,28 @@ def _scan_thread(scan_id):
         else:
             # Scan is finished
             # print(f'scan {scan_id} is finished !')
-
-            # Check if the report is available (exists && scan finished)
-            report_filename = f"{BASE_DIR}/results/nmap_{scan_id}.xml"
-            if not os.path.exists(report_filename):
-                return False
-
-            issues, raw_hosts = _parse_report(report_filename, scan_id)
-
-            # Check if banner grabbing is requested
-            if "banner" in options.keys() and options["banner"] in [True, 1, "true", "1", "y", "yes", "on"]:
-                extra_issues = get_service_banner(scan_id, raw_hosts)
-                issues.extend(extra_issues)
-
-            this.scans[scan_id]["issues"] = deepcopy(issues)
-            this.scans[scan_id]["issues_available"] = True
-            this.scans[scan_id]["status"] = "FINISHED"
-
             break
+
+    # Check if the report is available (exists && scan finished)
+    report_filename = f"{BASE_DIR}/results/nmap_{scan_id}.xml"
+    if not os.path.exists(report_filename):
+        this.scans[scan_id]["status"] = "FINISHED"  # ERROR ?
+        this.scans[scan_id]["issues_available"] = True
+        return False
+
+    try:
+        issues, raw_hosts = _parse_report(report_filename, scan_id)
+
+        # Check if banner grabbing is requested
+        if "banner" in options.keys() and options["banner"] in [True, 1, "true", "1", "y", "yes", "on"]:
+            extra_issues = get_service_banner(scan_id, raw_hosts)
+            issues.extend(extra_issues)
+
+        this.scans[scan_id]["issues"] = deepcopy(issues)
+    except Exception:
+        pass
+    this.scans[scan_id]["issues_available"] = True
+    this.scans[scan_id]["status"] = "FINISHED"
 
     return True
 
@@ -275,6 +279,8 @@ def _scan_thread(scan_id):
 @app.route('/engines/nmap/clean')
 def clean():
     res = {"page": "clean"}
+    
+    stop()
     this.scans.clear()
     loadconfig()
     res.update({"status": "SUCCESS"})
@@ -290,6 +296,7 @@ def clean_scan(scan_id):
         res.update({"status": "error", "reason": f"scan_id '{scan_id}' not found"})
         return jsonify(res)
 
+    stop_scan(scan_id)
     this.scans.pop(scan_id)
     res.update({"status": "removed"})
     return jsonify(res)

@@ -411,13 +411,15 @@ def _reverse_dns(scan_id, asset):
 
 def _get_whois(scan_id, asset):
     res = {}
-
+    is_domain = __is_domain(asset)
+    is_ip = __is_ip_addr(asset)
+    
     # Check the asset is a valid domain name or IP Address
-    if not __is_domain(asset) and not __is_ip_addr(asset):
+    if not is_domain and not is_ip:
         return res
 
-    if __is_domain(asset):
-        w = whois.query(str(asset))
+    if is_domain:
+        w = whois.whois(asset)
         if w.domain_name is None:
             res.update({
                 asset: {"errors": w}
@@ -426,7 +428,7 @@ def _get_whois(scan_id, asset):
             res.update({
                 asset: {"raw": {'dict': w, 'text': w.text}, "text": w.text, "type": "domain"}
             })
-    if __is_ip_addr(asset):
+    if is_ip:
         w = IPWhois(str(asset).strip()).lookup_rdap()
         res.update({
             asset: {"raw": {'dict': w, 'text': "see raw"}, "text": "see raw", "type": "ip"}
@@ -582,8 +584,9 @@ def stop():
 @app.route('/engines/owl_dns/clean')
 def clean():
     res = {"page": "clean"}
+    stop()
     this.scans.clear()
-    _loadconfig()
+    # _loadconfig()
     res.update({"status": "SUCCESS"})
     return jsonify(res)
 

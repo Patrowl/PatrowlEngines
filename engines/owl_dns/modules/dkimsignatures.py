@@ -1,4 +1,6 @@
-dkimlist=[
+#!/usr/bin/python3
+# -*- coding: utf-8 -*-
+dkimlist = [
     "s1",
     "s2",
     "selector1",
@@ -9,5 +11,5 @@ dkimlist=[
     "k1",
     "mxvault",
     "dkim",
-    ]
+]
 

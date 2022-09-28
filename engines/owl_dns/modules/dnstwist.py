@@ -47,9 +47,8 @@ class dnstwist:
         try:
             outs = subprocess.check_output(cmd, stderr=subprocess.STDOUT, shell=True, timeout=timeout)
         except subprocess.TimeoutExpired:
-            print("[+] ERROR - Timeout reached ({}s) for cmd: {}".format(
-                timeout, cmd))
-        # print(outs)
+            print("[+] ERROR - Timeout reached ({}s) for cmd: {}".format(timeout, cmd))
+
         if json_validator(outs):
             return domain, json.loads(outs)
         else:
