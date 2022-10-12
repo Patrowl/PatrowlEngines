@@ -220,8 +220,15 @@ def _scan_thread(scan_id):
             cmd += " --min-rate {}".format(options.get(opt_key))
         if opt_key == "max-rtt-timeout":  # /!\ @todo / Security issue: Sanitize parameters here
             cmd += " --max-rtt-timeout {}".format(options.get(opt_key))
+        if opt_key == "max-parallelism":  # /!\ @todo / Security issue: Sanitize parameters here
+            cmd += " --max-parallelism {}".format(options.get(opt_key))
+        if opt_key == "min-hostgroup":  # /!\ @todo / Security issue: Sanitize parameters here
+            cmd += " --min-hostgroup {}".format(options.get(opt_key))
 
     cmd += " -iL " + hosts_filename
+    
+    # Optimization trial for online scans
+    # cmd += " -PE --osscan-limit --max-rtt-timeout 100ms --max-parallelism 100 --min-hostgroup 100"
     app.logger.debug('cmd: %s', cmd)
 
     cmd_sec = split(cmd)
@@ -242,6 +249,33 @@ def _scan_thread(scan_id):
     max_timeout = APP_SCAN_TIMEOUT_DEFAULT
     timeout = time.time() + max_timeout
 
+    # while time.time() < timeout:
+    #     if hasattr(proc, 'pid') and psutil.pid_exists(proc.pid) and psutil.Process(proc.pid).status() in ["sleeping", "running"]:
+    #         # Scan is still in progress
+    #         time.sleep(3)
+    #         # print(f'scan {scan_id} still running...')
+    #     else:
+    #         # Scan is finished
+    #         # print(f'scan {scan_id} is finished !')
+            
+    #         # Check if the report is available (exists && scan finished)
+    #         report_filename = f"{BASE_DIR}/results/nmap_{scan_id}.xml"
+    #         if not os.path.exists(report_filename):
+    #             return False
+
+    #         issues, raw_hosts = _parse_report(report_filename, scan_id)
+
+    #         # Check if banner grabbing is requested
+    #         if "banner" in options.keys() and options["banner"] in [True, 1, "true", "1", "y", "yes", "on"]:
+    #             extra_issues = get_service_banner(scan_id, raw_hosts)
+    #             issues.extend(extra_issues)
+
+    #         this.scans[scan_id]["issues"] = deepcopy(issues)
+    #         this.scans[scan_id]["issues_available"] = True
+    #         this.scans[scan_id]["status"] = "FINISHED"
+    #         break
+
+    # return True
     while time.time() < timeout:
         if hasattr(proc, 'pid') and psutil.pid_exists(proc.pid) and psutil.Process(proc.pid).status() in ["sleeping", "running"]:
             # Scan is still in progress
@@ -250,24 +284,28 @@ def _scan_thread(scan_id):
         else:
             # Scan is finished
             # print(f'scan {scan_id} is finished !')
-
-            # Check if the report is available (exists && scan finished)
-            report_filename = f"{BASE_DIR}/results/nmap_{scan_id}.xml"
-            if not os.path.exists(report_filename):
-                return False
-
-            issues, raw_hosts = _parse_report(report_filename, scan_id)
-
-            # Check if banner grabbing is requested
-            if "banner" in options.keys() and options["banner"] in [True, 1, "true", "1", "y", "yes", "on"]:
-                extra_issues = get_service_banner(scan_id, raw_hosts)
-                issues.extend(extra_issues)
-
-            this.scans[scan_id]["issues"] = deepcopy(issues)
-            this.scans[scan_id]["issues_available"] = True
-            this.scans[scan_id]["status"] = "FINISHED"
-
             break
+            
+    # Check if the report is available (exists && scan finished)
+    report_filename = f"{BASE_DIR}/results/nmap_{scan_id}.xml"
+    if not os.path.exists(report_filename):
+        this.scans[scan_id]["status"] = "FINISHED"  # ERROR ?
+        this.scans[scan_id]["issues_available"] = True
+        return False
+
+    try:
+        issues, raw_hosts = _parse_report(report_filename, scan_id)
+
+        # Check if banner grabbing is requested
+        if "banner" in options.keys() and options["banner"] in [True, 1, "true", "1", "y", "yes", "on"]:
+            extra_issues = get_service_banner(scan_id, raw_hosts)
+            issues.extend(extra_issues)
+
+        this.scans[scan_id]["issues"] = deepcopy(issues)
+    except Exception:
+        pass
+    this.scans[scan_id]["issues_available"] = True
+    this.scans[scan_id]["status"] = "FINISHED"
 
     return True
 
@@ -275,6 +313,8 @@ def _scan_thread(scan_id):
 @app.route('/engines/nmap/clean')
 def clean():
     res = {"page": "clean"}
+    
+    stop()
     this.scans.clear()
     loadconfig()
     res.update({"status": "SUCCESS"})
@@ -290,6 +330,7 @@ def clean_scan(scan_id):
         res.update({"status": "error", "reason": f"scan_id '{scan_id}' not found"})
         return jsonify(res)
 
+    stop_scan(scan_id)
     this.scans.pop(scan_id)
     res.update({"status": "removed"})
     return jsonify(res)
@@ -587,7 +628,6 @@ def _parse_report(filename, scan_id):
         # get ports status - generate issues
         if host.find('ports') is not None:
             for port in host.find('ports'):
-                # for port in host.find('ports'):
                 if port.tag == 'extraports':
                     continue
                 proto = port.get('protocol')
