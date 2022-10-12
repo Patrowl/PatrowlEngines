@@ -1,5 +1,4 @@
 FROM alpine:latest
-MAINTAINER Patrowl.io "getsupport@patrowl.io"
 LABEL Name="SSL-Labs\ \(Patrowl engine\)" Version="1.4.26"
 
 # Install dependencies

@@ -26,7 +26,7 @@ this.scan_lock = threading.RLock()
 this.resolver = dns.resolver.Resolver()
 this.resolver.lifetime = this.resolver.timeout = 5.0
 
-list_nameservers = os.environ.get('NAMESERVER','8.8.8.8,8.8.4.4').split(",")
+list_nameservers = os.environ.get('NAMESERVER', '8.8.8.8,8.8.4.4').split(",")
 this.resolver.nameservers = list_nameservers
 
 this.pool = ThreadPoolExecutor(5)
@@ -100,7 +100,6 @@ def start_scan():
 
     scan_id = str(data['scan_id'])
 
-    # this.scans.update({scan_id: None})
     this.scans.update({scan_id: {
         'status': 'STARTED',
         'started_at': int(time.time() * 1000),
@@ -120,7 +119,6 @@ def start_scan():
             'status': "ERROR",
         }})
         this.scans.pop(scan_id, None)
-        # print(f"Scan job '{scan_id}' out: Scanner not ready")
         return jsonify(res), 503
 
     # Sanitize args :
@@ -141,18 +139,12 @@ def start_scan():
     if 'do_whois' in scan['options'].keys() and data['options']['do_whois']:
         for asset in data["assets"]:
             if asset["datatype"] in ["domain", "ip"]:
-                # th = threading.Thread(target=_get_whois, args=(scan_id, asset["value"],))
-                # th.start()
-                # this.scans[scan_id]['threads'].append(th)
                 th = this.pool.submit(_get_whois, scan_id, asset["value"])
                 this.scans[scan_id]['futures'].append(th)
 
     if 'do_advanced_whois' in scan['options'].keys() and data['options']['do_advanced_whois']:
         for asset in data["assets"]:
             if asset["datatype"] == "domain":
-                # th = threading.Thread(target=_get_whois, args=(scan_id, asset["value"],))
-                # th.start()
-                # this.scans[scan_id]['threads'].append(th)
                 th = this.pool.submit(_get_whois, scan_id, asset["value"])
                 this.scans[scan_id]['futures'].append(th)
 
@@ -160,29 +152,18 @@ def start_scan():
     if 'do_subdomain_enum' in scan['options'].keys() and data['options']['do_subdomain_enum']:
         for asset in data["assets"]:
             if asset["datatype"] == "domain":
-                # th = threading.Thread(target=_subdomain_enum, args=(scan_id, asset["value"],))
-                # th.daemon = True
-                # th.start()
-                # this.scans[scan_id]['threads'].append(th)
                 th = this.pool.submit(_subdomain_enum, scan_id, asset["value"])
                 this.scans[scan_id]['futures'].append(th)
 
     if 'do_subdomains_resolve' in scan['options'].keys() and data['options']['do_subdomains_resolve']:
         for asset in data["assets"]:
             if asset["datatype"] == "domain":
-                # th = threading.Thread(target=_dns_resolve, args=(scan_id, asset["value"], True))
-                # th.daemon = True
-                # th.start()
-                # this.scans[scan_id]['threads'].append(th)
                 th = this.pool.submit(_dns_resolve, scan_id, asset["value"], True)
                 this.scans[scan_id]['futures'].append(th)
 
     if 'do_dns_resolve' in scan['options'].keys() and data['options']['do_dns_resolve']:
         for asset in data["assets"]:
             if asset["datatype"] == "domain":
-                # th = threading.Thread(target=_dns_resolve, args=(scan_id, asset["value"], False))
-                # th.start()
-                # this.scans[scan_id]['threads'].append(th)
                 th = this.pool.submit(_dns_resolve, scan_id, asset["value"], False)
                 this.scans[scan_id]['futures'].append(th)
 
@@ -213,19 +194,12 @@ def start_scan():
     if 'do_subdomain_bruteforce' in scan['options'].keys() and data['options']['do_subdomain_bruteforce']:
         for asset in data["assets"]:
             if asset["datatype"] == "domain":
-                # th = threading.Thread(target=_subdomain_bruteforce, args=(scan_id, asset["value"],))
-                # th.daemon = True
-                # th.start()
-                # this.scans[scan_id]['threads'].append(th)
                 th = this.pool.submit(_subdomain_bruteforce, scan_id, asset["value"])
                 this.scans[scan_id]['futures'].append(th)
 
     if 'do_reverse_dns' in scan['options'].keys() and data['options']['do_reverse_dns']:
         for asset in data["assets"]:
             if asset["datatype"] == "ip":
-                # th = threading.Thread(target=_reverse_dns, args=(scan_id, asset["value"]))
-                # th.start()
-                # this.scans[scan_id]['threads'].append(th)
                 th = this.pool.submit(_reverse_dns, scan_id, asset["value"])
                 this.scans[scan_id]['futures'].append(th)
 
@@ -265,9 +239,6 @@ def start_scan():
             "scan_id": scan['scan_id']
         }
     })
-    # print(', '.join([a['value'] for a in data['assets']]))
-
-    # print(f"Scan job '{scan_id}' started (threads) !")
 
     return jsonify(res)
 
@@ -346,13 +317,11 @@ def _do_dkim_check(scan_id, asset_value):
 
 def _perform_spf_check(scan_id,asset_value):
     dns_records = __dns_resolve_asset(asset_value,"TXT")
-    #dmarc_records = __dns_resolve_asset("_dmarc."+asset_value,"TXT")
-    spf_dict = {"no_spf_found":"high",
-                "spf_lookups": 0
-            }
-    #_do_dmarc_check(spf_dict,dns_records)
-    #_do_dmarc_check(spf_dict,dmarc_records)
-    #_do_dkim_check(spf_dict,asset_value)
+    spf_dict = {
+        "no_spf_found": "high",
+        "spf_lookups": 0
+    }
+
     for record in dns_records:
         for value in record["values"]:
             if "spf" in value:
@@ -434,20 +403,23 @@ def _reverse_dns(scan_id, asset):
     with scan_lock:
         if 'reverse_dns' not in this.scans[scan_id]['findings'].keys():
             this.scans[scan_id]['findings']['reverse_dns'] = {}
-        this.scans[scan_id]["findings"]["reverse_dns"].update(res)
+        if bool(res):
+            this.scans[scan_id]["findings"]["reverse_dns"].update(res)
 
     return res
 
 
 def _get_whois(scan_id, asset):
     res = {}
-
+    is_domain = __is_domain(asset)
+    is_ip = __is_ip_addr(asset)
+    
     # Check the asset is a valid domain name or IP Address
-    if not __is_domain(asset) and not __is_ip_addr(asset):
+    if not is_domain and not is_ip:
         return res
 
-    if __is_domain(asset):
-        w = whois.whois(str(asset))
+    if is_domain:
+        w = whois.whois(asset)
         if w.domain_name is None:
             res.update({
                 asset: {"errors": w}
@@ -456,7 +428,7 @@ def _get_whois(scan_id, asset):
             res.update({
                 asset: {"raw": {'dict': w, 'text': w.text}, "text": w.text, "type": "domain"}
             })
-    if __is_ip_addr(asset):
+    if is_ip:
         w = IPWhois(str(asset).strip()).lookup_rdap()
         res.update({
             asset: {"raw": {'dict': w, 'text': "see raw"}, "text": "see raw", "type": "ip"}
@@ -466,7 +438,8 @@ def _get_whois(scan_id, asset):
     with scan_lock:
         if 'whois' not in this.scans[scan_id]['findings'].keys():
             this.scans[scan_id]['findings']['whois'] = {}
-        this.scans[scan_id]['findings']['whois'].update(res)
+        if bool(res):
+            this.scans[scan_id]['findings']['whois'].update(res)
 
     return res
 
@@ -584,13 +557,12 @@ def stop_scan(scan_id):
         return jsonify(res)
 
     for t in this.scans[scan_id]['threads']:
-        # t._Thread__stop()
-        # t.terminate()
         try:
             t.join()
             this.scans[scan_id]['threads'].remove(t)
         except Exception:
             pass
+
     this.scans[scan_id]['status'] = "STOPPED"
     this.scans[scan_id]['finished_at'] = int(time.time() * 1000)
 
@@ -612,8 +584,9 @@ def stop():
 @app.route('/engines/owl_dns/clean')
 def clean():
     res = {"page": "clean"}
+    stop()
     this.scans.clear()
-    _loadconfig()
+    # _loadconfig()
     res.update({"status": "SUCCESS"})
     return jsonify(res)
 
@@ -630,25 +603,11 @@ def clean_scan(scan_id):
     # Terminate thread if any
     for t in this.scans[scan_id]['threads']:
         try:
-            # t._Thread__stop()
-            # t.terminate()
-            # print("{}: clean threads '{}'".format(scan_id, t))
             t.join()
             this.scans[scan_id]['threads'].remove(t)
         except Exception as e:
             print(e)
             pass
-    #
-    # for t in this.scans[scan_id]['futures']:
-    #     try:
-    #         # t._Thread__stop()
-    #         # t.terminate()
-    #         print("{}: clean futures '{}'".format(scan_id, t))
-    #         print(dir(t))
-    #         # t.join()
-    #     except Exception as e:
-    #         print(e)
-    #         pass
 
     # Remove Scan for current scans
     this.scans.pop(scan_id)
@@ -668,7 +627,6 @@ def scan_status(scan_id):
 
     if 'threads' in this.scans[scan_id]:
         for t in this.scans[scan_id]['threads']:
-            # print("scan_status-thread:", t.name, t.native_id)
             if t.is_alive():
                 this.scans[scan_id]['status'] = "SCANNING"
                 all_threads_finished = False
@@ -730,9 +688,6 @@ def status():
         "scanner": this.scanner,
         "scans": scans})
 
-    # print("thread-count:", threading.active_count())
-    # for thread in threading.enumerate():
-    #     print("{}:{}".format(thread.name, thread.native_id))
     return jsonify(res)
 
 
@@ -964,6 +919,7 @@ def _parse_results(scan_id):
                 create_new_assets = True
 
             for subdomain in subdomains_list:
+                subdomain = subdomain.strip().lower()
                 if any(x in subdomain for x in bad_str) or subdomain.replace(' ', '') == '':
                     continue
                 s = subdomain.replace("From http://PTRarchive.com: ", "")
@@ -1209,7 +1165,6 @@ def _parse_results(scan_id):
                             asset,
                             exp_date.date().isoformat(),
                             ", ".join(exp_date.date().isoformat())
-                            # ", ".join(expiry_dates)
                         ),
                         "raw": scan['findings']['whois'][asset]['raw']['expiration_date'],
                         "solution": "Renew the domain"
@@ -1227,7 +1182,6 @@ def _parse_results(scan_id):
                             asset,
                             exp_date.date().isoformat(),
                             ", ".join(exp_date.date().isoformat())
-                            # ", ".join(expiry_dates)
                         ),
                         "raw": scan['findings']['whois'][asset]['raw']['expiration_date'],
                         "solution": "Renew the domain"
@@ -1245,7 +1199,6 @@ def _parse_results(scan_id):
                             asset,
                             exp_date.date().isoformat(),
                             ", ".join(exp_date.date().isoformat())
-                            # ", ".join(expiry_dates)
                         ),
                         "raw": scan['findings']['whois'][asset]['raw']['expiration_date'],
                         "solution": "Renew the domain"
@@ -1263,7 +1216,6 @@ def _parse_results(scan_id):
                             asset,
                             exp_date.date().isoformat(),
                             ", ".join(exp_date.date().isoformat())
-                            # ", ".join(expiry_dates)
                         ),
                         "raw": scan['findings']['whois'][asset]['raw']['expiration_date'],
                         "solution": "Renew the domain"
@@ -1287,6 +1239,8 @@ def _parse_results(scan_id):
 @app.route('/engines/owl_dns/getfindings/<scan_id>')
 def getfindings(scan_id):
     res = {"page": "getfindings", "scan_id": scan_id}
+    if not scan_id.isdecimal():
+        return jsonify({"status": "error", "reason": "scan_id must be numeric digits only"})
 
     # check if the scan_id exists
     if scan_id not in this.scans.keys():
@@ -1322,6 +1276,8 @@ def getfindings(scan_id):
 
 @app.route('/engines/owl_dns/getreport/<scan_id>')
 def getreport(scan_id):
+    if not scan_id.isdecimal():
+        return jsonify({"status": "error", "reason": "scan_id must be numeric digits only"})
     filepath = f"{BASE_DIR}/results/owl_dns_{scan_id}.json"
 
     if not os.path.exists(filepath):
@@ -1335,7 +1291,6 @@ def _json_serial(obj):
         JSON serializer for objects not serializable by default json code
         Used for datetime serialization when the results are written in file
     """
-
     if isinstance(obj, datetime.datetime) or isinstance(obj, datetime.date):
         serial = obj.isoformat()
         return serial

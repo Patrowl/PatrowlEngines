@@ -1,5 +1,4 @@
 FROM alpine:latest
-MAINTAINER Patrowl.io "getsupport@patrowl.io"
 LABEL Name="Request\ \(Patrowl engine\)" Version="1.4.26"
 
 # Create the target repo

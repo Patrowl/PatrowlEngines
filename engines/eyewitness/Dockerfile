@@ -1,5 +1,4 @@
 FROM phusion/baseimage:bionic-1.0.0
-MAINTAINER Patrowl.io "getsupport@patrowl.io"
 LABEL Name="EyeWitness\ \(Patrowl engine\)" Version="1.4.28"
 
 

@@ -122,7 +122,6 @@ class PatrowlEngine:
         res.update({"scan_id": scan_id})
 
         if scan_id not in self.scans.keys():
-            # raise PatrowlEngineExceptions(1002)
             res.update({"status": "ERROR", "reason": "scan_id '{}' not found".format(scan_id)})
             return jsonify(res)
 
@@ -133,7 +132,6 @@ class PatrowlEngine:
 
     def getstatus_scan(self, scan_id):
         if scan_id not in self.scans.keys():
-            raise PatrowlEngineExceptions(1002)
             return jsonify({
                 "status": "ERROR",
                 "details": "scan_id '{}' not found".format(scan_id)})
@@ -180,7 +178,6 @@ class PatrowlEngine:
         res = {"page": "stop"}
 
         if scan_id not in self.scans.keys():
-            # raise PatrowlEngineExceptions(1002)
             res.update({"status": "ERROR", "reason": "scan_id '{}' not found".format(scan_id)})
             return jsonify(res)
 
@@ -249,7 +246,6 @@ class PatrowlEngine:
 
     def _parse_results(self, scan_id):
         if scan_id not in self.scans.keys():
-            # raise PatrowlEngineExceptions(1002)
             return jsonify({
                 "status": "ERROR",
                 "details": "scan_id '{}' not found".format(scan_id)})
@@ -257,7 +253,6 @@ class PatrowlEngine:
         issues = []
         summary = {}
 
-        # scan = self.scans[scan_id]
         nb_vulns = {
             "info": 0,
             "low": 0,
@@ -293,7 +288,6 @@ class PatrowlEngine:
         # check if the scan is finished
         self.getstatus_scan(scan_id)
         if scan['status'] != "FINISHED":
-            # raise PatrowlEngineExceptions(1003)
             res.update({"status": "ERROR", "reason": "scan_id '{}' not finished (status={})".format(scan_id, scan['status'])})
             return jsonify(res)
 
@@ -405,7 +399,7 @@ class PatrowlEngineScan:
 
     def had_options(self, options):
         opts = []
-        if isinstance(options, str):  # is a string
+        if isinstance(options, str):
             opts.append(options)
         elif isinstance(options, list):
             opts = options

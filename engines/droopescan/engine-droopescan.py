@@ -29,7 +29,7 @@ APP_HOST = "0.0.0.0"
 APP_PORT = 5021
 APP_MAXSCANS = int(os.environ.get('APP_MAXSCANS', 25))
 APP_ENGINE_NAME = "patrowl-droopescan"
-VERSION = "1.4.27"
+VERSION = "1.4.30"
 
 BASE_DIR = os.path.dirname(os.path.realpath(__file__))
 this = sys.modules[__name__]
