@@ -492,7 +492,7 @@ def get_service_banner(scan_id, raw_hosts):
             "addr_type": 'ipv4',
         }
         for port in ports:
-            port_banner = banner.grab_banner(host, int(port))
+            port_banner = banner.grab_banner(host, int(port)).replace('\u0000', '')  # Fix #218
             if port_banner == '':
                 continue
 
