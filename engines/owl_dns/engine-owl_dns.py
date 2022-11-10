@@ -3,6 +3,7 @@
 import os, sys, json, time, urllib, hashlib, threading, datetime, copy, dns.resolver, socket, optparse, random, string
 from flask import Flask, request, jsonify, redirect, url_for, send_from_directory
 import validators
+import requests
 import whois
 from ipwhois import IPWhois
 from modules.dnstwist import dnstwist
@@ -15,13 +16,15 @@ APP_DEBUG = os.environ.get('DEBUG', '').lower() in ['true', '1', 'yes', 'y', 'on
 APP_HOST = "0.0.0.0"
 APP_PORT = 5006
 APP_MAXSCANS = int(os.environ.get('APP_MAXSCANS', 3))
-APP_TIMEOUT = 3600
+APP_TIMEOUT = int(os.environ.get('APP_TIMEOUT', 3600))
+APP_WF_MAX_PAGE = int(os.environ.get('APP_WF_MAX_PAGE', 10))
 
 BASE_DIR = os.path.dirname(os.path.realpath(__file__))
 this = sys.modules[__name__]
 this.scanner = {}
 this.scans = {}
 this.scan_lock = threading.RLock()
+this.wf_apitokens = []
 
 this.resolver = dns.resolver.Resolver()
 this.resolver.lifetime = this.resolver.timeout = 5.0
@@ -59,6 +62,11 @@ def _loadconfig():
     else:
         print("Error: config file '{}' not found".format(conf_file))
         return {"status": "error", "reason": "config file not found"}
+    
+    this.wf_apitokens = []
+    for apikey in this.scanner["whoisfreak_api_tokens"]:
+        this.wf_apitokens.append(apikey)
+    del this.scanner["whoisfreak_api_tokens"]
 
     version_filename = f'{BASE_DIR}/VERSION'
     if os.path.exists(version_filename):
@@ -232,6 +240,12 @@ def start_scan():
                 th = this.pool.submit(dnstwist.search_subdomains, scan_id, asset["value"], tld, check_ssdeep, check_geoip, check_mx, check_whois, check_banners, timeout)
                 this.scans[scan_id]['dnstwist'][asset["value"]] = {}
                 this.scans[scan_id]['futures'].append(th)
+    
+    if 'do_reverse_whois_domain_company' in scan['options'].keys() and data['options']['do_reverse_whois_domain_company']:
+        for asset in data["assets"]:
+            if asset["datatype"] in ["domain", "fqdn"]:
+                th = this.pool.submit(_reverse_whois_domain_company, scan_id, asset["value"])
+                this.scans[scan_id]['futures'].append(th)
 
     res.update({
         "status": "accepted",
@@ -258,6 +272,85 @@ def __is_domain(host):
         res = validators.domain(host) is True
     except Exception:
         pass
+    return res
+
+def _reverse_whois_domain_company(scan_id, asset):
+    res = {}
+    domains = []
+    if len(this.wf_apitokens) == 0:
+        # No whoisfreak API Token available
+        return res
+    
+    # Check the asset is a valid domain name or IP Address
+    if not __is_domain(asset):
+        return res
+    
+    w = whois.whois(asset)
+    if w.domain_name is None:
+        return res
+    
+    company = ""
+    # Get the registrant organization if available, otherwise try to get the registrant name
+    if 'org' in w.keys() and w['org'] not in ["", None]:
+        company = w['org'].lower()
+    elif 'registrant_name' in w.keys() and w['registrant_name'] not in ["", None]:
+        company = w['registrant_name'].lower()
+        
+    if company == "":
+        return res
+        
+    apikey = this.wf_apitokens[random.randint(0, len(this.wf_apitokens)-1)]
+    page = 1
+    wf_url = f"https://api.whoisfreaks.com/v1.0/whois?apiKey={apikey}&whois=reverse&company={company}&mode=mini&page={page}"
+    
+    # Limit max pages to rationalize credit usage
+    max_pages = APP_WF_MAX_PAGE
+    if 'reverse_whois_max_pages' in this.scans[scan_id]['options'].keys() and isinstance(this.scans[scan_id]['options']['reverse_whois_max_pages'], int) and this.scans[scan_id]['options']['reverse_whois_max_pages'] > 0:
+        max_pages = this.scans[scan_id]['options']['reverse_whois_max_pages']
+    
+    try:
+        resp = requests.get(wf_url)
+        if resp.status_code != 200:
+            return res
+        
+        # get results from page 1
+        results = json.loads(resp.text)
+        if 'whois_domains_historical' not in results.keys():
+            return res
+        for d in results['whois_domains_historical']:
+            domains.append(d['domain_name'])
+            
+        if results['total_Pages'] < max_pages:
+            max_pages = results['total_Pages']
+            
+        # while results['total_Pages'] > page and page < 10:
+        while max_pages > page:
+            time.sleep(1)
+            page += 1
+            wf_url = f"https://api.whoisfreaks.com/v1.0/whois?apiKey={apikey}&whois=reverse&company={company}&mode=mini&page={page}"
+            resp = requests.get(wf_url)
+            if resp.status_code == 200:
+                page_results = json.loads(resp.text)
+                for d in page_results['whois_domains_historical']:
+                    domains.append(d['domain_name'])
+        
+    except Exception:
+        return res
+
+    if len(domains) == 0:
+        return res
+    
+    # Remove duplicates
+    domains = list(set(domains))
+    res = {asset: {"domains": domains, "company": company}}
+
+    scan_lock = threading.RLock()
+    with scan_lock:
+        if 'reverse_whois' not in this.scans[scan_id]['findings'].keys():
+            this.scans[scan_id]['findings']['reverse_whois'] = {}
+        if bool(res):
+            this.scans[scan_id]['findings']['reverse_whois'].update(res)
+
     return res
 
 def _recursive_spf_lookups(spf_line):
@@ -892,6 +985,32 @@ def _parse_results(scan_id):
                 },
                 "type": "reverse_dns",
                 "raw": scan['findings']['reverse_dns'][asset],
+                "timestamp": ts
+            })
+
+    # reverse whois lookup
+    if 'reverse_whois' in scan['findings'].keys():
+        for asset in scan['findings']['reverse_whois'].keys():
+            nb_vulns['info'] += 1
+            domains_str = ""
+            for domain in scan['findings']['reverse_whois'][asset]['domains']:
+                domains_str = "".join((domains_str, domain+"\n"))
+            domains_hash = hashlib.sha1(domains_str.encode("utf-8")).hexdigest()[:6]
+            issues.append({
+                "issue_id": len(issues) + 1,
+                "severity": "info", "confidence": "certain",
+                "target": {
+                    "addr": [asset],
+                    "protocol": "domain"
+                },
+                "title": f"Reverse Whois lookup on '{asset}' ({domains_hash})",
+                "description": f"Reverse Whois lookup on '{asset}' ({domains_hash})",
+                "solution": "n/a",
+                "metadata": {
+                    "tags": ["domains", "dns", "reverse", "lookup", "whois"]
+                },
+                "type": "reverse_whois_company",
+                "raw": scan['findings']['reverse_whois'][asset],
                 "timestamp": ts
             })
 

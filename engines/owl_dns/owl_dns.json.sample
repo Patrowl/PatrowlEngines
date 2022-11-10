@@ -6,6 +6,7 @@
 	"sublist3r_bin_path": "/opt/patrowl-engines/owl_dns/external-libs/Sublist3r",
 	"dnstwist_bin_path": "/opt/patrowl-engines/owl_dns/external-libs/dnstwist",
 	"dnstwist_common_tlds": "/opt/patrowl-engines/owl_dns/external-libs/dnstwist/dictionaries/common_tlds.dict",
+	"whoisfreak_api_tokens": ["xx", "yy"],
 	"names_path": "/opt/patrowl-engines/owl_dns/etc/names.txt",
 	"options": {
 		"do_whois": 				{ "required": false, "value": "boolean" },
