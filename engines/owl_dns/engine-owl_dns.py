@@ -60,7 +60,7 @@ def _loadconfig():
         dnstwist(this.scanner['dnstwist_bin_path'])
 
     else:
-        print("Error: config file '{}' not found".format(conf_file))
+        app.logger.error("Error: config file '{}' not found".format(conf_file))
         return {"status": "error", "reason": "config file not found"}
     
     this.wf_apitokens = []
@@ -146,7 +146,7 @@ def start_scan():
 
     if 'do_whois' in scan['options'].keys() and data['options']['do_whois']:
         for asset in data["assets"]:
-            if asset["datatype"] in ["domain", "ip"]:
+            if asset["datatype"] in ["domain", "ip", "fqdn"]:
                 th = this.pool.submit(_get_whois, scan_id, asset["value"])
                 this.scans[scan_id]['futures'].append(th)
 
@@ -178,7 +178,6 @@ def start_scan():
     if 'do_spf_check' in scan['options'].keys() and data['options']['do_spf_check']:
         for asset in data["assets"]:
             if asset["datatype"] == "domain":
-
                 th = threading.Thread(target=_perform_spf_check, args=(scan_id, asset["value"]))
                 th.start()
                 this.scans[scan_id]['threads'].append(th)
@@ -186,7 +185,6 @@ def start_scan():
     if 'do_dkim_check' in scan['options'].keys() and data['options']['do_dkim_check']:
         for asset in data["assets"]:
             if asset["datatype"] == "domain":
-
                 th = threading.Thread(target=_do_dkim_check, args=(scan_id, asset["value"]))
                 th.start()
                 this.scans[scan_id]['threads'].append(th)
@@ -194,7 +192,6 @@ def start_scan():
     if 'do_dmarc_check' in scan['options'].keys() and data['options']['do_dmarc_check']:
         for asset in data["assets"]:
             if asset["datatype"] == "domain":
-
                 th = threading.Thread(target=_do_dmarc_check, args=(scan_id, asset["value"]))
                 th.start()
                 this.scans[scan_id]['threads'].append(th)
@@ -241,10 +238,10 @@ def start_scan():
                 this.scans[scan_id]['dnstwist'][asset["value"]] = {}
                 this.scans[scan_id]['futures'].append(th)
     
-    if 'do_reverse_whois_domain_company' in scan['options'].keys() and data['options']['do_reverse_whois_domain_company']:
+    if 'do_reverse_whois' in scan['options'].keys() and data['options']['do_reverse_whois']:
         for asset in data["assets"]:
-            if asset["datatype"] in ["domain", "fqdn"]:
-                th = this.pool.submit(_reverse_whois_domain_company, scan_id, asset["value"])
+            if asset["datatype"] in ["domain", "fqdn", "keyword"]:
+                th = this.pool.submit(_reverse_whois, scan_id, asset["value"], asset["datatype"])
                 this.scans[scan_id]['futures'].append(th)
 
     res.update({
@@ -270,79 +267,99 @@ def __is_domain(host):
     res = False
     try:
         res = validators.domain(host) is True
-    except Exception:
-        pass
+    except Exception as e:
+        app.logger.error(f"is_domain({host}): failed: {e}")
     return res
 
-def _reverse_whois_domain_company(scan_id, asset):
+
+def _get_wf_url(apikey, type, value):
+    return f"https://api.whoisfreaks.com/v1.0/whois?apiKey={apikey}&whois=reverse&{type}={value}&mode=mini"
+
+
+def _get_wf_domains(wf_url, max_pages):
+    wf_domains = []
+    page = 1
+    resp = requests.get(wf_url+f"&page={page}")
+    if resp.status_code != 200:
+        app.logger.debug("_get_wf_domains", wf_url, resp.status_code)
+        return wf_domains
+    
+    # get results from page 1
+    results = json.loads(resp.text)
+    if 'whois_domains_historical' not in results.keys():
+        return wf_domains
+    for d in results['whois_domains_historical']:
+        wf_domains.append(d['domain_name'])
+        
+    if results['total_Pages'] < max_pages:
+        max_pages = results['total_Pages']
+        
+    # while results['total_Pages'] > page and page < 10:
+    while max_pages > page:
+        time.sleep(1)
+        page += 1
+        resp = requests.get(wf_url+f"&page={page}")
+        if resp.status_code == 200:
+            page_results = json.loads(resp.text)
+            for d in page_results['whois_domains_historical']:
+                wf_domains.append(d['domain_name'])
+    return wf_domains
+
+
+def _reverse_whois(scan_id, asset, datatype):
     res = {}
     domains = []
     if len(this.wf_apitokens) == 0:
         # No whoisfreak API Token available
         return res
     
-    # Check the asset is a valid domain name or IP Address
-    if not __is_domain(asset):
-        return res
-    
-    w = whois.whois(asset)
-    if w.domain_name is None:
-        return res
-    
-    company = ""
-    # Get the registrant organization if available, otherwise try to get the registrant name
-    if 'org' in w.keys() and w['org'] not in ["", None]:
-        company = w['org'].lower()
-    elif 'registrant_name' in w.keys() and w['registrant_name'] not in ["", None]:
-        company = w['registrant_name'].lower()
-        
-    if company == "":
-        return res
-        
+    # Select an API KEY
     apikey = this.wf_apitokens[random.randint(0, len(this.wf_apitokens)-1)]
-    page = 1
-    wf_url = f"https://api.whoisfreaks.com/v1.0/whois?apiKey={apikey}&whois=reverse&company={company}&mode=mini&page={page}"
     
+    # Check the asset is a valid domain name or IP Address
+    if datatype in ["domain", "fqdn"]: 
+        if not __is_domain(asset):
+            return res
+        
+        w = whois.whois(asset)
+        print(w)
+        if w.domain_name is None:
+            return res
+        wf_value = ""
+        # Get the registrant organization if available, otherwise try to get the registrant name
+        if 'org' in w.keys() and w['org'] not in ["", None]:
+            wf_value = w['org'].lower()
+        elif 'registrant_name' in w.keys() and w['registrant_name'] not in ["", None]:
+            wf_value = w['registrant_name'].lower()
+            
+        if wf_value in ["", "redacted for privacy"]:
+            return res
+        
+        wf_types = ["company"]
+    else:
+        wf_types = ["keyword", "owner", "company"]
+        wf_value = asset
+        
     # Limit max pages to rationalize credit usage
     max_pages = APP_WF_MAX_PAGE
     if 'reverse_whois_max_pages' in this.scans[scan_id]['options'].keys() and isinstance(this.scans[scan_id]['options']['reverse_whois_max_pages'], int) and this.scans[scan_id]['options']['reverse_whois_max_pages'] > 0:
         max_pages = this.scans[scan_id]['options']['reverse_whois_max_pages']
     
     try:
-        resp = requests.get(wf_url)
-        if resp.status_code != 200:
+        for wf_type in wf_types:
+            wf_url = _get_wf_url(apikey, wf_type, wf_value)
+            wf_domains = _get_wf_domains(wf_url, max_pages)
+            domains.extend(wf_domains)
+    except Exception as e:
+        if len(domains) == 0:
             return res
-        
-        # get results from page 1
-        results = json.loads(resp.text)
-        if 'whois_domains_historical' not in results.keys():
-            return res
-        for d in results['whois_domains_historical']:
-            domains.append(d['domain_name'])
-            
-        if results['total_Pages'] < max_pages:
-            max_pages = results['total_Pages']
-            
-        # while results['total_Pages'] > page and page < 10:
-        while max_pages > page:
-            time.sleep(1)
-            page += 1
-            wf_url = f"https://api.whoisfreaks.com/v1.0/whois?apiKey={apikey}&whois=reverse&company={company}&mode=mini&page={page}"
-            resp = requests.get(wf_url)
-            if resp.status_code == 200:
-                page_results = json.loads(resp.text)
-                for d in page_results['whois_domains_historical']:
-                    domains.append(d['domain_name'])
-        
-    except Exception:
-        return res
 
     if len(domains) == 0:
         return res
     
     # Remove duplicates
     domains = list(set(domains))
-    res = {asset: {"domains": domains, "company": company}}
+    res = {asset: {"domains": domains, "types": wf_types, "value": wf_value}}
 
     scan_lock = threading.RLock()
     with scan_lock:
@@ -359,7 +376,7 @@ def _recursive_spf_lookups(spf_line):
         if "include:" in word:
             url = word.replace("include:","")
             spf_lookups += 1
-            dns_resolve = __dns_resolve_asset(url,"TXT")
+            dns_resolve = __dns_resolve_asset(url, "TXT")
             for record in dns_resolve:
                 for value in record["values"]:
                     if "spf" in value:
@@ -368,7 +385,7 @@ def _recursive_spf_lookups(spf_line):
 
 def _do_dmarc_check(scan_id,asset_value):
     dmarc_dict = {"no_dmarc_record": "high"}
-    dns_records = __dns_resolve_asset(asset_value,"TXT")
+    dns_records = __dns_resolve_asset(asset_value, "TXT")
     for record in dns_records:
         for value in record["values"]:
             if "DMARC" in value:
@@ -384,8 +401,8 @@ def _do_dmarc_check(scan_id,asset_value):
                             dmarc_dict["dmarc_partial_coverage"] = "medium"
 
     with this.scan_lock:
-        this.scans[scan_id]["findings"]["dmarc_dict"] = {asset_value:dmarc_dict}
-        this.scans[scan_id]["findings"]["dmarc_dict_dns_records"] = {asset_value:dns_records}
+        this.scans[scan_id]["findings"]["dmarc_dict"] = {asset_value: dmarc_dict}
+        this.scans[scan_id]["findings"]["dmarc_dict_dns_records"] = {asset_value: dns_records}
 
 def _do_dkim_check(scan_id, asset_value):
     dkim_dict = {}
@@ -405,11 +422,11 @@ def _do_dkim_check(scan_id, asset_value):
         dkim_dict["dkim"] = dkim_found_list
 
     with this.scan_lock:
-        this.scans[scan_id]["findings"]["dkim_dict"] = {asset_value:dkim_dict}
-        this.scans[scan_id]["findings"]["dkim_dict_dns_records"] = {asset_value:dns_records}
+        this.scans[scan_id]["findings"]["dkim_dict"] = {asset_value: dkim_dict}
+        this.scans[scan_id]["findings"]["dkim_dict_dns_records"] = {asset_value: dns_records}
 
 def _perform_spf_check(scan_id,asset_value):
-    dns_records = __dns_resolve_asset(asset_value,"TXT")
+    dns_records = __dns_resolve_asset(asset_value, "TXT")
     spf_dict = {
         "no_spf_found": "high",
         "spf_lookups": 0
@@ -433,23 +450,22 @@ def _perform_spf_check(scan_id,asset_value):
                     spf_dict["no_spf_all_or_?all"] = "high"
 
     with this.scan_lock:
-        this.scans[scan_id]["findings"]["spf_dict"] = {asset_value:spf_dict}
-        this.scans[scan_id]["findings"]["spf_dict_dns_records"] = {asset_value:dns_records}
+        this.scans[scan_id]["findings"]["spf_dict"] = {asset_value: spf_dict}
+        this.scans[scan_id]["findings"]["spf_dict_dns_records"] = {asset_value: dns_records}
     return spf_dict
 
 
 def _dns_resolve(scan_id, asset, check_subdomains=False):
-    res = {}
+    scan_lock = threading.RLock()
+    with scan_lock:
+        if "dns_resolve" not in this.scans[scan_id]["findings"].keys():
+            this.scans[scan_id]["findings"]["dns_resolve"] = {}
+        this.scans[scan_id]["findings"]["dns_resolve"][asset] = {}
+        this.scans[scan_id]["findings"]["dns_resolve"][asset] = copy.deepcopy(__dns_resolve_asset(asset))
+    return this.scans[scan_id]["findings"]["dns_resolve"][asset]
 
-    res.update({asset: __dns_resolve_asset(asset)})
 
-    with this.scan_lock:
-        this.scans[scan_id]["findings"]["dns_resolve"] = res
-
-    return res
-
-
-def __dns_resolve_asset(asset,type_of_record=False):
+def __dns_resolve_asset(asset, type_of_record=False):
     sub_res = []
     try:
         record_types = ["CNAME", "A", "AAAA", "MX", "NS", "TXT", "SOA", "SRV"]
@@ -513,6 +529,7 @@ def _get_whois(scan_id, asset):
 
     if is_domain:
         w = whois.whois(asset)
+        print(w)
         if w.domain_name is None:
             res.update({
                 asset: {"errors": w}
@@ -819,19 +836,25 @@ def _parse_results(scan_id):
                 issues.append(dnstwist_issue)
 
     # dns resolve
-    if 'dns_resolve' in scan['findings'].keys():
-        for asset in scan['findings']['dns_resolve'].keys():
-
+    if 'dns_resolve' in this.scans[scan_id]['findings'].keys():
+        for asset in this.scans[scan_id]['findings']['dns_resolve'].keys():
             dns_resolve_str = ""
-            for key, value in sorted(scan['findings']['dns_resolve'].items(), key=lambda x:x[1], reverse=True):
-                for record in value:
-                    entry = "Record type '{}': {}".format(
-                            record['record_type'], ", ".join(record['values']))
-                    dns_resolve_str = "".join((dns_resolve_str, entry+"\n"))
+            dns_records = this.scans[scan_id]['findings']['dns_resolve'][asset]
+            # print(asset, dns_records)
+            # for key, value in sorted(scan['findings']['dns_resolve'].items(), key=lambda x:x[1], reverse=True):
+            # for key, value in sorted(this.scans[scan_id]['findings']['dns_resolve'][asset].items(), key=lambda x:x[1], reverse=True):
+            # for value in dns_records:
+            #     for record in value:
+            #         entry = "Record type '{}': {}".format(record['record_type'], ", ".join(record['values']))
+            #         dns_resolve_str = "".join((dns_resolve_str, entry+"\n"))
+            
+            for record in dns_records:
+                entry = "Record type '{}': {}".format(record['record_type'], ", ".join(record['values']))
+                dns_resolve_str = "".join((dns_resolve_str, entry+"\n"))
 
             dns_resolve_hash = hashlib.sha1(dns_resolve_str.encode("utf-8")).hexdigest()[:6]
 
-            dns_records = scan['findings']['dns_resolve'][asset]
+            
             nb_vulns['info'] += 1
             issues.append({
                 "issue_id": len(issues) + 1,
@@ -848,7 +871,7 @@ def _parse_results(scan_id):
                     "tags": ["domains", "dns", "resolution"]
                 },
                 "type": "dns_resolve",
-                "raw": scan['findings']['dns_resolve'][asset],
+                "raw": dns_records,
                 "timestamp": ts
             })
 
@@ -993,7 +1016,8 @@ def _parse_results(scan_id):
         for asset in scan['findings']['reverse_whois'].keys():
             nb_vulns['info'] += 1
             domains_str = ""
-            for domain in scan['findings']['reverse_whois'][asset]['domains']:
+            reverse_whois_domains = scan['findings']['reverse_whois'][asset]['domains']
+            for domain in reverse_whois_domains:
                 domains_str = "".join((domains_str, domain+"\n"))
             domains_hash = hashlib.sha1(domains_str.encode("utf-8")).hexdigest()[:6]
             issues.append({
@@ -1004,12 +1028,12 @@ def _parse_results(scan_id):
                     "protocol": "domain"
                 },
                 "title": f"Reverse Whois lookup on '{asset}' ({domains_hash})",
-                "description": f"Reverse Whois lookup on '{asset}' ({domains_hash})",
+                "description": f"Reverse Whois lookup on '{asset}' ({domains_hash})\nFound domains: {len(reverse_whois_domains)}",
                 "solution": "n/a",
                 "metadata": {
                     "tags": ["domains", "dns", "reverse", "lookup", "whois"]
                 },
-                "type": "reverse_whois_company",
+                "type": "reverse_whois_data",
                 "raw": scan['findings']['reverse_whois'][asset],
                 "timestamp": ts
             })
