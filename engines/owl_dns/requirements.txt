@@ -12,10 +12,11 @@ itsdangerous
 Jinja2
 MarkupSafe
 PatrowlEnginesUtils>=1.0.1
-python-whois
+#python-whois
 requests
 six
 urllib3
 validators
 werkzeug
 ipwhois
+whois

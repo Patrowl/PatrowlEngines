@@ -258,8 +258,8 @@ def __is_ip_addr(host):
     res = False
     try:
         res = socket.gethostbyname(host) == host
-    except Exception:
-        pass
+    except Exception as e:
+        app.logger.error(f"__is_ip_addr({host}): failed: {e}")
     return res
 
 
@@ -268,15 +268,24 @@ def __is_domain(host):
     try:
         res = validators.domain(host) is True
     except Exception as e:
-        app.logger.error(f"is_domain({host}): failed: {e}")
+        app.logger.error(f"__is_domain({host}): failed: {e}")
     return res
 
 
-def _get_wf_url(apikey, type, value):
+def _get_wf_reverse_url(apikey:str, type:str, value:str):
     return f"https://api.whoisfreaks.com/v1.0/whois?apiKey={apikey}&whois=reverse&{type}={value}&mode=mini"
 
 
-def _get_wf_domains(wf_url, max_pages):
+def _get_wf_whois(apikey:str, value:str):
+    w = None
+    resp = requests.get(f"https://api.whoisfreaks.com/v1.0/whois?apiKey={apikey}&whois=live&domainName={value}")
+    if resp.status_code != 200:
+        app.logger.debug("_get_wf_whois", value, resp.status_code)
+        return w
+
+    return json.loads(resp.text)
+
+def _get_wf_domains(wf_url:str, max_pages:int):
     wf_domains = []
     page = 1
     resp = requests.get(wf_url+f"&page={page}")
@@ -317,28 +326,49 @@ def _reverse_whois(scan_id, asset, datatype):
     apikey = this.wf_apitokens[random.randint(0, len(this.wf_apitokens)-1)]
     
     # Check the asset is a valid domain name or IP Address
-    if datatype in ["domain", "fqdn"]: 
+    if datatype in ["domain", "fqdn"]:
         if not __is_domain(asset):
             return res
-        
-        w = whois.whois(asset)
-        print(w)
-        if w.domain_name is None:
+        # w = whois.whois(asset)
+        w = whois.query(asset, force=True)
+        # print(w.name, w.registrant, w.owner)
+
+        # if w.domain_name is None:
+        #     return res
+        # wf_value = ""
+        # # Get the registrant organization if available, otherwise try to get the registrant name
+        # if 'org' in w.keys() and w['org'] not in ["", None]:
+        #     wf_value = w['org'].lower()
+        # elif 'registrant_name' in w.keys() and w['registrant_name'] not in ["", None]:
+        #     wf_value = w['registrant_name'].lower()
+        if w.name is None:
             return res
         wf_value = ""
         # Get the registrant organization if available, otherwise try to get the registrant name
-        if 'org' in w.keys() and w['org'] not in ["", None]:
-            wf_value = w['org'].lower()
-        elif 'registrant_name' in w.keys() and w['registrant_name'] not in ["", None]:
-            wf_value = w['registrant_name'].lower()
-            
-        if wf_value in ["", "redacted for privacy"]:
+        if w.registrant.lower() not in ["", None, "redacted for privacy"]:
+            wf_value = w.registrant.lower()
+
+        if wf_value == "":
             return res
         
-        wf_types = ["company"]
-    else:
-        wf_types = ["keyword", "owner", "company"]
+        # w = _get_wf_whois(apikey, asset)
+        # if w is None:
+        #     return res
+        
+        # print(w)
+        # # if "registrant_contact" in w.keys() and w['registrant_contact']
+        # if w["registrant"].lower() not in ["", None, "redacted for privacy"]:
+        #     wf_value = w.registrant.lower()
+        
+        wf_types = ["company", "owner"]
+    elif datatype == "keyword":
+        if validators.email(asset):
+            wf_types = ["email"]
+        else:
+            wf_types = ["keyword", "owner", "company"]
         wf_value = asset
+    else:
+        return res
         
     # Limit max pages to rationalize credit usage
     max_pages = APP_WF_MAX_PAGE
@@ -347,7 +377,7 @@ def _reverse_whois(scan_id, asset, datatype):
     
     try:
         for wf_type in wf_types:
-            wf_url = _get_wf_url(apikey, wf_type, wf_value)
+            wf_url = _get_wf_reverse_url(apikey, wf_type, wf_value)
             wf_domains = _get_wf_domains(wf_url, max_pages)
             domains.extend(wf_domains)
     except Exception as e:
@@ -528,15 +558,23 @@ def _get_whois(scan_id, asset):
         return res
 
     if is_domain:
-        w = whois.whois(asset)
-        print(w)
-        if w.domain_name is None:
+        # w = whois.whois(asset)
+        # if w.domain_name is None:
+        #     res.update({
+        #         asset: {"errors": w}
+        #     })
+        # else:
+        #     res.update({
+        #         asset: {"raw": {'dict': w, 'text': w.text}, "text": w.text, "type": "domain"}
+        #     })
+        w = whois.query(asset, force=True, include_raw_whois_text=True)
+        if w.name is None:
             res.update({
-                asset: {"errors": w}
+                asset: {"errors": w.__dict__}
             })
         else:
             res.update({
-                asset: {"raw": {'dict': w, 'text': w.text}, "text": w.text, "type": "domain"}
+                asset: {"raw": {'dict': w.__dict__, 'text': w.text}, "text": w.text, "type": "domain"}
             })
     if is_ip:
         w = IPWhois(str(asset).strip()).lookup_rdap()
