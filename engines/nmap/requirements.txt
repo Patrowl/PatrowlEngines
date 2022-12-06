@@ -13,3 +13,4 @@ PatrowlEnginesUtils>=1.0.2
 requests==2.20.0
 urllib3==1.24.3
 Werkzeug==2.0.2
+psutil

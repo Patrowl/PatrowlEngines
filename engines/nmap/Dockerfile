@@ -19,7 +19,8 @@ COPY libs/ libs/
 
 # Install any needed packages specified in requirements.txt
 RUN apk add --update \
-    linux-headers \
+	linux-headers \
+	libffi-dev \
     sudo \
     python3 \
     python3-dev \
