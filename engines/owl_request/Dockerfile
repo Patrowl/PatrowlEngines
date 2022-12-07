@@ -1,5 +1,5 @@
-FROM alpine:latest
-LABEL Name="Request\ \(Patrowl engine\)" Version="1.4.26"
+FROM alpine:3.16.3
+LABEL Name="Request\ \(Patrowl engine\)" Version="1.4.27"
 
 # Create the target repo
 RUN mkdir -p /opt/patrowl-engines/owl_request

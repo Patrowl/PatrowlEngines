@@ -40,7 +40,7 @@ WORKDIR /wpscan
 RUN /usr/local/bundle/bin/wpscan --update --verbose
 
 # -- Patrowl Engine
-# FROM alpine:latest
+# FROM alpine:3.16.3
 # MAINTAINER Patrowl.io "getsupport@patrowl.io"
 # LABEL Name="Wpscan\ \(Patrowl engine\)" Version="1.4.12"
 #

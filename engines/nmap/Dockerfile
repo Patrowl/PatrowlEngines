@@ -1,5 +1,5 @@
-FROM alpine:latest
-LABEL Name="Nmap\ \(Patrowl engine\)" Version="1.4.36"
+FROM alpine:3.16.3
+LABEL Name="Nmap\ \(Patrowl engine\)" Version="1.4.38"
 
 # Set the working directory
 RUN mkdir -p /opt/patrowl-engines/nmap
@@ -19,7 +19,8 @@ COPY libs/ libs/
 
 # Install any needed packages specified in requirements.txt
 RUN apk add --update \
-    linux-headers \
+	linux-headers \
+	libffi-dev \
     sudo \
     python3 \
     python3-dev \
