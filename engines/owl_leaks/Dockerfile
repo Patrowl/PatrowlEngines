@@ -1,5 +1,5 @@
-FROM alpine:latest
-LABEL Name="Patrowl\ Data\ Leaks\ \(Patrowl engine\)" Version="1.4.28"
+FROM alpine:3.16.3
+LABEL Name="Patrowl\ Data\ Leaks\ \(Patrowl engine\)" Version="1.4.29"
 
 # Install dependencies
 RUN apk add --update \
