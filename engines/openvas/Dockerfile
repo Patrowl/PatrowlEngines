@@ -1,5 +1,5 @@
-FROM alpine:latest
-LABEL Name="OpenVAS\ \(Patrowl engine\)" Version="1.4.31"
+FROM alpine:3.16.3
+LABEL Name="OpenVAS\ \(Patrowl engine\)" Version="1.4.32"
 
 ENV CRYPTOGRAPHY_DONT_BUILD_RUST=1
 

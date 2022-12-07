@@ -1,5 +1,5 @@
-FROM alpine:latest
-LABEL Name="SHHGit\ \(Patrowl engine\)" Version="1.4.31"
+FROM alpine:3.16.3
+LABEL Name="SHHGit\ \(Patrowl engine\)" Version="1.4.32"
 
 # Create the target repo
 RUN mkdir -p /opt/patrowl-engines/shhgit
