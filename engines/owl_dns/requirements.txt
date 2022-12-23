@@ -19,3 +19,4 @@ urllib3
 validators
 werkzeug
 ipwhois
+setuptools>=65.5.1 # not directly required, pinned by Snyk to avoid a vulnerability
