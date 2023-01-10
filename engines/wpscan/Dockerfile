@@ -25,7 +25,7 @@ RUN chmod -R a+r /usr/local/bundle
 
 # -- WPScan Deployment
 FROM ruby:3.0.2-alpine
-LABEL Name="WPScan\ \(Patrowl engine\)" Version="1.4.27"
+LABEL Name="WPScan\ \(Patrowl engine\)" Version="1.4.28"
 
 RUN adduser -h /wpscan -g WPScan -D wpscan
 COPY --from=builder /usr/local/bundle /usr/local/bundle
@@ -40,7 +40,7 @@ WORKDIR /wpscan
 RUN /usr/local/bundle/bin/wpscan --update --verbose
 
 # -- Patrowl Engine
-# FROM alpine:latest
+# FROM alpine:3.16.3
 # MAINTAINER Patrowl.io "getsupport@patrowl.io"
 # LABEL Name="Wpscan\ \(Patrowl engine\)" Version="1.4.12"
 #

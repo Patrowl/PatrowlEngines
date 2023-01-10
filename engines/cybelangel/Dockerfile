@@ -1,5 +1,5 @@
-FROM alpine:latest
-LABEL Name="CybelAngel\ \(Patrowl engine\)" Version="1.4.28"
+FROM alpine:3.16.3
+LABEL Name="CybelAngel\ \(Patrowl engine\)" Version="1.4.29"
 
 # Create the target repo
 RUN mkdir -p /opt/patrowl-engines/cybelangel

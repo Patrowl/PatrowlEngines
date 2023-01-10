@@ -1,6 +1,6 @@
 {
   "name": "Wpscan API",
-  "version": "1.4.18",
+  "version": "1.4.28",
   "description": "Wpscan API",
   "allowed_asset_types": ["fqdn", "ip", "domain", "url"],
   "options": {
