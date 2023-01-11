@@ -38,7 +38,7 @@ APP_PORT = 5023
 APP_MAXSCANS = int(os.environ.get('APP_MAXSCANS', 5))
 APP_ENGINE_NAME = "wpscan"
 APP_BASE_DIR = dirname(realpath(__file__))
-VERSION = "1.4.25"
+VERSION = "1.4.28"
 
 engine = PatrowlEngine(
     app=app,
@@ -379,6 +379,8 @@ def _scan_urls(scan_id, asset):
 
     wpscan_cmd += " --url '{}'".format(wordpress_hostname)
     wpscan_cmd += " --disable-tls-checks"
+    wpscan_cmd += " --update"  # Update database
+    wpscan_cmd += " --clear-cache" # Clear cache
 
     # Patrowl specific User-Agent
     wpscan_cmd += " --ua 'Patrowl Engine WPSCAN v{}'".format(VERSION)
@@ -403,6 +405,8 @@ def _scan_urls(scan_id, asset):
     extra_args = engine.scanner["options"]["extra_args"]
     if re.fullmatch("[a-zA-Z0-9\-_\ :/\.]+", extra_args):
         wpscan_cmd += " " + extra_args
+    
+    LOG.debug(wpscan_cmd)
 
     engine.scans[scan_id]["reports"][asset]["proc"] = subprocess.Popen(wpscan_cmd, shell=True, stdout=open("/dev/null", "w"), stderr=open("/dev/null", "w"))
     engine.scans[scan_id]["reports"][asset]["proc_cmd"] = wpscan_cmd
