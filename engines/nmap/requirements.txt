@@ -10,6 +10,7 @@ itsdangerous==2.0.0
 Jinja2==2.11.3
 MarkupSafe==1.1.1
 PatrowlEnginesUtils>=1.0.2
+psutil==5.9.4
 requests==2.20.0
 setuptools==65.5.1 # not directly required, pinned by Snyk to avoid a vulnerability
 urllib3==1.24.3
