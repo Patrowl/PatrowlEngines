@@ -6,7 +6,7 @@ decorator==5.1.1
 dnslib==0.9.23
 dnspython #==2.0.0
 Flask==2.0.1
-future==0.18.2
+future==0.18.3
 gunicorn==20.1.0
 idna==3.4
 ipwhois==1.2.0
