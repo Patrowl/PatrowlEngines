@@ -10,7 +10,7 @@ flask==1.1.2
 idna==2.5
 ipaddress==1.0.18
 itsdangerous==0.24
-Jinja2==2.10.1
+Jinja2==2.11.3
 MarkupSafe==1.1.1
 netaddr==0.7.19
 pycparser==2.18
