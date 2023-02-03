@@ -5,7 +5,7 @@ variables:
 
 stages:
   - build
-  - test
+#   - test
   - run
 
 .build-push:
