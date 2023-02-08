@@ -224,6 +224,8 @@ def _scan_thread(scan_id):
             cmd += " --max-parallelism {}".format(options.get(opt_key))
         if opt_key == "min-hostgroup":  # /!\ @todo / Security issue: Sanitize parameters here
             cmd += " --min-hostgroup {}".format(options.get(opt_key))
+        if opt_key == "timing-template":
+            cmd += " -T{}".format(options.get(opt_key))
 
     cmd += " -iL " + hosts_filename
     
