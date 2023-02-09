@@ -240,7 +240,7 @@ def start_scan():
     
     if 'do_reverse_whois' in scan['options'].keys() and data['options']['do_reverse_whois']:
         for asset in data["assets"]:
-            if asset["datatype"] in ["domain", "fqdn", "keyword"]:
+            if asset["datatype"] in ["domain", "fqdn", "keyword", "email"]:
                 th = this.pool.submit(_reverse_whois, scan_id, asset["value"], asset["datatype"])
                 this.scans[scan_id]['futures'].append(th)
 
@@ -361,7 +361,8 @@ def _reverse_whois(scan_id, asset, datatype):
         #     wf_value = w.registrant.lower()
         
         wf_types = ["company", "owner"]
-    elif datatype == "keyword":
+    elif datatype in ["keyword", "email"]:
+        print(asset)
         if validators.email(asset):
             wf_types = ["email"]
         else:
