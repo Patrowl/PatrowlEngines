@@ -20,5 +20,5 @@ setuptools #==65.5.1  # not directly required, pinned by Snyk to avoid a vulnera
 six==1.16.0
 urllib3==1.26.13
 validators==0.20.0
-Werkzeug==2.2.2
+Werkzeug==2.2.3
 whois==0.8
