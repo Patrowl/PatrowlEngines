@@ -22,3 +22,4 @@ urllib3==1.26.13
 validators==0.20.0
 Werkzeug==2.2.2
 whois==0.8
+netaddr==0.8.0
