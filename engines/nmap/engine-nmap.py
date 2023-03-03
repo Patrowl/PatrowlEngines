@@ -10,6 +10,7 @@ import threading
 import urllib
 import time
 import datetime
+from collections import defaultdict
 from shlex import split
 from urllib.parse import urlparse
 from copy import deepcopy
@@ -617,11 +618,17 @@ def _parse_report(filename, scan_id):
         if host.find('os') is not None:
             osinfo = host.find('os').find('osmatch')
             if osinfo is not None:
+                os_data = defaultdict(list)
+                os_data['name'] = osinfo.get('name')
+                os_data['accuracy'] = osinfo.get('accuracy')
+                for osclass in osinfo.findall('osclass'):
+                    os_data['cpe'].append(osclass.find('cpe').text)
                 res.append(deepcopy(_add_issue(scan_id, target, ts,
                     "OS: {}".format(osinfo.get('name')),
                     "The scan detected that the host run in OS '{}' (accuracy={}%)"
                         .format(osinfo.get('name'), osinfo.get('accuracy')),
                     type="host_osinfo",
+                    raw=os_data,
                     confidence="undefined")))
 
         openports = False
