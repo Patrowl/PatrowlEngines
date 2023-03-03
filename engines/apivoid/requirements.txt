@@ -8,7 +8,7 @@ itsdangerous==2.0
 Jinja2==2.11.3
 MarkupSafe==1.1.1
 requests==2.28.1
-urllib3==1.24.3
+urllib3==1.26.5
 werkzeug==2.2.3
 PatrowlEnginesUtils>=1.0.1
 ratelimit==2.2.1
