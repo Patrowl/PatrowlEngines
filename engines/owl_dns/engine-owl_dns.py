@@ -9,6 +9,8 @@ from ipwhois import IPWhois
 from modules.dnstwist import dnstwist
 from modules.dkimsignatures import dkimlist
 from concurrent.futures import ThreadPoolExecutor
+from netaddr import IPAddress, IPNetwork
+from netaddr.core import AddrFormatError
 import re
 
 app = Flask(__name__)
@@ -60,8 +62,13 @@ def _loadconfig():
         dnstwist(this.scanner['dnstwist_bin_path'])
 
     else:
-        app.logger.error("Error: config file '{}' not found".format(conf_file))
+        app.logger.error(f"Error: config file '{conf_file}' not found")
         return {"status": "error", "reason": "config file not found"}
+    
+    if not os.path.isfile(this.scanner['external_ip_ranges_path']):
+        this.scanner['status'] = "ERROR"
+        app.logger.error("Error: path to external IP ranges (CDN, WAF, Cloud) not found")
+        return {"status": "ERROR", "reason": "path to external IP ranges (CDN, WAF, Cloud) not found."}
     
     this.wf_apitokens = []
     for apikey in this.scanner["whoisfreak_api_tokens"]:
@@ -240,8 +247,26 @@ def start_scan():
     
     if 'do_reverse_whois' in scan['options'].keys() and data['options']['do_reverse_whois']:
         for asset in data["assets"]:
-            if asset["datatype"] in ["domain", "fqdn", "keyword"]:
+            if asset["datatype"] in ["domain", "fqdn", "keyword", "email"]:
                 th = this.pool.submit(_reverse_whois, scan_id, asset["value"], asset["datatype"])
+                this.scans[scan_id]['futures'].append(th)
+    
+    if 'do_cdn_check' in scan['options'].keys() and data['options']['do_cdn_check']:
+        for asset in data["assets"]:
+            if asset["datatype"] in ["ip", "domain", "fqdn"]:
+                th = this.pool.submit(_cdn_check, scan_id, asset["value"], asset["datatype"])
+                this.scans[scan_id]['futures'].append(th)
+    
+    if 'do_waf_check' in scan['options'].keys() and data['options']['do_waf_check']:
+        for asset in data["assets"]:
+            if asset["datatype"] == "ip":
+                th = this.pool.submit(_waf_check, scan_id, asset["value"], asset["datatype"])
+                this.scans[scan_id]['futures'].append(th)
+    
+    if 'do_cloud_check' in scan['options'].keys() and data['options']['do_cloud_check']:
+        for asset in data["assets"]:
+            if asset["datatype"] == "ip":
+                th = this.pool.submit(_cloud_check, scan_id, asset["value"], asset["datatype"])
                 this.scans[scan_id]['futures'].append(th)
 
     res.update({
@@ -361,7 +386,8 @@ def _reverse_whois(scan_id, asset, datatype):
         #     wf_value = w.registrant.lower()
         
         wf_types = ["company", "owner"]
-    elif datatype == "keyword":
+    elif datatype in ["keyword", "email"]:
+        print(asset)
         if validators.email(asset):
             wf_types = ["email"]
         else:
@@ -397,6 +423,112 @@ def _reverse_whois(scan_id, asset, datatype):
             this.scans[scan_id]['findings']['reverse_whois'] = {}
         if bool(res):
             this.scans[scan_id]['findings']['reverse_whois'].update(res)
+
+    return res
+
+def is_ipaddr_in_subnet(ip: str, subnet: str) -> bool:
+    """Check if the IP address is part of the subnet"""
+    try:
+        if IPAddress(ip) in IPNetwork(subnet):
+            return True
+    except (TypeError, ValueError, AddrFormatError):
+        pass
+    return False
+
+
+def _check_ip(ip: str, record_types: list = []) -> dict:
+    """Check IP from CDN, WAF, Cloud providers public records."""
+    
+    with open(this.scanner['external_ip_ranges_path']) as all_data_file:
+        all_data = json.loads(all_data_file.read())
+        
+    all_data_types = all_data.keys()  # ["cdn", "waf", "cloud", "parking"]
+    data_types = []
+    ip_provider = ""
+    
+    if len(record_types) > 0:
+        for record_type in record_types:
+            if record_type not in all_data.keys():
+                all_data_types = [record_type]
+        
+    for data_type in all_data_types:
+        for provider in all_data[data_type].keys():
+            for subnet in all_data[data_type][provider]["ipv4"]:
+                if is_ipaddr_in_subnet(ip, subnet):
+                    data_types.append(data_type)
+                    ip_provider = provider
+                    break
+    
+    if ip_provider == "":  # no results
+        return {}
+    return {"attributes": data_types, "provider": ip_provider}
+
+def __get_ip_targets(asset : str, datatype: str) -> list:
+    targets = []
+    if datatype == "ip":
+        targets = [asset]
+    elif datatype in ["domain", "fqdn"]:
+        try:
+            targets = socket.gethostbyname_ex(asset)[2]
+        except Exception:
+            return []
+    
+    return targets
+    
+
+def _cdn_check(scan_id: str, asset: str, datatype: str) -> dict:
+    targets = __get_ip_targets(asset, datatype)
+    
+    if len(targets) == 0:
+        return {}
+    
+    for target in targets:
+        res = _check_ip(target, ["cdn"])
+
+        scan_lock = threading.RLock()
+        with scan_lock:
+            if 'cdn_check' not in this.scans[scan_id]['findings'].keys():
+                this.scans[scan_id]['findings']['cdn_check'] = {}
+            if bool(res):
+                this.scans[scan_id]['findings']['cdn_check'].update({asset: res})
+
+    return res
+
+
+def _waf_check(scan_id: str, asset: str, datatype: str) -> dict:
+    targets = __get_ip_targets(asset, datatype)
+    
+    if len(targets) == 0:
+        return {}
+    
+    for target in targets:
+        res = _check_ip(target, ["waf"])
+
+        scan_lock = threading.RLock()
+        with scan_lock:
+            if 'waf_check' not in this.scans[scan_id]['findings'].keys():
+                this.scans[scan_id]['findings']['waf_check'] = {}
+            if bool(res):
+                this.scans[scan_id]['findings']['waf_check'].update({asset: res})
+
+    return res
+
+
+def _cloud_check(scan_id: str, asset: str, datatype: str) -> dict:
+    targets = __get_ip_targets(asset, datatype)
+    
+    if len(targets) == 0:
+        return {}
+    
+    for target in targets:
+        res = _check_ip(target, ["cloud"])
+
+        scan_lock = threading.RLock()
+        with scan_lock:
+            if 'cloud_check' not in this.scans[scan_id]['findings'].keys():
+                this.scans[scan_id]['findings']['cloud_check'] = {}
+            if bool(res):
+                this.scans[scan_id]['findings']['cloud_check'].update({asset: res})
 
     return res
 
@@ -793,11 +925,11 @@ def scan_status(scan_id):
                 all_threads_finished = False
                 break
             else:
-                try:
-                    dnstwist_asset, dnstwist_results = f.result()
-                    this.scans[scan_id]['dnstwist'][dnstwist_asset] = dnstwist_results
-                except Exception:
-                    pass
+                # try:
+                #     dnstwist_asset, dnstwist_results = f.result()
+                #     this.scans[scan_id]['dnstwist'][dnstwist_asset] = dnstwist_results
+                # except Exception:
+                #     pass
                 this.scans[scan_id]['futures'].remove(f)
 
     if 'threads' not in this.scans[scan_id] and 'futures' not in this.scans[scan_id]:
@@ -862,12 +994,13 @@ def _parse_results(scan_id):
     ts = int(time.time() * 1000)
 
     # dnstwist
-
+    # print(this.scans[scan_id]['dnstwist'].keys())
     if 'dnstwist' in this.scans[scan_id].keys():
         for asset in this.scans[scan_id]['dnstwist'].keys():
             try:
                 dnstwist_issues = dnstwist.parse_results(
-                    ts, asset, this.scans[scan_id]['dnstwist'][asset])
+                    ts, asset, this.scans[scan_id]['dnstwist'][asset]
+                )
             except KeyError:
                 app.logger.error("dnstwist: missing result (domain-name)")
                 dnstwist_issues = []
@@ -1081,6 +1214,75 @@ def _parse_results(scan_id):
                 },
                 "type": "reverse_whois_data",
                 "raw": scan['findings']['reverse_whois'][asset],
+                "timestamp": ts
+            })
+
+    # is IP behind a CDN ?
+    if 'cdn_check' in scan['findings'].keys():
+        for asset in scan['findings']['cdn_check'].keys():
+            nb_vulns['info'] += 1
+            provider = scan['findings']['cdn_check'][asset]["provider"]
+            issues.append({
+                "issue_id": len(issues) + 1,
+                "severity": "info", "confidence": "certain",
+                "target": {
+                    "addr": [asset],
+                    "protocol": "domain"
+                },
+                "title": f"Behind CDN: '{provider}'",
+                "description": f"Behind CDN: '{provider}'",
+                "solution": "n/a",
+                "metadata": {
+                    "tags": ["cdn", provider]
+                },
+                "type": "cdn_check",
+                "raw": scan['findings']['cdn_check'][asset],
+                "timestamp": ts
+            })
+
+    # is IP behind a WAF ?
+    if 'waf_check' in scan['findings'].keys():
+        for asset in scan['findings']['waf_check'].keys():
+            nb_vulns['info'] += 1
+            provider = scan['findings']['waf_check'][asset]["provider"]
+            issues.append({
+                "issue_id": len(issues) + 1,
+                "severity": "info", "confidence": "certain",
+                "target": {
+                    "addr": [asset],
+                    "protocol": "domain"
+                },
+                "title": f"Behind WAF: '{provider}'",
+                "description": f"Behind WAF: '{provider}'",
+                "solution": "n/a",
+                "metadata": {
+                    "tags": ["waf", provider]
+                },
+                "type": "waf_check",
+                "raw": scan['findings']['waf_check'][asset],
+                "timestamp": ts
+            })
+
+    # is IP supported by a public Cloud ?
+    if 'cloud_check' in scan['findings'].keys():
+        for asset in scan['findings']['cloud_check'].keys():
+            nb_vulns['info'] += 1
+            provider = scan['findings']['cloud_check'][asset]["provider"]
+            issues.append({
+                "issue_id": len(issues) + 1,
+                "severity": "info", "confidence": "certain",
+                "target": {
+                    "addr": [asset],
+                    "protocol": "domain"
+                },
+                "title": f"Behind Cloud Provider: '{provider}'",
+                "description": f"Behind Cloud Provider: '{provider}'",
+                "solution": "n/a",
+                "metadata": {
+                    "tags": ["cloud", provider]
+                },
+                "type": "cloud_check",
+                "raw": scan['findings']['cloud_check'][asset],
                 "timestamp": ts
             })
 

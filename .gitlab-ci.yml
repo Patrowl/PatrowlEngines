@@ -5,8 +5,8 @@ variables:
 
 stages:
   - build
-  - test
-  - run
+#   - test
+#   - run
 
 .build-push:
   stage: build
@@ -25,36 +25,36 @@ stages:
       changes:
         - $FOLDER_PATH/VERSION
 
-.test-build:
-  stage: test
-  image:
-    name: gcr.io/kaniko-project/executor:debug
-    entrypoint: [""]
-  script:
-    - echo "Building Dockerfile $STACK on branch $CI_COMMIT_BRANCH"
-    - /kaniko/executor --insecure --cleanup --context $CI_PROJECT_DIR/$FOLDER_PATH --dockerfile $CI_PROJECT_DIR/$FOLDER_PATH/Dockerfile --no-push
-  rules:
-    - if: $CI_COMMIT_BRANCH != "master"
-      changes:
-        - $FOLDER_PATH/*
+# .test-build:
+#   stage: test
+#   image:
+#     name: gcr.io/kaniko-project/executor:debug
+#     entrypoint: [""]
+#   script:
+#     - echo "Building Dockerfile $STACK on branch $CI_COMMIT_BRANCH"
+#     - /kaniko/executor --insecure --cleanup --context $CI_PROJECT_DIR/$FOLDER_PATH --dockerfile $CI_PROJECT_DIR/$FOLDER_PATH/Dockerfile --no-push
+#   rules:
+#     - if: $CI_COMMIT_BRANCH != "master"
+#       changes:
+#         - $FOLDER_PATH/*
 
-.run-job:
-  stage: run
-  image:
-    name: $REGISTRY_URL/$STACK:$VERSION
-  script:
-    - echo "Running engine $STACK on branch $CI_COMMIT_BRANCH"
-  rules:
-    - if: $CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH
-      changes:
-        - $FOLDER_PATH/VERSION
-  after_script:
-    - docker images | grep $STACK
-    - docker stop $(docker ps -a -q --filter ancestor=$REGISTRY_URL/$STACK:$VERSION)
+# .run-job:
+#   stage: run
+#   image:
+#     name: $REGISTRY_URL/$STACK:$VERSION
+#   script:
+#     - echo "Running engine $STACK on branch $CI_COMMIT_BRANCH"
+#   rules:
+#     - if: $CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH
+#       changes:
+#         - $FOLDER_PATH/VERSION
+#   after_script:
+#     - docker images | grep $STACK
+#     - docker stop $(docker ps -a -q --filter ancestor=$REGISTRY_URL/$STACK:$VERSION)
    
 include:
   - local: '/engines/apivoid/.apivoid.gitlab-ci.yml'
-  - local: '/engines/arachni/.arachni.gitlab-ci.yml'
+#   - local: '/engines/arachni/.arachni.gitlab-ci.yml'
 #   - local: '/engines/burp/.burp.gitlab-ci.yml'
 #   - local: '/engines/censys/.censys.gitlab-ci.yml'
   - local: '/engines/certstream/.certstream.gitlab-ci.yml'

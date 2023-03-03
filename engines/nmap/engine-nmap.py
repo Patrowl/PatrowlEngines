@@ -10,6 +10,7 @@ import threading
 import urllib
 import time
 import datetime
+from collections import defaultdict
 from shlex import split
 from urllib.parse import urlparse
 from copy import deepcopy
@@ -619,11 +620,17 @@ def _parse_report(filename, scan_id):
         if host.find('os') is not None:
             osinfo = host.find('os').find('osmatch')
             if osinfo is not None:
+                os_data = defaultdict(list)
+                os_data['name'] = osinfo.get('name')
+                os_data['accuracy'] = osinfo.get('accuracy')
+                for osclass in osinfo.findall('osclass'):
+                    os_data['cpe'].append(osclass.find('cpe').text)
                 res.append(deepcopy(_add_issue(scan_id, target, ts,
                     "OS: {}".format(osinfo.get('name')),
                     "The scan detected that the host run in OS '{}' (accuracy={}%)"
                         .format(osinfo.get('name'), osinfo.get('accuracy')),
                     type="host_osinfo",
+                    raw=os_data,
                     confidence="undefined")))
 
         openports = False
@@ -658,14 +665,20 @@ def _parse_report(filename, scan_id):
 
                     # Check if a CPE has been identified
                     cpe_info = ""
-                    cpe_link = None
+                    cpe_links = []
                     cpe_refs = {}
-                    if port.find('service').find("cpe") is not None:
-                        cpe_vector = port.find('service').find("cpe").text
-                        cpe_link = _get_cpe_link(cpe_vector)
-                        cpe_info = f"\n The following CPE vector has been identified: {cpe_vector}"
-                        cpe_refs = {"CPE": [cpe_vector]}
-                        port_data.update({"cpe": [cpe_vector]})
+                    cpe_vectors = []
+                    for cpe in port.find('service').findall("cpe"):
+                        if cpe is not None:
+                            cpe_vector = cpe.text
+                            cpe_link = _get_cpe_link(cpe_vector)
+                            cpe_info += f"\n The following CPE vector has been identified: {cpe_vector}"
+                            cpe_refs = {"CPE": [cpe_vector]}
+                            cpe_vectors.append(cpe_vector)
+                            cpe_links.append(cpe_link)
+                    if cpe_vectors:
+                        cpe_refs = {"CPE": cpe_vectors}
+                        port_data.update({"cpe": cpe_vectors})
 
                     # <service name="http" product="Pulse Secure VPN gateway http config" devicetype="security-misc" tunnel="ssl" method="probed" conf="10"/>
                     # Detection method
@@ -710,7 +723,7 @@ def _parse_report(filename, scan_id):
                             .format(svc_name, proto, portid, cpe_info, product),
                         type="port_info",
                         raw=port_data,
-                        links=[cpe_link],
+                        links=cpe_links,
                         vuln_refs=cpe_refs)))
 
                 if port_state not in ["filtered", "closed"]:
