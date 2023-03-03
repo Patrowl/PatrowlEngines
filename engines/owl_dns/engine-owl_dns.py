@@ -415,7 +415,7 @@ def _recursive_spf_lookups(spf_line):
     return spf_lookups
 
 def _do_dmarc_check(scan_id,asset_value):
-    dmarc_dict = {"no_dmarc_record": "high"}
+    dmarc_dict = {"no_dmarc_record": "info"}
     dns_records = __dns_resolve_asset(asset_value, "TXT")
     for record in dns_records:
         for value in record["values"]:
@@ -477,6 +477,8 @@ def _perform_spf_check(scan_id,asset_value):
                     spf_dict["~all_spf_found"] = "medium"
                 elif "?all" in value:
                     spf_dict["no_spf_all_or_?all"] = "high"
+                elif "-all" in value:
+                    spf_dict["-all_spf_found?all"] = "info"
                 elif "all" not in value:
                     spf_dict["no_spf_all_or_?all"] = "high"
 
@@ -919,16 +921,20 @@ def _parse_results(scan_id):
             spf_check = scan['findings']['spf_dict'][asset]
             spf_check_dns_records = scan['findings']['spf_dict_dns_records'][asset]
             spf_hash = hashlib.sha1(str(spf_check_dns_records).encode("utf-8")).hexdigest()[:6]
-            issues.append({
+            spf_check.pop('spf_lookups')
+            for c in spf_check:
+                h = str(c) + str(spf_check_dns_records)
+                spf_hash = hashlib.sha1(h.encode('utf-8')).hexdigest()[:6]
+                issues.append({
                 "issue_id": len(issues) + 1,
-                "severity": "info", "confidence": "certain",
+                "severity": spf_check[c], "confidence": "certain",
                 "target": {
                     "addr": [asset],
                     "protocol": "domain"
                 },
-                "title": "SPF check for '{}' (HASH: {})".format(
+                "title": "SPF found for '{}' (HASH: {})".format(
                     asset, spf_hash),
-                "description": "SPF check for '{}':\n\n{}".format(asset, str(spf_check)),
+                "description": "{}\n".format(c),
                 "solution": "n/a",
                 "metadata": {
                     "tags": ["domains", "spf"]
@@ -966,17 +972,19 @@ def _parse_results(scan_id):
         for asset in scan['findings']['dmarc_dict'].keys():
             dmarc_check = scan['findings']['dmarc_dict'][asset]
             dmarc_check_dns_records = scan['findings']['dmarc_dict_dns_records'][asset]
-            dmarc_hash = hashlib.sha1(str(dmarc_check_dns_records).encode("utf-8")).hexdigest()[:6]
-            issues.append({
+            for c in dmarc_check:
+                h = str(c) + str(dmarc_check_dns_records)
+                dmarc_hash = hashlib.sha1(h.encode('utf-8')).hexdigest()[:6]
+                issues.append({
                 "issue_id": len(issues) + 1,
-                "severity": "info", "confidence": "certain",
+                "severity": dmarc_check[c], "confidence": "certain",
                 "target": {
                     "addr": [asset],
                     "protocol": "domain"
                 },
-                "title": "DMARC check for '{}' (HASH: {})".format(
+                "title": "DMARC for '{}' (HASH: {})".format(
                     asset, dmarc_hash),
-                "description": "DMARC check for '{}':\n\n{}".format(asset, str(dmarc_check)),
+                "description": "{}\n".format(c),
                 "solution": "n/a",
                 "metadata": {
                     "tags": ["domains", "dmarc"]
