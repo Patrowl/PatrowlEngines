@@ -1,7 +1,7 @@
 #!/usr/bin/env -S python3 -OO
 # coding:utf8
 
-# Copyright (c) 2021-2022, Patrowl and contributors
+# Copyright (c) 2021-2023, Patrowl and contributors
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
