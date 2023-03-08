@@ -1,5 +1,5 @@
 FROM ubuntu:20.04
-LABEL Name="Arachni\ \(Patrowl engine\)" Version="1.4.28"
+LABEL Name="Arachni\ \(Patrowl engine\)" Version="1.4.29"
 
 ENV VERSION_FRAMEWORK 1.5.1
 ENV VERSION_ARACHNI $VERSION_FRAMEWORK-0.5.12
