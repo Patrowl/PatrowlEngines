@@ -1,5 +1,5 @@
 FROM ubuntu:20.04
-LABEL Name="Patrowl\ DNS\ \(Patrowl engine\)" Version="1.5.0-rc1"
+LABEL Name="Patrowl\ DNS\ \(Patrowl engine\)" Version="1.5.0-rc2"
 
 # Install dependencies
 RUN apt-get update && \
