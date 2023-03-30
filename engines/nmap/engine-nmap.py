@@ -957,7 +957,7 @@ def getreport(scan_id):
         f"{BASE_DIR}/results",
         f"nmap_{scan_id}.json",
         mimetype='application/json',
-        attachment_filename=f"nmap_{scan_id}.json",
+        download_name=f"nmap_{scan_id}.json",
         as_attachment=True
     )
 
