@@ -268,6 +268,12 @@ def start_scan():
             if asset["datatype"] == "ip":
                 th = this.pool.submit(_cloud_check, scan_id, asset["value"], asset["datatype"])
                 this.scans[scan_id]['futures'].append(th)
+    
+    if 'do_saas_check' in scan['options'].keys() and data['options']['do_saas_check']:
+        for asset in data["assets"]:
+            if asset["datatype"] == "ip":
+                th = this.pool.submit(_saas_check, scan_id, asset["value"], asset["datatype"])
+                this.scans[scan_id]['futures'].append(th)
 
     res.update({
         "status": "accepted",
@@ -426,6 +432,7 @@ def _reverse_whois(scan_id, asset, datatype):
 
     return res
 
+
 def is_ipaddr_in_subnet(ip: str, subnet: str) -> bool:
     """Check if the IP address is part of the subnet"""
     try:
@@ -437,31 +444,33 @@ def is_ipaddr_in_subnet(ip: str, subnet: str) -> bool:
 
 
 def _check_ip(ip: str, record_types: list = []) -> dict:
-    """Check IP from CDN, WAF, Cloud providers public records."""
+    """Check IP from CDN, WAF, Cloud, SaaS providers public records."""
     
     with open(this.scanner['external_ip_ranges_path']) as all_data_file:
         all_data = json.loads(all_data_file.read())
         
-    all_data_types = all_data.keys()  # ["cdn", "waf", "cloud", "parking"]
+    all_data_types = all_data.keys()  # ["cdn", "waf", "cloud", "parking", "saas"]
     data_types = []
     ip_provider = ""
     
     if len(record_types) > 0:
         for record_type in record_types:
-            if record_type not in all_data.keys():
-                all_data_types = [record_type]
-        
-    for data_type in all_data_types:
+            if record_type in all_data.keys():
+                data_types.append(record_type)
+    else:
+        data_types = all_data_types
+    
+    for data_type in data_types:
         for provider in all_data[data_type].keys():
             for subnet in all_data[data_type][provider]["ipv4"]:
                 if is_ipaddr_in_subnet(ip, subnet):
-                    data_types.append(data_type)
                     ip_provider = provider
                     break
     
     if ip_provider == "":  # no results
         return {}
     return {"attributes": data_types, "provider": ip_provider}
+
 
 def __get_ip_targets(asset : str, datatype: str) -> list:
     targets = []
@@ -532,6 +541,26 @@ def _cloud_check(scan_id: str, asset: str, datatype: str) -> dict:
 
     return res
 
+
+def _saas_check(scan_id: str, asset: str, datatype: str) -> dict:
+    targets = __get_ip_targets(asset, datatype)
+    
+    if len(targets) == 0:
+        return {}
+    
+    for target in targets:
+        res = _check_ip(target, ["saas"])
+
+        scan_lock = threading.RLock()
+        with scan_lock:
+            if 'saas_check' not in this.scans[scan_id]['findings'].keys():
+                this.scans[scan_id]['findings']['saas_check'] = {}
+            if bool(res):
+                this.scans[scan_id]['findings']['saas_check'].update({asset: res})
+
+    return res
+
+
 def _recursive_spf_lookups(spf_line):
     spf_lookups = 0
     for word in spf_line.split(" "):
@@ -544,6 +573,7 @@ def _recursive_spf_lookups(spf_line):
                     if "spf" in value:
                         spf_lookups += _recursive_spf_lookups(value)
     return spf_lookups
+
 
 def _do_dmarc_check(scan_id,asset_value):
     dmarc_dict = {"no_dmarc_record": "info"}
@@ -566,6 +596,7 @@ def _do_dmarc_check(scan_id,asset_value):
         this.scans[scan_id]["findings"]["dmarc_dict"] = {asset_value: dmarc_dict}
         this.scans[scan_id]["findings"]["dmarc_dict_dns_records"] = {asset_value: dns_records}
 
+
 def _do_dkim_check(scan_id, asset_value):
     dkim_dict = {}
     found_dkim = False
@@ -586,6 +617,7 @@ def _do_dkim_check(scan_id, asset_value):
     with this.scan_lock:
         this.scans[scan_id]["findings"]["dkim_dict"] = {asset_value: dkim_dict}
         this.scans[scan_id]["findings"]["dkim_dict_dns_records"] = {asset_value: dns_records}
+
 
 def _perform_spf_check(scan_id,asset_value):
     dns_records = __dns_resolve_asset(asset_value, "TXT")
@@ -1283,6 +1315,29 @@ def _parse_results(scan_id):
                 },
                 "type": "cloud_check",
                 "raw": scan['findings']['cloud_check'][asset],
+                "timestamp": ts
+            })
+
+    # is IP supported by a SaaS service ?
+    if 'saas_check' in scan['findings'].keys():
+        for asset in scan['findings']['saas_check'].keys():
+            nb_vulns['info'] += 1
+            provider = scan['findings']['saas_check'][asset]["provider"]
+            issues.append({
+                "issue_id": len(issues) + 1,
+                "severity": "info", "confidence": "certain",
+                "target": {
+                    "addr": [asset],
+                    "protocol": "domain"
+                },
+                "title": f"Behind SaaS Provider: '{provider}'",
+                "description": f"Behind SaaS Provider: '{provider}'",
+                "solution": "n/a",
+                "metadata": {
+                    "tags": ["saas", provider]
+                },
+                "type": "saas_check",
+                "raw": scan['findings']['saas_check'][asset],
                 "timestamp": ts
             })
 
