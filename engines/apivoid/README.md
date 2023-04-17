@@ -19,8 +19,8 @@ set your APIKey in APIVOID_APIKEY environment variable
 
 ## Start with Docker
 ```
-docker build . -t engine-apivoid
-docker run -p5022:5022 -e APIVOID_APIKEY=XXXXX engine-apivoid
+docker build . -t patrowl/engine-apivoid
+docker run -p5022:5022 -e APIVOID_APIKEY=XXXXX patrowl/engine-apivoid
 ```
 
 ## Testing URLs
