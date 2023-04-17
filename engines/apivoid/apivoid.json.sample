@@ -1,6 +1,6 @@
 {
   "name": "APIVOID",
-  "version": "1.4.32",
+  "version": "1.4.32-rc1",
   "description": "APIVoid reputation API",
   "allowed_asset_types": ["domain", "fqdn", "ip", "url", "ip-subnet"],
   "apikeys": [
