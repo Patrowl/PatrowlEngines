@@ -1,5 +1,5 @@
 FROM alpine:3.16.3
-LABEL Name="APIVoid\ \(Patrowl engine\)" Version="1.4.31"
+LABEL Name="APIVoid\ \(Patrowl engine\)" Version="1.4.32"
 
 # Create the target repo
 RUN mkdir -p /opt/patrowl-engines/apivoid

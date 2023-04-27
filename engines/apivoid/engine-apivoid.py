@@ -7,12 +7,13 @@ import sys
 import json
 import time
 import requests
+import datetime
 import re
 from urllib.parse import urlparse
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, send_from_directory
 from concurrent.futures import ThreadPoolExecutor
 from ratelimit import limits, sleep_and_retry
-from netaddr import IPNetwork
+from netaddr import IPNetwork, IPAddress
 from netaddr.core import AddrFormatError
 
 from PatrowlEnginesUtils.PatrowlEngine import PatrowlEngine
@@ -25,7 +26,7 @@ APP_PORT = 5022
 APP_MAXSCANS = int(os.environ.get('APP_MAXSCANS', 25))
 APP_ENGINE_NAME = "apivoid"
 APP_BASE_DIR = os.path.dirname(os.path.realpath(__file__))
-VERSION = "1.4.28"
+VERSION = "1.4.32"
 
 engine = PatrowlEngine(
     app=app,
@@ -173,8 +174,14 @@ def stop_scan(scan_id):
 
 @app.route('/engines/apivoid/getreport/<scan_id>')
 def getreport(scan_id):
-    """Get report on finished scans."""
-    return engine.getreport(scan_id)
+    if not scan_id.isdecimal():
+        return jsonify({"status": "error", "reason": "scan_id must be numeric digits only"})
+    filepath = f"{APP_BASE_DIR}/results/apivoid_{scan_id}.json"
+
+    if not os.path.exists(filepath):
+        return jsonify({"status": "error", "reason": f"report file for scan_id '{scan_id}' not found"})
+
+    return send_from_directory(f"{APP_BASE_DIR}/results/", "apivoid_{scan_id}.json")
 
 
 def _loadconfig():
@@ -213,7 +220,7 @@ def start_scan():
     if len(engine.scans) == APP_MAXSCANS:
         res.update({
             "status": "error",
-            "reason": "Scan refused: max concurrent active scans reached ({})".format(APP_MAXSCANS)
+            "reason": f"Scan refused: max concurrent active scans reached ({APP_MAXSCANS})"
         })
         return jsonify(res)
 
@@ -223,7 +230,7 @@ def start_scan():
         res.update({
             "status": "refused",
             "details": {
-                "reason": "bad scanner status {}".format(engine.scanner['status'])
+                "reason": f"Bad scanner status {engine.scanner['status']}"
             }})
         return jsonify(res)
 
@@ -259,7 +266,7 @@ def start_scan():
         if asset["datatype"] not in engine.scanner["allowed_asset_types"]:
             res.update({
                 "status": "error",
-                "reason": "asset '{}' datatype '{}' not supported".format(asset["value"],asset["datatype"])
+                "reason": "asset '{}' has unsupported datatype '{}'".format(asset["value"], asset["datatype"])
             })
             return jsonify(res)
         
@@ -271,6 +278,12 @@ def start_scan():
         if asset["datatype"] == "url":
             parsed_uri = urlparse(asset["value"])
             asset["value"] = parsed_uri.netloc
+            
+            # Check the netloc type
+            if is_valid_ip(asset["value"]):
+                asset["datatype"] == "ip"
+            else:
+                asset["datatype"] == "domain"
 
         assets.append(asset["value"])
 
@@ -280,7 +293,7 @@ def start_scan():
         res.update({
             "status": "refused",
             "details": {
-                "reason": "scan '{}' already launched".format(data['scan_id']),
+                "reason": f"scan '{data['scan_id']}' already launched",
             }
         })
         return jsonify(res)
@@ -310,7 +323,7 @@ def start_scan():
 
     if 'domain_reputation' in scan['options'].keys() and data['options']['domain_reputation']:
         for asset in data["assets"]:
-            if asset["datatype"] == "domain":
+            if asset["datatype"] in ["domain", "fqdn"]:
                 th = this.pool.submit(_scan_domain_reputation, scan_id, asset["value"])
                 engine.scans[scan_id]['futures'].append(th)
 
@@ -330,7 +343,7 @@ def _scan_ip_reputation(scan_id, asset):
     try:
         engine.scans[scan_id]["findings"][asset]['ip_reputation'] = get_report_ip_reputation(scan_id, asset, apikey)
     except Exception as ex:
-        app.logger.error("_scan_ip_reputation failed {}".format(re.sub(r'/' + apikey + '/', r'/***/', ex.__str__())))
+        app.logger.error("_scan_ip_reputation failed: {}".format(re.sub(r'/' + apikey + '/', r'/***/', ex.__str__())))
         return False
 
     return True
@@ -343,7 +356,7 @@ def _scan_domain_reputation(scan_id, asset):
     try:
         engine.scans[scan_id]["findings"][asset]['domain_reputation'] = get_report_domain_reputation(scan_id, asset, apikey)
     except Exception as ex:
-        app.logger.error("_scan_domain_reputation failed {}".format(re.sub(r'/' + apikey + '/', r'/***/', ex.__str__())))
+        app.logger.error("_scan_domain_reputation failed: {}".format(re.sub(r'/' + apikey + '/', r'/***/', ex.__str__())))
         return False
 
     return True
@@ -365,7 +378,7 @@ def get_report_ip_reputation(scan_id, asset, apikey):
         response = requests.get(scan_url)
         # print(response.content)
     except Exception as ex:
-        app.logger.error("get_report_ip_reputation failed {}".format(re.sub(r'/' + apikey + '/', r'/***/', ex.__str__())))
+        app.logger.error("get_report_ip_reputation failed: {}".format(re.sub(r'/' + apikey + '/', r'/***/', ex.__str__())))
         return []
 
     return response.content
@@ -380,7 +393,7 @@ def get_report_domain_reputation(scan_id, asset, apikey):
         response = requests.get(scan_url)
         # print(response.content)
     except Exception as ex:
-        app.logger.error("get_report_domain_reputation failed {}".format(re.sub(r'/' + apikey + '/', r'/***/', ex.__str__())))
+        app.logger.error("get_report_domain_reputation failed: {}".format(re.sub(r'/' + apikey + '/', r'/***/', ex.__str__())))
         return []
 
     return response.content
@@ -400,18 +413,34 @@ def _parse_results(scan_id):
     ts = int(time.time() * 1000)
 
     for asset in engine.scans[scan_id]["findings"]:
+                
         if 'ip_reputation' in engine.scans[scan_id]["findings"][asset].keys():
             res = json.loads(engine.scans[scan_id]["findings"][asset]['ip_reputation'])
+                   
             if 'data' in res:
+                severity = "info"
+                report_summary = ""
+                try:
+                    detections = res["data"]["report"]["blacklists"]["detections"]
+                    risk_score = res["data"]["report"]["risk_score"]["result"]
+                    if risk_score == 100:
+                        severity = "high"
+                    elif risk_score >= 70:
+                        severity = "medium"
+                    
+                    report_summary = f" (detect:{detections}, risk:{risk_score})"
+                except Exception:
+                    pass
+            
                 nb_vulns['info'] += 1
                 issues.append({
                     "issue_id": len(issues) + 1,
-                    "severity": "info", "confidence": "certain",
+                    "severity": severity, "confidence": "certain",
                     "target": {
                         "addr": [asset],
                         "protocol": "domain"
                     },
-                    "title": "IP Reputation Check",
+                    "title": "IP Reputation Check"+report_summary,
                     "description": f"IP Reputation Check for '{asset}'\n\nSee raw_data",
                     "solution": "n/a",
                     "metadata": {
@@ -421,18 +450,34 @@ def _parse_results(scan_id):
                     "raw": res['data'],
                     "timestamp": ts
                 })
+        
         if 'domain_reputation' in engine.scans[scan_id]["findings"][asset].keys():
             res = json.loads(engine.scans[scan_id]["findings"][asset]['domain_reputation'])
+            
             if 'data' in res:
+                severity = "info"
+                report_summary = ""
+                try:
+                    detections = res["data"]["report"]["blacklists"]["detections"]
+                    risk_score = res["data"]["report"]["risk_score"]["result"]
+                    if risk_score == 100:
+                        severity = "high"
+                    elif risk_score >= 70:
+                        severity = "medium"
+                    
+                    report_summary = f" (detect:{detections}, risk:{risk_score})"
+                except Exception:
+                    pass
+                
                 nb_vulns['info'] += 1
                 issues.append({
                     "issue_id": len(issues) + 1,
-                    "severity": "info", "confidence": "certain",
+                    "severity": severity, "confidence": "certain",
                     "target": {
                         "addr": [asset],
                         "protocol": "domain"
                     },
-                    "title": "Domain Reputation Check",
+                    "title": "Domain Reputation Check"+report_summary,
                     "description": f"Domain Reputation Check for '{asset}'\n\nSee raw_data",
                     "solution": "n/a",
                     "metadata": {
@@ -469,8 +514,10 @@ def getfindings(scan_id):
     # check if the scan is finished
     status_scan(scan_id)
     if engine.scans[scan_id]['status'] != "FINISHED":
-        res.update({"status": "error",
-                    "reason": f"scan_id '{scan_id}' not finished (status={engine.scans[scan_id]['status']})"})
+        res.update({
+            "status": "error",
+            "reason": f"scan_id '{scan_id}' not finished (status={engine.scans[scan_id]['status']})"
+        })
         return jsonify(res)
 
     status, issues, summary = _parse_results(scan_id)
@@ -484,13 +531,28 @@ def getfindings(scan_id):
     }
 
     scan.update(status)
+    
+    res_data = {"scan": scan, "summary": summary, "issues": issues}
+    
+    # Store the findings in a file
+    with open(f"{APP_BASE_DIR}/results/apivoid_{scan_id}.json", 'w') as report_file:
+        json.dump(res_data, report_file, default=_json_serial)
 
-    # remove the scan from the active scan list
-    clean_scan(scan_id)
+    # # Remove the scan from the active scan list
+    # clean_scan(scan_id)
 
-    res.update({"scan": scan, "summary": summary, "issues": issues})
+    # Prepare response
+    res.update(res_data)
     res.update(status)
     return jsonify(res)
+
+
+def is_valid_ip(ip):
+    try:
+        IPAddress(ip)
+    except (TypeError, ValueError, AddrFormatError):
+        return False
+    return True
 
 
 def is_valid_subnet(subnet):
@@ -507,6 +569,17 @@ def get_ips_from_subnet(subnet):
     if is_valid_subnet(subnet) is False:
         return []
     return [str(ip) for ip in IPNetwork(subnet)]
+
+
+def _json_serial(obj):
+    """
+        JSON serializer for objects not serializable by default json code
+        Used for datetime serialization when the results are written in file
+    """
+    if isinstance(obj, datetime.datetime) or isinstance(obj, datetime.date):
+        serial = obj.isoformat()
+        return serial
+    raise TypeError("Type not serializable")
 
 
 @app.before_first_request
