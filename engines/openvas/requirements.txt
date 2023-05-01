@@ -6,7 +6,7 @@ click
 cryptography
 defusedxml
 dnspython
-flask==2.0.1
+flask==2.3.2
 gunicorn
 #gvm-tools==20.10.1
 gvm-tools==21.10.0
