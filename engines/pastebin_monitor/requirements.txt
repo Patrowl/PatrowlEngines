@@ -2,7 +2,7 @@ beautifulsoup4
 certifi
 chardet
 Click
-Flask==2.0.1
+Flask==2.3.2
 gunicorn
 idna
 itsdangerous
