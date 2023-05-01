@@ -1,7 +1,7 @@
 certifi
 chardet
 click
-flask==2.0.1
+flask==2.3.2
 gunicorn
 idna
 itsdangerous
