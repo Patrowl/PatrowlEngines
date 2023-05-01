@@ -5,7 +5,7 @@ click
 colorama
 commonmark
 Deprecated
-Flask==2.0.1
+Flask==2.3.2
 gitdb
 GitPython
 gunicorn
