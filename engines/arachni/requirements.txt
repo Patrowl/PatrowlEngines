@@ -3,7 +3,7 @@ attrs==18.2.0
 certifi
 chardet==3.0.4
 click
-Flask==2.2.3
+Flask==2.3.2
 funcsigs==1.0.2
 gevent==1.4.0
 greenlet==0.4.15
