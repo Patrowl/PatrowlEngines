@@ -7,7 +7,7 @@ idna==2.5
 itsdangerous==2.0
 Jinja2==3.1.2
 MarkupSafe==2.1.1
-requests==2.28.2
+requests==2.31.0
 urllib3==1.26.14
 werkzeug==2.2.3
 PatrowlEnginesUtils>=1.0.1
