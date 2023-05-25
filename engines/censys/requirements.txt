@@ -15,7 +15,7 @@ MarkupSafe==2.1.1
 netaddr==0.7.19
 pycparser==2.18
 pyOpenSSL==17.5.0
-requests==2.25.0
+requests==2.31.0
 six==1.10.0
 urllib3==1.26.5
 werkzeug==2.2.3
