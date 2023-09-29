@@ -316,6 +316,7 @@ def _get_wf_whois(apikey:str, value:str):
 
     return json.loads(resp.text)
 
+
 def _get_wf_domains(wf_url:str, max_pages:int):
     wf_domains = []
     page = 1
@@ -352,16 +353,16 @@ def _reverse_whois(scan_id, asset, datatype):
     if len(this.wf_apitokens) == 0:
         # No whoisfreak API Token available
         return res
-    
+
     # Select an API KEY
     apikey = this.wf_apitokens[random.randint(0, len(this.wf_apitokens)-1)]
-    
+
     # Check the asset is a valid domain name or IP Address
     if datatype in ["domain", "fqdn"]:
         if not __is_domain(asset):
             return res
-        # w = whois.whois(asset)
-        w = whois.query(asset, force=True)
+        w = whois.whois(asset)
+        # w = whois.query(asset, force=True)
         # print(w.name, w.registrant, w.owner)
 
         # if w.domain_name is None:
@@ -718,13 +719,15 @@ def _get_whois(scan_id, asset):
     res = {}
     is_domain = __is_domain(asset)
     is_ip = __is_ip_addr(asset)
-    
+
+    print(asset, is_domain, is_ip)
+
     # Check the asset is a valid domain name or IP Address
     if not is_domain and not is_ip:
         return res
 
     if is_domain:
-        # w = whois.whois(asset)
+        w = whois.whois(asset)
         # if w.domain_name is None:
         #     res.update({
         #         asset: {"errors": w}
@@ -733,12 +736,15 @@ def _get_whois(scan_id, asset):
         #     res.update({
         #         asset: {"raw": {'dict': w, 'text': w.text}, "text": w.text, "type": "domain"}
         #     })
-        w = whois.query(asset, force=True, include_raw_whois_text=True)
+        # w = whois.query(asset, force=True)
+        print("w.name:", w.name)
         if w.name is None:
             res.update({
                 asset: {"errors": w.__dict__}
             })
         else:
+            print("w.__dict__:", w.__dict__)
+            print("w.__dict__:", w.__dict__)
             res.update({
                 asset: {"raw": {'dict': w.__dict__, 'text': w.text}, "text": w.text, "type": "domain"}
             })
@@ -748,6 +754,7 @@ def _get_whois(scan_id, asset):
             asset: {"raw": {'dict': w, 'text': "see raw"}, "text": "see raw", "type": "ip"}
         })
 
+    print(res)
     scan_lock = threading.RLock()
     with scan_lock:
         if 'whois' not in this.scans[scan_id]['findings'].keys():
