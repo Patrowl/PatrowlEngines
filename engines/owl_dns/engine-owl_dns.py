@@ -303,11 +303,11 @@ def __is_domain(host):
     return res
 
 
-def _get_wf_reverse_url(apikey:str, type:str, value:str):
+def _get_wf_reverse_url(apikey: str, type: str, value: str):
     return f"https://api.whoisfreaks.com/v1.0/whois?apiKey={apikey}&whois=reverse&{type}={value}&mode=mini"
 
 
-def _get_wf_whois(apikey:str, value:str):
+def _get_wf_whois(apikey: str, value: str):
     w = None
     resp = requests.get(f"https://api.whoisfreaks.com/v1.0/whois?apiKey={apikey}&whois=live&domainName={value}")
     if resp.status_code != 200:
@@ -316,14 +316,15 @@ def _get_wf_whois(apikey:str, value:str):
 
     return json.loads(resp.text)
 
-def _get_wf_domains(wf_url:str, max_pages:int):
+
+def _get_wf_domains(wf_url: str, max_pages: int):
     wf_domains = []
     page = 1
     resp = requests.get(wf_url+f"&page={page}")
     if resp.status_code != 200:
         app.logger.debug("_get_wf_domains", wf_url, resp.status_code)
         return wf_domains
-    
+
     # get results from page 1
     results = json.loads(resp.text)
     if 'whois_domains_historical' not in results.keys():
@@ -352,16 +353,16 @@ def _reverse_whois(scan_id, asset, datatype):
     if len(this.wf_apitokens) == 0:
         # No whoisfreak API Token available
         return res
-    
+
     # Select an API KEY
     apikey = this.wf_apitokens[random.randint(0, len(this.wf_apitokens)-1)]
-    
+
     # Check the asset is a valid domain name or IP Address
     if datatype in ["domain", "fqdn"]:
         if not __is_domain(asset):
             return res
-        # w = whois.whois(asset)
-        w = whois.query(asset, force=True)
+        w = whois.whois(asset)
+        # w = whois.query(asset, force=True)
         # print(w.name, w.registrant, w.owner)
 
         # if w.domain_name is None:
@@ -412,7 +413,7 @@ def _reverse_whois(scan_id, asset, datatype):
             wf_url = _get_wf_reverse_url(apikey, wf_type, wf_value)
             wf_domains = _get_wf_domains(wf_url, max_pages)
             domains.extend(wf_domains)
-    except Exception as e:
+    except Exception:
         if len(domains) == 0:
             return res
 
@@ -472,7 +473,7 @@ def _check_ip(ip: str, record_types: list = []) -> dict:
     return {"attributes": data_types, "provider": ip_provider}
 
 
-def __get_ip_targets(asset : str, datatype: str) -> list:
+def __get_ip_targets(asset: str, datatype: str) -> list:
     targets = []
     if datatype == "ip":
         targets = [asset]
@@ -481,9 +482,9 @@ def __get_ip_targets(asset : str, datatype: str) -> list:
             targets = socket.gethostbyname_ex(asset)[2]
         except Exception:
             return []
-    
+
     return targets
-    
+
 
 def _cdn_check(scan_id: str, asset: str, datatype: str) -> dict:
     targets = __get_ip_targets(asset, datatype)
@@ -565,7 +566,7 @@ def _recursive_spf_lookups(spf_line):
     spf_lookups = 0
     for word in spf_line.split(" "):
         if "include:" in word:
-            url = word.replace("include:","")
+            url = word.replace("include:", "")
             spf_lookups += 1
             dns_resolve = __dns_resolve_asset(url, "TXT")
             for record in dns_resolve:
@@ -575,7 +576,7 @@ def _recursive_spf_lookups(spf_line):
     return spf_lookups
 
 
-def _do_dmarc_check(scan_id,asset_value):
+def _do_dmarc_check(scan_id, asset_value):
     dmarc_dict = {"no_dmarc_record": "info"}
     dns_records = __dns_resolve_asset(asset_value, "TXT")
     for record in dns_records:
@@ -619,7 +620,7 @@ def _do_dkim_check(scan_id, asset_value):
         this.scans[scan_id]["findings"]["dkim_dict_dns_records"] = {asset_value: dns_records}
 
 
-def _perform_spf_check(scan_id,asset_value):
+def _perform_spf_check(scan_id, asset_value):
     dns_records = __dns_resolve_asset(asset_value, "TXT")
     spf_dict = {
         "no_spf_found": "high",
@@ -718,29 +719,24 @@ def _get_whois(scan_id, asset):
     res = {}
     is_domain = __is_domain(asset)
     is_ip = __is_ip_addr(asset)
-    
+
+    print(asset, is_domain, is_ip)
+
     # Check the asset is a valid domain name or IP Address
     if not is_domain and not is_ip:
         return res
 
     if is_domain:
-        # w = whois.whois(asset)
-        # if w.domain_name is None:
-        #     res.update({
-        #         asset: {"errors": w}
-        #     })
-        # else:
-        #     res.update({
-        #         asset: {"raw": {'dict': w, 'text': w.text}, "text": w.text, "type": "domain"}
-        #     })
-        w = whois.query(asset, force=True, include_raw_whois_text=True)
+        w = whois.whois(asset)
+        # w = whois.query(asset, force=True)
+        # print(w.__dict_)
         if w.name is None:
             res.update({
-                asset: {"errors": w.__dict__}
+                asset: {"errors": w}
             })
         else:
             res.update({
-                asset: {"raw": {'dict': w.__dict__, 'text': w.text}, "text": w.text, "type": "domain"}
+                asset: {"raw": {'dict': w, 'text': w.text}, "text": w.text, "type": "domain"}
             })
     if is_ip:
         w = IPWhois(str(asset).strip()).lookup_rdap()
@@ -1052,14 +1048,13 @@ def _parse_results(scan_id):
             #     for record in value:
             #         entry = "Record type '{}': {}".format(record['record_type'], ", ".join(record['values']))
             #         dns_resolve_str = "".join((dns_resolve_str, entry+"\n"))
-            
+
             for record in dns_records:
                 entry = "Record type '{}': {}".format(record['record_type'], ", ".join(record['values']))
                 dns_resolve_str = "".join((dns_resolve_str, entry+"\n"))
 
             dns_resolve_hash = hashlib.sha1(dns_resolve_str.encode("utf-8")).hexdigest()[:6]
 
-            
             nb_vulns['info'] += 1
             issues.append({
                 "issue_id": len(issues) + 1,
@@ -1090,23 +1085,23 @@ def _parse_results(scan_id):
                 h = str(c) + str(spf_check_dns_records)
                 spf_hash = hashlib.sha1(h.encode('utf-8')).hexdigest()[:6]
                 issues.append({
-                "issue_id": len(issues) + 1,
-                "severity": spf_check[c], "confidence": "certain",
-                "target": {
-                    "addr": [asset],
-                    "protocol": "domain"
-                },
-                "title": "SPF found for '{}' (HASH: {})".format(
-                    asset, spf_hash),
-                "description": "{}\n".format(c),
-                "solution": "n/a",
-                "metadata": {
-                    "tags": ["domains", "spf"]
-                },
-                "type": "spf_check",
-                "raw": scan['findings']['spf_dict'][asset],
-                "timestamp": ts
-            })
+                    "issue_id": len(issues) + 1,
+                    "severity": spf_check[c], "confidence": "certain",
+                    "target": {
+                        "addr": [asset],
+                        "protocol": "domain"
+                    },
+                    "title": "SPF found for '{}' (HASH: {})".format(
+                        asset, spf_hash),
+                    "description": "{}\n".format(c),
+                    "solution": "n/a",
+                    "metadata": {
+                        "tags": ["domains", "spf"]
+                    },
+                    "type": "spf_check",
+                    "raw": scan['findings']['spf_dict'][asset],
+                    "timestamp": ts
+                })
 
     if 'dkim_dict' in scan['findings'].keys():
         for asset in scan['findings']['dkim_dict'].keys():
@@ -1140,24 +1135,23 @@ def _parse_results(scan_id):
                 h = str(c) + str(dmarc_check_dns_records)
                 dmarc_hash = hashlib.sha1(h.encode('utf-8')).hexdigest()[:6]
                 issues.append({
-                "issue_id": len(issues) + 1,
-                "severity": dmarc_check[c], "confidence": "certain",
-                "target": {
-                    "addr": [asset],
-                    "protocol": "domain"
-                },
-                "title": "DMARC for '{}' (HASH: {})".format(
-                    asset, dmarc_hash),
-                "description": "{}\n".format(c),
-                "solution": "n/a",
-                "metadata": {
-                    "tags": ["domains", "dmarc"]
-                },
-                "type": "dmarc_check",
-                "raw": scan['findings']['dmarc_dict'][asset],
-                "timestamp": ts
-            })
-
+                    "issue_id": len(issues) + 1,
+                    "severity": dmarc_check[c], "confidence": "certain",
+                    "target": {
+                        "addr": [asset],
+                        "protocol": "domain"
+                    },
+                    "title": "DMARC for '{}' (HASH: {})".format(
+                        asset, dmarc_hash),
+                    "description": "{}\n".format(c),
+                    "solution": "n/a",
+                    "metadata": {
+                        "tags": ["domains", "dmarc"]
+                    },
+                    "type": "dmarc_check",
+                    "raw": scan['findings']['dmarc_dict'][asset],
+                    "timestamp": ts
+                })
 
     # subdomain resolve
     if 'subdomains_resolve' in scan['findings'].keys():
