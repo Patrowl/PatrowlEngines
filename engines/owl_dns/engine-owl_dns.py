@@ -373,7 +373,7 @@ def _reverse_whois(scan_id, asset, datatype):
         #     wf_value = w['org'].lower()
         # elif 'registrant_name' in w.keys() and w['registrant_name'] not in ["", None]:
         #     wf_value = w['registrant_name'].lower()
-        if w.name is None:
+        if w.domain_name is None:
             return res
         wf_value = ""
         # Get the registrant organization if available, otherwise try to get the registrant name
@@ -730,7 +730,7 @@ def _get_whois(scan_id, asset):
         w = whois.whois(asset)
         # w = whois.query(asset, force=True)
         # print(w.__dict_)
-        if w.name is None:
+        if w.domain_name is None:
             res.update({
                 asset: {"errors": w}
             })
