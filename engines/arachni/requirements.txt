@@ -3,7 +3,7 @@ attrs==18.2.0
 certifi
 chardet==3.0.4
 click
-Flask==2.2.3
+Flask==2.2.5
 funcsigs==1.0.2
 gevent==1.4.0
 greenlet==0.4.15
@@ -19,9 +19,9 @@ pluggy==0.7.1
 psutil==5.6.7
 py==1.10.0
 pytest==3.8.1
-requests==2.28.2
+requests==2.31.0
 scandir==1.9.0
 six==1.11.0
-urllib3==1.26.5
+urllib3==1.26.18
 werkzeug==2.2.3
 setuptools==65.5.1 # not directly required, pinned by Snyk to avoid a vulnerability
