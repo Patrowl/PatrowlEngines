@@ -1082,6 +1082,9 @@ def _parse_results(scan_id):
             spf_hash = hashlib.sha1(str(spf_check_dns_records).encode("utf-8")).hexdigest()[:6]
             spf_check.pop('spf_lookups')
             for c in spf_check:
+                title = "SPF found for '{}' (HASH: {})".format(asset, spf_hash)
+                if(c == 'no_spf_found'):
+                    title = "No SPF found for '{}' (HASH: {})".format(asset, spf_hash)
                 h = str(c) + str(spf_check_dns_records)
                 spf_hash = hashlib.sha1(h.encode('utf-8')).hexdigest()[:6]
                 issues.append({
@@ -1091,8 +1094,7 @@ def _parse_results(scan_id):
                         "addr": [asset],
                         "protocol": "domain"
                     },
-                    "title": "SPF found for '{}' (HASH: {})".format(
-                        asset, spf_hash),
+                    "title": title,
                     "description": "{}\n".format(c),
                     "solution": "n/a",
                     "metadata": {
