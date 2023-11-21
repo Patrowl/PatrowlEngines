@@ -624,7 +624,8 @@ def _perform_spf_check(scan_id, asset_value):
     dns_records = __dns_resolve_asset(asset_value, "TXT")
     spf_dict = {
         "no_spf_found": "high",
-        "spf_lookups": 0
+        "spf_lookups": 0,
+        "title_prefix": "No SPF"
     }
 
     for record in dns_records:
@@ -635,16 +636,22 @@ def _perform_spf_check(scan_id, asset_value):
                 spf_dict["spf_lookups"] = spf_lookups
                 if spf_lookups > 10:
                     spf_dict["spf_too_many_lookups"] = "medium"
+                    spf_dict["title_prefix"] = "Too many lookups"
                 if "+all" in value:
                     spf_dict["+all_spf_found"] = "very high"
+                    spf_dict["title_prefix"] = "All SPF"
                 elif "~all" in value:
                     spf_dict["~all_spf_found"] = "medium"
+                    spf_dict["title_prefix"] = "All SPF"
                 elif "?all" in value:
                     spf_dict["no_spf_all_or_?all"] = "high"
+                    spf_dict["title_prefix"] = "No SPF or ALL"
                 elif "-all" in value:
                     spf_dict["-all_spf_found?all"] = "info"
+                    spf_dict["title_prefix"] = "All SPF"
                 elif "all" not in value:
                     spf_dict["no_spf_all_or_?all"] = "high"
+                    spf_dict["title_prefix"] = "No SPF or ALL"
 
     with this.scan_lock:
         this.scans[scan_id]["findings"]["spf_dict"] = {asset_value: spf_dict}
@@ -1081,10 +1088,8 @@ def _parse_results(scan_id):
             spf_check_dns_records = scan['findings']['spf_dict_dns_records'][asset]
             spf_hash = hashlib.sha1(str(spf_check_dns_records).encode("utf-8")).hexdigest()[:6]
             spf_check.pop('spf_lookups')
+            title_prefix = spf_check.pop('title_prefix')
             for c in spf_check:
-                title = "SPF found for '{}' (HASH: {})".format(asset, spf_hash)
-                if(c == 'no_spf_found'):
-                    title = "No SPF found for '{}' (HASH: {})".format(asset, spf_hash)
                 h = str(c) + str(spf_check_dns_records)
                 spf_hash = hashlib.sha1(h.encode('utf-8')).hexdigest()[:6]
                 issues.append({
@@ -1094,7 +1099,7 @@ def _parse_results(scan_id):
                         "addr": [asset],
                         "protocol": "domain"
                     },
-                    "title": title,
+                    "title": "{} found for '{}' (HASH: {})".format(title_prefix, asset, spf_hash),
                     "description": "{}\n".format(c),
                     "solution": "n/a",
                     "metadata": {
