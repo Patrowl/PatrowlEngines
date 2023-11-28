@@ -1,5 +1,5 @@
 FROM phusion/baseimage:bionic-1.0.0
-LABEL Name="EyeWitness\ \(Patrowl engine\)" Version="1.4.28"
+LABEL Name="EyeWitness\ \(Patrowl engine\)" Version="1.4.29"
 
 
 ARG S6_OVERLAY_VERSION=2.0.0.1
@@ -35,7 +35,7 @@ COPY VERSION .
 
 RUN pip3 install --no-cache-dir -r requirements.txt
 
-RUN git clone https://github.com/FortyNorthSecurity/EyeWitness.git libs/EyeWitness
+RUN git clone https://github.com/Patrowl/EyeWitness.git libs/EyeWitness
 RUN cd libs/EyeWitness/Python/setup && \
     ./setup.sh
 
