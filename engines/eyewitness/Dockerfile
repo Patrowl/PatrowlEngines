@@ -35,7 +35,7 @@ COPY VERSION .
 
 RUN pip3 install --no-cache-dir -r requirements.txt
 
-RUN git clone https://github.com/lolkev1/EyeWitness.git libs/EyeWitness
+RUN git clone https://github.com/Patrowl/EyeWitness.git libs/EyeWitness
 RUN cd libs/EyeWitness/Python/setup && \
     ./setup.sh
 
