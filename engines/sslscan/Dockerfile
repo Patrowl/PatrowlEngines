@@ -1,5 +1,5 @@
 FROM alpine:3.16.3
-LABEL Name="SSLScan\ \(Patrowl engine\)" Version="1.4.32"
+LABEL Name="SSLScan\ \(Patrowl engine\)" Version="1.4.33"
 
 ENV CFLAGS "-D__USE_GNU"
 
