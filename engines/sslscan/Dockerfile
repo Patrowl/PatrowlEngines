@@ -19,6 +19,7 @@ COPY VERSION .
 
 WORKDIR /opt/patrowl-engines/sslscan/external-libs
 RUN apk add --update --no-cache \
+      coreutils \
       build-base \
       linux-headers \
       git \
