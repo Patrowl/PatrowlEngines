@@ -88,7 +88,7 @@ def start():
     res = {"page": "startscan"}
 
     # check the scanner is ready to start a new scan
-    if len(this.scans) >= APP_MAXSCANS + 1:
+    if _engine_is_busy() is True:
         res.update(
             {
                 "status": "error",
@@ -503,18 +503,7 @@ def _engine_is_busy():
 @app.route("/engines/nmap/status")
 def status():
     res = {"page": "status"}
-    if not os.path.exists(f"{BASE_DIR}/nmap.json"):
-        app.logger.error("nmap.json config file not found")
-        this.scanner["status"] = "ERROR"
-
-    if "path" in this.scanner:
-        if not os.path.isfile(this.scanner["path"]):
-            app.logger.error("NMAP engine not found (%s)", this.scanner["path"])
-            this.scanner["status"] = "ERROR"
-
     this.scanner["status"] = "READY"
-    if len(this.scans) >= APP_MAXSCANS and _engine_is_busy() is True:
-        this.scanner["status"] = "BUSY"
 
     res.update({"status": this.scanner["status"]})
 
@@ -535,6 +524,19 @@ def status():
             }
         )
     res.update({"scans": scans})
+
+    if _engine_is_busy() is True:
+        this.scanner["status"] = "BUSY"
+
+    if not os.path.exists(f"{BASE_DIR}/nmap.json"):
+        app.logger.error("nmap.json config file not found")
+        this.scanner["status"] = "ERROR"
+
+    if "path" in this.scanner:
+        if not os.path.isfile(this.scanner["path"]):
+            app.logger.error("NMAP engine not found (%s)", this.scanner["path"])
+            this.scanner["status"] = "ERROR"
+
     return jsonify(res)
 
 
