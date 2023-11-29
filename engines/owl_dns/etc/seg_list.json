@@ -1,0 +1,94 @@
+{
+    "seg": {
+        "proofpoint": {
+            "provider": "ProofPoint",
+            "product": "Aegis Threat Protection Platform",
+            "mx_records": [
+                ".gslb.pphosted.com.",
+                "mx1-us1.ppe-hosted.com",
+                "mx2-us1.ppe-hosted.com",
+                "mx1-eu1.ppe-hosted.com",
+                "mx2-eu1.ppe-hosted.com"
+            ],
+            "links": [
+                "https://help.proofpoint.com/Proofpoint_Essentials/Email_Security/Administrator_Topics/000_gettingstarted/020_connectiondetails"
+            ]
+        },
+        "microsoft": {
+            "provider": "Microsoft",
+            "product": "Microsoft 365 Defender Overview",
+            "mx_records": [
+                ".mail.protection.outlook.com."
+            ],
+            "links": []
+        },
+        "cisco": {
+            "provider": "Cisco",
+            "product": "Secure Email",
+            "mx_records": [
+                ".iphmx.com."
+            ],
+            "links": [
+                "https://docs.ces.cisco.com/docs/hostnames"
+            ]
+        },
+        "titanhq": {
+            "provider": "TitanHQ",
+            "product": "SpamTitan",
+            "mx_records": [
+                ".spamtitan.titanhq.com.",
+                ".us1-smtp-mx1.titanhq.com."
+            ],
+            "links": []
+        },
+        "forcepoint": {
+            "provider": "Forcepoint",
+            "product": "Cloud Email Security",
+            "mx_records": [
+                ".in.mailcontol.com.",
+                ".out.mailcontol.com ."
+            ],
+            "links": [
+                "https://support.forcepoint.com/s/article/Where-do-I-need-to-point-my-mx-records-for-Cloud-Email-Security"
+            ]
+        },
+        "sophos": {
+            "provider": "Sophos",
+            "product": "Email Security",
+            "mx_records": [
+                "mx-01-us-west-2.prod.hydra.sophos.com",
+                "mx-02-us-west-2.prod.hydra.sophos.com",
+                "mx-01-us-east-2.prod.hydra.sophos.com",
+                "mx-02-us-east-2.prod.hydra.sophos.com",
+                "mx-01-eu-central-1.prod.hydra.sophos.com",
+                "mx-02-eu-central-1.prod.hydra.sophos.com",
+                "mx-01-eu-west-1.prod.hydra.sophos.com",
+                "mx-02-eu-west-1.prod.hydra.sophos.com",
+                "mx-01.eml100yul.ctr.sophos.com",
+                "mx-02.eml100yul.ctr.sophos.com",
+                "mx-01.eml100syd.ctr.sophos.com",
+                "mx-02.eml100syd.ctr.sophos.com",
+                "mx-01.eml100hnd.ctr.sophos.com",
+                "mx-02.eml100hnd.ctr.sophos.com",
+                "mx-01.eml100bom.ctr.sophos.com",
+                "mx-02.eml100bom.ctr.sophos.com",
+                "mx-01.eml100gru.ctr.sophos.com",
+                "mx-02.eml100gru.ctr.sophos.com"
+            ],
+            "links": [
+                "https://support.forcepoint.com/s/article/Where-do-I-need-to-point-my-mx-records-for-Cloud-Email-Security"
+            ]
+        },
+        "trendmicro": {
+            "provider": "TrendMicro",
+            "product": "Hosted Email Security (HES)",
+            "mx_records": [
+                "in.hes.trendmicro.eu",
+                "in.hes.trendmicro.com"
+            ],
+            "links": [
+                "https://success.trendmicro.com/dcx/s/solution/1055888-redirecting-mail-exchange-mx-records-to-hosted-email-security-hes?language=en_US&sfdcIFrameOrigin=null"
+            ]
+        }
+    }
+}
