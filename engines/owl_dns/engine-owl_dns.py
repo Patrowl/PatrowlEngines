@@ -64,12 +64,17 @@ def _loadconfig():
     else:
         app.logger.error(f"Error: config file '{conf_file}' not found")
         return {"status": "error", "reason": "config file not found"}
-    
+
     if not os.path.isfile(this.scanner['external_ip_ranges_path']):
         this.scanner['status'] = "ERROR"
         app.logger.error("Error: path to external IP ranges (CDN, WAF, Cloud) not found")
         return {"status": "ERROR", "reason": "path to external IP ranges (CDN, WAF, Cloud) not found."}
-    
+
+    if not os.path.isfile(this.scanner['seg_path']):
+        this.scanner['status'] = "ERROR"
+        app.logger.error("Error: path to Secure Email Gateway providers not found")
+        return {"status": "ERROR", "reason": "path to Secure Email Gateway providers not found."}
+
     this.wf_apitokens = []
     for apikey in this.scanner["whoisfreak_api_tokens"]:
         this.wf_apitokens.append(apikey)
@@ -182,6 +187,12 @@ def start_scan():
                 th = this.pool.submit(_dns_resolve, scan_id, asset["value"], False)
                 this.scans[scan_id]['futures'].append(th)
 
+    if 'do_seg_check' in scan['options'].keys() and data['options']['do_seg_check']:
+        for asset in data["assets"]:
+            if asset["datatype"] in ["domain", "fqdn"]:
+                th = this.pool.submit(_do_seg_check, scan_id, asset["value"])
+                this.scans[scan_id]['futures'].append(th)
+
     if 'do_spf_check' in scan['options'].keys() and data['options']['do_spf_check']:
         for asset in data["assets"]:
             if asset["datatype"] == "domain":
@@ -244,31 +255,31 @@ def start_scan():
                 th = this.pool.submit(dnstwist.search_subdomains, scan_id, asset["value"], tld, check_ssdeep, check_geoip, check_mx, check_whois, check_banners, timeout)
                 this.scans[scan_id]['dnstwist'][asset["value"]] = {}
                 this.scans[scan_id]['futures'].append(th)
-    
+
     if 'do_reverse_whois' in scan['options'].keys() and data['options']['do_reverse_whois']:
         for asset in data["assets"]:
             if asset["datatype"] in ["domain", "fqdn", "keyword", "email"]:
                 th = this.pool.submit(_reverse_whois, scan_id, asset["value"], asset["datatype"])
                 this.scans[scan_id]['futures'].append(th)
-    
+
     if 'do_cdn_check' in scan['options'].keys() and data['options']['do_cdn_check']:
         for asset in data["assets"]:
             if asset["datatype"] in ["ip", "domain", "fqdn"]:
                 th = this.pool.submit(_cdn_check, scan_id, asset["value"], asset["datatype"])
                 this.scans[scan_id]['futures'].append(th)
-    
+
     if 'do_waf_check' in scan['options'].keys() and data['options']['do_waf_check']:
         for asset in data["assets"]:
             if asset["datatype"] == "ip":
                 th = this.pool.submit(_waf_check, scan_id, asset["value"], asset["datatype"])
                 this.scans[scan_id]['futures'].append(th)
-    
+
     if 'do_cloud_check' in scan['options'].keys() and data['options']['do_cloud_check']:
         for asset in data["assets"]:
             if asset["datatype"] == "ip":
                 th = this.pool.submit(_cloud_check, scan_id, asset["value"], asset["datatype"])
                 this.scans[scan_id]['futures'].append(th)
-    
+
     if 'do_saas_check' in scan['options'].keys() and data['options']['do_saas_check']:
         for asset in data["assets"]:
             if asset["datatype"] == "ip":
@@ -320,7 +331,7 @@ def _get_wf_whois(apikey: str, value: str):
 def _get_wf_domains(wf_url: str, max_pages: int):
     wf_domains = []
     page = 1
-    resp = requests.get(wf_url+f"&page={page}")
+    resp = requests.get(f"{wf_url}&page={page}")
     if resp.status_code != 200:
         app.logger.debug("_get_wf_domains", wf_url, resp.status_code)
         return wf_domains
@@ -331,15 +342,15 @@ def _get_wf_domains(wf_url: str, max_pages: int):
         return wf_domains
     for d in results['whois_domains_historical']:
         wf_domains.append(d['domain_name'])
-        
+
     if results['total_Pages'] < max_pages:
         max_pages = results['total_Pages']
-        
+
     # while results['total_Pages'] > page and page < 10:
     while max_pages > page:
         time.sleep(1)
         page += 1
-        resp = requests.get(wf_url+f"&page={page}")
+        resp = requests.get(f"{wf_url}&page={page}")
         if resp.status_code == 200:
             page_results = json.loads(resp.text)
             for d in page_results['whois_domains_historical']:
@@ -355,7 +366,7 @@ def _reverse_whois(scan_id, asset, datatype):
         return res
 
     # Select an API KEY
-    apikey = this.wf_apitokens[random.randint(0, len(this.wf_apitokens)-1)]
+    apikey = this.wf_apitokens[random.randint(0, len(this.wf_apitokens) - 1)]
 
     # Check the asset is a valid domain name or IP Address
     if datatype in ["domain", "fqdn"]:
@@ -382,19 +393,19 @@ def _reverse_whois(scan_id, asset, datatype):
 
         if wf_value == "":
             return res
-        
+
         # w = _get_wf_whois(apikey, asset)
         # if w is None:
         #     return res
-        
+
         # print(w)
         # # if "registrant_contact" in w.keys() and w['registrant_contact']
         # if w["registrant"].lower() not in ["", None, "redacted for privacy"]:
         #     wf_value = w.registrant.lower()
-        
+
         wf_types = ["company", "owner"]
     elif datatype in ["keyword", "email"]:
-        print(asset)
+        # print(asset)
         if validators.email(asset):
             wf_types = ["email"]
         else:
@@ -402,12 +413,12 @@ def _reverse_whois(scan_id, asset, datatype):
         wf_value = asset
     else:
         return res
-        
+
     # Limit max pages to rationalize credit usage
     max_pages = APP_WF_MAX_PAGE
     if 'reverse_whois_max_pages' in this.scans[scan_id]['options'].keys() and isinstance(this.scans[scan_id]['options']['reverse_whois_max_pages'], int) and this.scans[scan_id]['options']['reverse_whois_max_pages'] > 0:
         max_pages = this.scans[scan_id]['options']['reverse_whois_max_pages']
-    
+
     try:
         for wf_type in wf_types:
             wf_url = _get_wf_reverse_url(apikey, wf_type, wf_value)
@@ -419,7 +430,7 @@ def _reverse_whois(scan_id, asset, datatype):
 
     if len(domains) == 0:
         return res
-    
+
     # Remove duplicates
     domains = list(set(domains))
     res = {asset: {"domains": domains, "types": wf_types, "value": wf_value}}
@@ -446,28 +457,27 @@ def is_ipaddr_in_subnet(ip: str, subnet: str) -> bool:
 
 def _check_ip(ip: str, record_types: list = []) -> dict:
     """Check IP from CDN, WAF, Cloud, SaaS providers public records."""
-    
     with open(this.scanner['external_ip_ranges_path']) as all_data_file:
         all_data = json.loads(all_data_file.read())
-        
+
     all_data_types = all_data.keys()  # ["cdn", "waf", "cloud", "parking", "saas"]
     data_types = []
     ip_provider = ""
-    
+
     if len(record_types) > 0:
         for record_type in record_types:
             if record_type in all_data.keys():
                 data_types.append(record_type)
     else:
         data_types = all_data_types
-    
+
     for data_type in data_types:
         for provider in all_data[data_type].keys():
             for subnet in all_data[data_type][provider]["ipv4"]:
                 if is_ipaddr_in_subnet(ip, subnet):
                     ip_provider = provider
                     break
-    
+
     if ip_provider == "":  # no results
         return {}
     return {"attributes": data_types, "provider": ip_provider}
@@ -488,10 +498,10 @@ def __get_ip_targets(asset: str, datatype: str) -> list:
 
 def _cdn_check(scan_id: str, asset: str, datatype: str) -> dict:
     targets = __get_ip_targets(asset, datatype)
-    
+
     if len(targets) == 0:
         return {}
-    
+
     for target in targets:
         res = _check_ip(target, ["cdn"])
 
@@ -507,10 +517,10 @@ def _cdn_check(scan_id: str, asset: str, datatype: str) -> dict:
 
 def _waf_check(scan_id: str, asset: str, datatype: str) -> dict:
     targets = __get_ip_targets(asset, datatype)
-    
+
     if len(targets) == 0:
         return {}
-    
+
     for target in targets:
         res = _check_ip(target, ["waf"])
 
@@ -526,10 +536,10 @@ def _waf_check(scan_id: str, asset: str, datatype: str) -> dict:
 
 def _cloud_check(scan_id: str, asset: str, datatype: str) -> dict:
     targets = __get_ip_targets(asset, datatype)
-    
+
     if len(targets) == 0:
         return {}
-    
+
     for target in targets:
         res = _check_ip(target, ["cloud"])
 
@@ -545,10 +555,10 @@ def _cloud_check(scan_id: str, asset: str, datatype: str) -> dict:
 
 def _saas_check(scan_id: str, asset: str, datatype: str) -> dict:
     targets = __get_ip_targets(asset, datatype)
-    
+
     if len(targets) == 0:
         return {}
-    
+
     for target in targets:
         res = _check_ip(target, ["saas"])
 
@@ -560,6 +570,46 @@ def _saas_check(scan_id: str, asset: str, datatype: str) -> dict:
                 this.scans[scan_id]['findings']['saas_check'].update({asset: res})
 
     return res
+
+
+def _do_seg_check(scan_id, asset_value):
+    seg_dict = []
+    dns_records = __dns_resolve_asset(asset_value, "MX")
+    has_seg = False
+
+    if len(dns_records) == 0:
+        # seg_dict = {"status": "failed", "reason": f"no MX records found for asset '{asset_value}'"}
+        return
+
+    with open(this.scanner['seg_path']) as seg_providers_file:
+        seg_providers = json.loads(seg_providers_file.read())["seg"]
+
+    for dns_record in dns_records:
+        for dns_value in dns_record["values"]:
+            for seg_provider in seg_providers.keys():
+                for mx_record in seg_providers[seg_provider]["mx_records"]:
+                    if dns_value.endswith(mx_record):
+                        seg_dict.append({seg_provider: seg_providers[seg_provider]})
+                        has_seg = True
+                        break
+
+    scan_lock = threading.RLock()
+    with scan_lock:
+        if 'seg_dict' not in this.scans[scan_id]['findings'].keys():
+            this.scans[scan_id]['findings']['seg_dict'] = {}
+            this.scans[scan_id]['findings']['seg_dict_dns_records'] = {}
+
+        if asset_value not in this.scans[scan_id]['findings'].keys():
+            this.scans[scan_id]['findings']['seg_dict'][asset_value] = {}
+            this.scans[scan_id]['findings']['seg_dict_dns_records'][asset_value] = {}
+
+        if has_seg is True:
+            this.scans[scan_id]["findings"]["seg_dict"][asset_value] = copy.deepcopy(seg_dict)
+            this.scans[scan_id]["findings"]["seg_dict_dns_records"][asset_value] = copy.deepcopy(dns_records)
+        else:
+            this.scans[scan_id]["findings"]["no_seg"] = {
+                asset_value: "MX records found but no Secure Email Gateway set"
+            }
 
 
 def _recursive_spf_lookups(spf_line):
@@ -720,7 +770,7 @@ def _get_whois(scan_id, asset):
     is_domain = __is_domain(asset)
     is_ip = __is_ip_addr(asset)
 
-    print(asset, is_domain, is_ip)
+    # print(asset, is_domain, is_ip)
 
     # Check the asset is a valid domain name or IP Address
     if not is_domain and not is_ip:
@@ -821,7 +871,8 @@ def _subdomain_enum(scan_id, asset):
         silent=True,
         verbose=True,
         enable_bruteforce=False,
-        engines=None)
+        engines=None
+    )
 
     res.update({asset: sub_res})
 
@@ -1011,7 +1062,8 @@ def _parse_results(scan_id):
     issues = []
     summary = {}
 
-    scan = this.scans[scan_id]
+    # scan = this.scans[scan_id]
+    scan = copy.deepcopy(this.scans[scan_id])
     nb_vulns = {
         "info": 0,
         "low": 0,
@@ -1051,7 +1103,7 @@ def _parse_results(scan_id):
 
             for record in dns_records:
                 entry = "Record type '{}': {}".format(record['record_type'], ", ".join(record['values']))
-                dns_resolve_str = "".join((dns_resolve_str, entry+"\n"))
+                dns_resolve_str = "".join((dns_resolve_str, f"{entry}\n"))
 
             dns_resolve_hash = hashlib.sha1(dns_resolve_str.encode("utf-8")).hexdigest()[:6]
 
@@ -1072,6 +1124,57 @@ def _parse_results(scan_id):
                 },
                 "type": "dns_resolve",
                 "raw": dns_records,
+                "timestamp": ts
+            })
+
+    if 'seg_dict' in scan['findings'].keys():
+        for asset in scan['findings']['seg_dict'].keys():
+            seg_check = scan['findings']['seg_dict'][asset]
+            if len(seg_check) == 0:
+                continue
+            seg_check_dns_records = scan['findings']['seg_dict_dns_records'][asset]
+            for seg in seg_check:
+                seg_provider = list(seg.keys())[0]
+                seg_title = f"{seg[seg_provider]['provider']}/{seg[seg_provider]['product']}"
+                issues.append({
+                    "issue_id": len(issues) + 1,
+                    "severity": "info", "confidence": "certain",
+                    "target": {
+                        "addr": [asset],
+                        "protocol": "domain"
+                    },
+                    "title": f"Secure Email Gateway found: {seg_title}",
+                    "description": f"{seg}\n",
+                    "solution": "n/a",
+                    "metadata": {
+                        "tags": ["domains", "seg"]
+                    },
+                    "type": "seg_check",
+                    "raw": {
+                        "provider": seg,
+                        "mx_records": seg_check_dns_records
+                    },
+                    "timestamp": ts
+                })
+
+    if 'no_seg' in scan['findings'].keys():
+        for asset in scan['findings']['no_seg'].keys():
+            seg_check_failed = scan['findings']['no_seg'][asset]
+            issues.append({
+                "issue_id": len(issues) + 1,
+                "severity": "info", "confidence": "certain",
+                "target": {
+                    "addr": [asset],
+                    "protocol": "domain"
+                },
+                "title": "No Secure Email Gateway found",
+                "description": f"{seg_check_failed}\n",
+                "solution": "n/a",
+                "metadata": {
+                    "tags": ["domains", "no_seg"]
+                },
+                "type": "seg_check",
+                "raw": seg_check_failed,
                 "timestamp": ts
             })
 
@@ -1364,7 +1467,7 @@ def _parse_results(scan_id):
                     continue
                 s = subdomain.replace("From http://PTRarchive.com: ", "")
                 subdomains_list_clean.append(s)
-                subdomains_str = "".join((subdomains_str, s+"\n"))
+                subdomains_str = "".join((subdomains_str, f"{s}\n"))
 
                 # New issue when a subdomain is found
                 nb_vulns['info'] += 1
@@ -1762,8 +1865,8 @@ def page_not_found(e):
 
 @app.before_first_request
 def main():
-    if not os.path.exists(BASE_DIR+"/results"):
-        os.makedirs(BASE_DIR+"/results")
+    if not os.path.exists(f"{BASE_DIR}/results"):
+        os.makedirs(f"{BASE_DIR}/results")
     _loadconfig()
 
 

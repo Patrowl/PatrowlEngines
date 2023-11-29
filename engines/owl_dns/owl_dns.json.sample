@@ -7,6 +7,7 @@
 	"dnstwist_bin_path": "/opt/patrowl-engines/owl_dns/external-libs/dnstwist",
 	"dnstwist_common_tlds": "/opt/patrowl-engines/owl_dns/external-libs/dnstwist/dictionaries/common_tlds.dict",
 	"external_ip_ranges_path": "/opt/patrowl-engines/owl_dns/etc/ip-ranges.json",
+	"seg_path": "/opt/patrowl-engines/owl_dns/etc/seg_list.json",
 	"whoisfreak_api_tokens": ["xx", "yy"],
 	"names_path": "/opt/patrowl-engines/owl_dns/etc/names.txt",
 	"options": {
