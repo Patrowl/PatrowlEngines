@@ -448,6 +448,10 @@ def scan_status(scan_id):
         res.update({"status": "error", "reason": "todo"})
         return jsonify(res), 503
 
+    # Fix when a scan is started but the thread has not been created yet
+    if this.scans[scan_id]["status"] == "STARTED":
+        res.update({"status": "SCANNING"})
+
     proc = this.scans[scan_id]["proc"]
     if not hasattr(proc, "pid"):
         res.update({"status": "ERROR", "reason": "No PID found"})
@@ -505,8 +509,6 @@ def status():
     res = {"page": "status"}
     this.scanner["status"] = "READY"
 
-    res.update({"status": this.scanner["status"]})
-
     # display info on the scanner
     res.update({"scanner": this.scanner})
 
@@ -537,6 +539,7 @@ def status():
             app.logger.error("NMAP engine not found (%s)", this.scanner["path"])
             this.scanner["status"] = "ERROR"
 
+    res.update({"status": this.scanner["status"]})
     return jsonify(res)
 
 
