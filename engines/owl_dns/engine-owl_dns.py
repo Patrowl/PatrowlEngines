@@ -17,7 +17,7 @@ app = Flask(__name__)
 APP_DEBUG = os.environ.get("DEBUG", "").lower() in ["true", "1", "yes", "y", "on"]
 APP_HOST = "0.0.0.0"
 APP_PORT = 5006
-APP_MAXSCANS = int(os.environ.get("APP_MAXSCANS", 3))
+APP_MAXSCANS = int(os.environ.get("APP_MAXSCANS", 5))
 APP_TIMEOUT = int(os.environ.get("APP_TIMEOUT", 3600))
 APP_WF_MAX_PAGE = int(os.environ.get("APP_WF_MAX_PAGE", 10))
 
