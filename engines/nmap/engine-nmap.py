@@ -1240,8 +1240,8 @@ def page_not_found(e):
 
 @app.before_first_request
 def main():
-    if os.getuid() != 0:
-        app.logger.error("Start the NMAP engine using root privileges !")
+    #if os.getuid() != 0: #run with root because of docker env vars scope
+    #    app.logger.error("Start the NMAP engine using root privileges !")
     #        sys.exit(-1)
     if not os.path.exists(f"{BASE_DIR}/results"):
         os.makedirs(f"{BASE_DIR}/results")
