@@ -1,5 +1,5 @@
 FROM alpine:3.16.3
-LABEL Name="Patrowl\ DNS\ \(Patrowl engine\)" Version="1.5.7"
+LABEL Name="Patrowl\ DNS\ \(Patrowl engine\)" Version="1.5.7-rc1"
 
 # Install dependencies
 RUN apk add --update --no-cache \
