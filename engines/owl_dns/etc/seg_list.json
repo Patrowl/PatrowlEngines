@@ -89,6 +89,16 @@
             "links": [
                 "https://success.trendmicro.com/dcx/s/solution/1055888-redirecting-mail-exchange-mx-records-to-hosted-email-security-hes?language=en_US&sfdcIFrameOrigin=null"
             ]
+        },
+        "mailinblack": {
+            "provider": "mailinblack",
+            "product": "Mailinblack",
+            "mx_records": [
+                ".mailinblack.com."
+            ],
+            "links": [
+                "https://support.mailinblack.com/fr/articles/6853774-online-comment-editer-les-parametres-dns-mx-d-un-domaine"
+            ]
         }
     }
 }
