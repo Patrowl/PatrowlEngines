@@ -3,6 +3,7 @@
 import os
 import subprocess
 import sys
+import traceback
 import psutil
 import json
 import optparse
@@ -363,8 +364,12 @@ def _scan_thread(scan_id):
             issues.extend(extra_issues)
 
         this.scans[scan_id]["issues"] = deepcopy(issues)
-    except Exception:
-        pass
+    except Exception as e:
+        print(e)
+        app.logger.info(e)
+        traceback.print_exception(*sys.exc_info())
+        this.scans[scan_id]["status"] = "ERROR"
+        this.scans[scan_id]["issues_available"] = False
     this.scans[scan_id]["issues_available"] = True
     this.scans[scan_id]["status"] = "FINISHED"
 
@@ -437,7 +442,7 @@ def stop_scan(scan_id):
         )
 
     this.scans[scan_id]["status"] = "STOPPED"
-    this.scans[scan_id]["finished_at"] = int(time.time() * 1000)
+    # this.scans[scan_id]["finished_at"] = int(time.time() * 1000)
     return jsonify(res)
 
 
@@ -746,7 +751,9 @@ def _parse_report(filename, scan_id):
                 os_data["name"] = osinfo.get("name")
                 os_data["accuracy"] = osinfo.get("accuracy")
                 for osclass in osinfo.findall("osclass"):
-                    os_data["cpe"].append(osclass.find("cpe").text)
+                    os_cpe = osclass.find("cpe")
+                    if os_cpe is not None:
+                        os_data["cpe"].append(os_cpe.text)
                 res.append(
                     deepcopy(
                         _add_issue(
