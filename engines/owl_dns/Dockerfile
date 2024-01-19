@@ -1,10 +1,10 @@
 FROM alpine:3.16.3
-LABEL Name="Patrowl\ DNS\ \(Patrowl engine\)" Version="1.5.6"
+LABEL Name="Patrowl\ DNS\ \(Patrowl engine\)" Version="1.5.7"
 
 # Install dependencies
 RUN apk add --update --no-cache \
-    python3 python3-dev py3-pip \
-    git \
+  python3 python3-dev py3-pip \
+  git \
   && rm -rf /var/cache/apk/*
 
 # Create the target repo

@@ -3,6 +3,7 @@
 import os
 import subprocess
 import sys
+import traceback
 import psutil
 import json
 import optparse
@@ -135,7 +136,7 @@ def start():
         )
         return jsonify(res), 503
 
-    if type(data["options"]) == str:
+    if type(data["options"]) is str:
         data["options"] = json.loads(data["options"])
 
     scan = {
@@ -278,7 +279,7 @@ def _scan_thread(scan_id):
     cmd_sec = split(cmd)
 
     this.scans[scan_id]["proc_cmd"] = "not set!!"
-    with open(log_path, "w") as stderr:
+    with open(log_path, "w"):
         this.scans[scan_id]["proc"] = subprocess.Popen(
             cmd_sec,
             shell=False,
@@ -335,11 +336,15 @@ def _scan_thread(scan_id):
             # print(f'scan {scan_id} is finished !')
             break
 
+    time.sleep(1)  # wait for creating report file (could be long)
+
     # Check if the report is available (exists && scan finished)
     report_filename = f"{BASE_DIR}/results/nmap_{scan_id}.xml"
     if not os.path.exists(report_filename):
-        this.scans[scan_id]["status"] = "FINISHED"  # ERROR ?
-        this.scans[scan_id]["issues_available"] = True
+        # this.scans[scan_id]["status"] = "FINISHED"  # ERROR ?
+        # this.scans[scan_id]["issues_available"] = True
+        this.scans[scan_id]["status"] = "ERROR"
+        this.scans[scan_id]["issues_available"] = False
         return False
 
     try:
@@ -359,8 +364,12 @@ def _scan_thread(scan_id):
             issues.extend(extra_issues)
 
         this.scans[scan_id]["issues"] = deepcopy(issues)
-    except Exception:
-        pass
+    except Exception as e:
+        print(e)
+        app.logger.info(e)
+        traceback.print_exception(*sys.exc_info())
+        this.scans[scan_id]["status"] = "ERROR"
+        this.scans[scan_id]["issues_available"] = False
     this.scans[scan_id]["issues_available"] = True
     this.scans[scan_id]["status"] = "FINISHED"
 
@@ -433,7 +442,7 @@ def stop_scan(scan_id):
         )
 
     this.scans[scan_id]["status"] = "STOPPED"
-    this.scans[scan_id]["finished_at"] = int(time.time() * 1000)
+    # this.scans[scan_id]["finished_at"] = int(time.time() * 1000)
     return jsonify(res)
 
 
@@ -464,6 +473,14 @@ def scan_status(scan_id):
     ):
         res.update({"status": "FINISHED"})
         this.scans[scan_id]["status"] = "FINISHED"
+        # print(f"scan_status/scan '{scan_id}' is finished")
+
+    elif (
+        not psutil.pid_exists(proc.pid)
+        and this.scans[scan_id]["issues_available"] is False
+        and this.scans[scan_id]["status"] == "ERROR"
+    ):
+        res.update({"status": "ERROR"})
         # print(f"scan_status/scan '{scan_id}' is finished")
 
     elif psutil.pid_exists(proc.pid) and psutil.Process(proc.pid).status() in [
@@ -734,7 +751,9 @@ def _parse_report(filename, scan_id):
                 os_data["name"] = osinfo.get("name")
                 os_data["accuracy"] = osinfo.get("accuracy")
                 for osclass in osinfo.findall("osclass"):
-                    os_data["cpe"].append(osclass.find("cpe").text)
+                    os_cpe = osclass.find("cpe")
+                    if os_cpe is not None:
+                        os_data["cpe"].append(os_cpe.text)
                 res.append(
                     deepcopy(
                         _add_issue(
@@ -1101,7 +1120,7 @@ def _parse_report(filename, scan_id):
 
 
 def _get_cpe_link(cpe):
-    return "https://nvd.nist.gov/vuln/search/results?adv_search=true&cpe={}".format(cpe)
+    return f"https://nvd.nist.gov/vuln/search/results?adv_search=true&cpe={cpe}"
 
 
 # custom functions for Vulners issues
@@ -1148,7 +1167,7 @@ def getfindings(scan_id):
         return jsonify(res)
 
     # check if the report is available (exists && scan finished)
-    report_filename = BASE_DIR + "/results/nmap_{}.xml".format(scan_id)
+    report_filename = f"{BASE_DIR}/results/nmap_{scan_id}.xml"
     if not os.path.exists(report_filename):
         res.update({"status": "error", "reason": "Report file not available"})
         return jsonify(res)
@@ -1240,7 +1259,7 @@ def page_not_found(e):
 
 @app.before_first_request
 def main():
-    #if os.getuid() != 0: #run with root because of docker env vars scope
+    # if os.getuid() != 0: #run with root because of docker env vars scope
     #    app.logger.error("Start the NMAP engine using root privileges !")
     #        sys.exit(-1)
     if not os.path.exists(f"{BASE_DIR}/results"):
