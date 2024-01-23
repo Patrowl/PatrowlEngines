@@ -439,7 +439,7 @@ def stop_scan(scan_id):
         )
 
     # Stop the thread '_scan_thread'
-    for th in this.scans[scan_id][("threads")]:
+    for th in this.scans[scan_id]["threads"]:
         th.join()
 
     this.scans[scan_id]["status"] = "STOPPED"
