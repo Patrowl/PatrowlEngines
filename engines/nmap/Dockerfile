@@ -40,5 +40,7 @@ RUN pip3 install --trusted-host pypi.python.org -r requirements.txt
 EXPOSE 5001
 #USER alpine #Can't set properly env vars from Docker because it sets root env only
 
+COPY fixed_script/* /usr/share/nmap/scripts/
+
 # Run app when the container launches
 CMD ["gunicorn", "engine-nmap:app", "-b", "0.0.0.0:5001", "--access-logfile", "-", "-k", "gevent"]
