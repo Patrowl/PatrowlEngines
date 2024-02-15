@@ -1,5 +1,5 @@
 FROM alpine:3.16.3
-LABEL Name="Cortex\ \(Patrowl engine\)" Version="1.4.28"
+LABEL Name="Cortex\ \(Patrowl engine\)" Version="1.4.29"
 
 # Set the working directory
 RUN mkdir -p /opt/patrowl-engines/cortex
