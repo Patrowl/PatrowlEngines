@@ -24,8 +24,10 @@ from flask import Flask, request, jsonify
 from dns.resolver import query
 from gvm.connections import TLSConnection
 from gvm.protocols.gmp import Gmp
+
 # from gvm.protocols.gmpv7.types import AliveTest
 from gvm.protocols.gmpv208 import AliveTest
+
 # from gvm.errors import GvmError
 
 # Own library
@@ -37,16 +39,16 @@ from PatrowlEnginesUtils.PatrowlEngineExceptions import PatrowlEngineExceptions
 # from pdb import set_trace as st
 
 app = Flask(__name__)
-APP_DEBUG = os.environ.get('APP_DEBUG', '').lower() in ['true', '1', 'on', 'yes', 'y']
+APP_DEBUG = os.environ.get("APP_DEBUG", "").lower() in ["true", "1", "on", "yes", "y"]
 APP_HOST = "0.0.0.0"
 APP_PORT = 5016
-APP_MAXSCANS = int(os.environ.get('APP_MAXSCANS', 5))
+APP_MAXSCANS = int(os.environ.get("APP_MAXSCANS", 5))
 APP_ENGINE_NAME = "openvas"
 APP_BASE_DIR = dirname(realpath(__file__))
 # DEFAULT_OV_PROFILE = "Full and fast"
 # DEFAULT_OV_PORTLIST = "patrowl-all_tcp"
-DEFAULT_TIMEOUT = int(os.environ.get('DEFAULT_TIMEOUT', 600))
-DEFAULT_SCAN_TIMEOUT = int(os.environ.get('DEFAULT_SCAN_TIMEOUT', 432000)) # 2 days
+DEFAULT_TIMEOUT = int(os.environ.get("DEFAULT_TIMEOUT", 600))
+DEFAULT_SCAN_TIMEOUT = int(os.environ.get("DEFAULT_SCAN_TIMEOUT", 432000))  # 2 days
 VERSION = "1.4.30"
 
 engine = PatrowlEngine(
@@ -54,7 +56,7 @@ engine = PatrowlEngine(
     base_dir=APP_BASE_DIR,
     name=APP_ENGINE_NAME,
     max_scans=APP_MAXSCANS,
-    version=VERSION
+    version=VERSION,
 )
 
 this = modules[__name__]
@@ -75,8 +77,8 @@ OV_ALIVE_TESTS = {
     "DEFAULT": "Scan Config Default",
 }
 
-if __name__ != '__main__':
-    gunicorn_logger = logging.getLogger('gunicorn.error')
+if __name__ != "__main__":
+    gunicorn_logger = logging.getLogger("gunicorn.error")
     app.logger.handlers = gunicorn_logger.handlers
     app.logger.setLevel(gunicorn_logger.level)
 
@@ -92,31 +94,42 @@ def is_uuid(uuid_string, version=4):
 
 def get_options(payload):
     """Extract formatted options from the payload."""
-    options = {"enable_create_target": True, "enable_create_task": True, "enable_start_task": True}
+    options = {
+        "enable_create_target": True,
+        "enable_create_task": True,
+        "enable_start_task": True,
+    }
     user_opts = payload["options"]
     if "enable_create_target" in user_opts:
-        options["enable_create_target"] = True or user_opts["enable_create_target"] == "True"
+        options["enable_create_target"] = (
+            True or user_opts["enable_create_target"] == "True"
+        )
     if "enable_create_task" in user_opts:
-        options["enable_create_task"] = True or user_opts["enable_create_task"] == "True"
+        options["enable_create_task"] = (
+            True or user_opts["enable_create_task"] == "True"
+        )
     if "enable_start_task" in user_opts:
         options["enable_start_task"] = True or user_opts["enable_start_task"] == "True"
     return options
 
 
-def get_target(target_name, scan_portlist_id=None, alive_test=AliveTest.TCP_SYN_SERVICE_PING):
+def get_target(
+    target_name, scan_portlist_id=None, alive_test=AliveTest.TCP_SYN_SERVICE_PING
+):
     """Return the target_id of a target. If not, it return None."""
     valid_target_id = None
     connection = TLSConnection(
         hostname=engine.scanner["options"]["gmp_host"]["value"],
         port=engine.scanner["options"]["gmp_port"]["value"],
-        timeout=int(engine.scanner["options"].get("timeout", DEFAULT_TIMEOUT))
+        timeout=int(engine.scanner["options"].get("timeout", DEFAULT_TIMEOUT)),
     )
     with Gmp(connection) as gmp_cnx:
         gmp_cnx.authenticate(
             engine.scanner["options"]["gmp_username"]["value"],
-            engine.scanner["options"]["gmp_password"]["value"])
+            engine.scanner["options"]["gmp_password"]["value"],
+        )
         # targets_xml = gmp_cnx.get_targets(filter="~"+target_name)
-        targets_xml = gmp_cnx.get_targets(filter_string="~"+target_name)
+        targets_xml = gmp_cnx.get_targets(filter_string="~" + target_name)
         # print("get_target/targets_xml:", targets_xml)
         try:
             targets = ET.fromstring(targets_xml)
@@ -133,7 +146,10 @@ def get_target(target_name, scan_portlist_id=None, alive_test=AliveTest.TCP_SYN_
                 valid_target_id = target.get("id")
                 if not is_uuid(valid_target_id):
                     valid_target_id = None
-            elif scan_portlist_id == target.find("port_list").get('id') and target_name in target.find("name").text:
+            elif (
+                scan_portlist_id == target.find("port_list").get("id")
+                and target_name in target.find("name").text
+            ):
                 valid_target_id = target.get("id")
                 if not is_uuid(valid_target_id):
                     valid_target_id = None
@@ -184,7 +200,7 @@ def get_scan_config_name(scan_config_id=None, gmp=this.gmp):
     except Exception:
         return None
 
-    for config in configs.findall('config'):
+    for config in configs.findall("config"):
         if config.get("id") == scan_config_id:
             scan_config_name = config.find("name").text
             break
@@ -200,12 +216,13 @@ def get_scan_config(name=None):
     connection = TLSConnection(
         hostname=engine.scanner["options"]["gmp_host"]["value"],
         port=engine.scanner["options"]["gmp_port"]["value"],
-        timeout=int(engine.scanner["options"].get("timeout", DEFAULT_TIMEOUT))
+        timeout=int(engine.scanner["options"].get("timeout", DEFAULT_TIMEOUT)),
     )
     with Gmp(connection) as gmp_cnx:
         gmp_cnx.authenticate(
             engine.scanner["options"]["gmp_username"]["value"],
-            engine.scanner["options"]["gmp_password"]["value"])
+            engine.scanner["options"]["gmp_password"]["value"],
+        )
         # configs_xml = gmp_cnx.get_configs()
         configs_xml = gmp_cnx.get_scan_configs()
         try:
@@ -223,7 +240,9 @@ def get_scan_config(name=None):
             tmp_config_name = config.find("name").text
             if scan_config_name == tmp_config_name:
                 scan_config_id = config.get("id")
-                if not is_uuid(scan_config_id, version=1) and not is_uuid(scan_config_id):
+                if not is_uuid(scan_config_id, version=1) and not is_uuid(
+                    scan_config_id
+                ):
                     return None
                 return scan_config_id
         return None
@@ -231,15 +250,17 @@ def get_scan_config(name=None):
 
 
 def create_target(
-        target_name,
-        target_hosts,
-        port_list_id=None,
-        port_list_name=None,
-        ssh_credential_id=None, ssh_credential_port=None,
-        smb_credential_id=None,
-        esxi_credential_id=None,
-        snmp_credential_id=None,
-        alive_test=AliveTest.TCP_SYN_SERVICE_PING):
+    target_name,
+    target_hosts,
+    port_list_id=None,
+    port_list_name=None,
+    ssh_credential_id=None,
+    ssh_credential_port=None,
+    smb_credential_id=None,
+    esxi_credential_id=None,
+    snmp_credential_id=None,
+    alive_test=AliveTest.TCP_SYN_SERVICE_PING,
+):
     """Create a target in OpenVAS and returns its target_id."""
     # Check alive_test param
     if alive_test not in OV_ALIVE_TESTS.keys():
@@ -247,12 +268,13 @@ def create_target(
     connection = TLSConnection(
         hostname=engine.scanner["options"]["gmp_host"]["value"],
         port=engine.scanner["options"]["gmp_port"]["value"],
-        timeout=int(engine.scanner["options"].get("timeout", DEFAULT_TIMEOUT))
+        timeout=int(engine.scanner["options"].get("timeout", DEFAULT_TIMEOUT)),
     )
     with Gmp(connection) as gmp_cnx:
         gmp_cnx.authenticate(
             engine.scanner["options"]["gmp_username"]["value"],
-            engine.scanner["options"]["gmp_password"]["value"])
+            engine.scanner["options"]["gmp_password"]["value"],
+        )
         new_target_xml = gmp_cnx.create_target(
             "{} - {} - {}".format(target_name, port_list_name, alive_test),
             hosts=target_hosts,
@@ -262,7 +284,7 @@ def create_target(
             esxi_credential_id=esxi_credential_id,
             snmp_credential_id=snmp_credential_id,
             port_list_id=port_list_id,
-            alive_test=alive_test
+            alive_test=alive_test,
         )
         try:
             new_target = ET.fromstring(new_target_xml)
@@ -285,14 +307,17 @@ def get_task_by_target_name(target_name, scan_config_id=None):
     connection = TLSConnection(
         hostname=engine.scanner["options"]["gmp_host"]["value"],
         port=engine.scanner["options"]["gmp_port"]["value"],
-        timeout=int(engine.scanner["options"].get("timeout", DEFAULT_TIMEOUT))
+        timeout=int(engine.scanner["options"].get("timeout", DEFAULT_TIMEOUT)),
     )
     with Gmp(connection) as gmp_cnx:
         gmp_cnx.authenticate(
             engine.scanner["options"]["gmp_username"]["value"],
-            engine.scanner["options"]["gmp_password"]["value"])
+            engine.scanner["options"]["gmp_password"]["value"],
+        )
         # tasks_xml = gmp_cnx.get_tasks(filter="apply_overrides=1 min_qod=0 rows=-1 levels=hmlg")
-        tasks_xml = gmp_cnx.get_tasks(filter_string="apply_overrides=1 min_qod=0 rows=-1 levels=hmlg")
+        tasks_xml = gmp_cnx.get_tasks(
+            filter_string="apply_overrides=1 min_qod=0 rows=-1 levels=hmlg"
+        )
         target_id = get_target(target_name)
         if target_id is None:
             return None
@@ -304,7 +329,10 @@ def get_task_by_target_name(target_name, scan_config_id=None):
             return None
 
         for task in tasks.findall("task"):
-            if task.find('target').get("id") == target_id and task.find('config').get('id') == scan_config_id:
+            if (
+                task.find("target").get("id") == target_id
+                and task.find("config").get("id") == scan_config_id
+            ):
                 task_id = task.get("id")
                 if not is_uuid(task_id):
                     return None
@@ -321,12 +349,13 @@ def get_scanners(name=None):
     connection = TLSConnection(
         hostname=engine.scanner["options"]["gmp_host"]["value"],
         port=engine.scanner["options"]["gmp_port"]["value"],
-        timeout=int(engine.scanner["options"].get("timeout", DEFAULT_TIMEOUT))
+        timeout=int(engine.scanner["options"].get("timeout", DEFAULT_TIMEOUT)),
     )
     with Gmp(connection) as gmp_cnx:
         gmp_cnx.authenticate(
             engine.scanner["options"]["gmp_username"]["value"],
-            engine.scanner["options"]["gmp_password"]["value"])
+            engine.scanner["options"]["gmp_password"]["value"],
+        )
         scanners_xml = gmp_cnx.get_scanners()
         try:
             scanners = ET.fromstring(scanners_xml)
@@ -337,7 +366,7 @@ def get_scanners(name=None):
 
         for scanner in scanners.findall("scanner"):
             if name is not None:
-                if name == scanner.find('name').text:
+                if name == scanner.find("name").text:
                     return [scanner.get("id")]
             else:
                 scanners_list.append(scanner.get("id"))
@@ -356,17 +385,19 @@ def create_task(target_name, target_id, scan_config_id=None, scanner_id=None):
     connection = TLSConnection(
         hostname=engine.scanner["options"]["gmp_host"]["value"],
         port=engine.scanner["options"]["gmp_port"]["value"],
-        timeout=int(engine.scanner["options"].get("timeout", DEFAULT_TIMEOUT))
+        timeout=int(engine.scanner["options"].get("timeout", DEFAULT_TIMEOUT)),
     )
     with Gmp(connection) as gmp_cnx:
         gmp_cnx.authenticate(
             engine.scanner["options"]["gmp_username"]["value"],
-            engine.scanner["options"]["gmp_password"]["value"])
+            engine.scanner["options"]["gmp_password"]["value"],
+        )
         new_task_xml = gmp_cnx.create_task(
-            name=target_name + " - {}".format(get_scan_config_name(scan_config_id, gmp=gmp_cnx)),
+            name=target_name
+            + " - {}".format(get_scan_config_name(scan_config_id, gmp=gmp_cnx)),
             config_id=scan_config_id,
             target_id=target_id,
-            scanner_id=scanner_id
+            scanner_id=scanner_id,
         )
         try:
             new_task = ET.fromstring(new_task_xml)
@@ -391,12 +422,13 @@ def start_task(task_id):
     connection = TLSConnection(
         hostname=engine.scanner["options"]["gmp_host"]["value"],
         port=engine.scanner["options"]["gmp_port"]["value"],
-        timeout=int(engine.scanner["options"].get("timeout", DEFAULT_TIMEOUT))
+        timeout=int(engine.scanner["options"].get("timeout", DEFAULT_TIMEOUT)),
     )
     with Gmp(connection) as gmp_cnx:
         gmp_cnx.authenticate(
             engine.scanner["options"]["gmp_username"]["value"],
-            engine.scanner["options"]["gmp_password"]["value"])
+            engine.scanner["options"]["gmp_password"]["value"],
+        )
         start_scan_results_xml = gmp_cnx.start_task(task_id)
         try:
             start_scan_results = ET.fromstring(start_scan_results_xml)
@@ -421,12 +453,13 @@ def get_last_report(task_id):
     connection = TLSConnection(
         hostname=engine.scanner["options"]["gmp_host"]["value"],
         port=engine.scanner["options"]["gmp_port"]["value"],
-        timeout=int(engine.scanner["options"].get("timeout", DEFAULT_TIMEOUT))
+        timeout=int(engine.scanner["options"].get("timeout", DEFAULT_TIMEOUT)),
     )
     with Gmp(connection) as gmp_cnx:
         gmp_cnx.authenticate(
             engine.scanner["options"]["gmp_username"]["value"],
-            engine.scanner["options"]["gmp_password"]["value"])
+            engine.scanner["options"]["gmp_password"]["value"],
+        )
         task_xml = gmp_cnx.get_task(task_id)
         try:
             task = ET.fromstring(task_xml)
@@ -467,8 +500,11 @@ def get_multiple_report_status(info, gmp_cnx):
         return None
     task_id = info["task_id"]
     report_id = info["report_id"]
-    report = result.find("task/[@id='{task_id}']/*/report[@id='{report_id}']".format(
-        task_id=task_id, report_id=report_id))
+    report = result.find(
+        "task/[@id='{task_id}']/*/report[@id='{report_id}']".format(
+            task_id=task_id, report_id=report_id
+        )
+    )
     if report is None:
         assets_status.update({"status": "Failure"})
     else:
@@ -545,11 +581,11 @@ def split_port(asset_port):
     port_number = "0"
     port_protocol = "tcp"
     try:
-        if asset_port.split('/')[0].isnumeric():
-            port_number = asset_port.split('/')[0]
+        if asset_port.split("/")[0].isnumeric():
+            port_number = asset_port.split("/")[0]
 
-        if asset_port.split('/')[1] in ["tcp", "udp"]:
-            port_protocol = asset_port.split('/')[1]
+        if asset_port.split("/")[1] in ["tcp", "udp"]:
+            port_protocol = asset_port.split("/")[1]
     except Exception:
         pass
     return port_number, port_protocol
@@ -603,19 +639,21 @@ def test():
 def info():
     """Get info on running engine."""
     status()
-    return jsonify({
-        "page": "info",
-        "engine_config": {
-            "name": engine.name,
-            "description": engine.description,
-            "version": engine.version,
-            "status": engine.status,
-            "reason": engine.scanner.get("reason", ""),
-            "allowed_asset_types": engine.allowed_asset_types,
-            "max_scans": engine.max_scans,
-            "nb_scans": len(engine.scans.keys()),
+    return jsonify(
+        {
+            "page": "info",
+            "engine_config": {
+                "name": engine.name,
+                "description": engine.description,
+                "version": engine.version,
+                "status": engine.status,
+                "reason": engine.scanner.get("reason", ""),
+                "allowed_asset_types": engine.allowed_asset_types,
+                "max_scans": engine.max_scans,
+                "nb_scans": len(engine.scans.keys()),
+            },
         }
-    })
+    )
 
 
 @app.route("/engines/openvas/clean")
@@ -645,61 +683,68 @@ def status():
     for scan_id in engine.scans.keys():
         assets_map = None
         if "assets_map" in engine.scans[scan_id].keys():
-            assets_map = engine.scans[scan_id]['assets_map']
+            assets_map = engine.scans[scan_id]["assets_map"]
 
         scan_data = {
-            "status": engine.scans[scan_id]['status'],
-            "started_at": engine.scans[scan_id]['started_at'],
-            "finished_at": engine.scans[scan_id]['finished_at'],
-            "assets": engine.scans[scan_id]['assets'],
-            "assets_map": assets_map
+            "status": engine.scans[scan_id]["status"],
+            "started_at": engine.scans[scan_id]["started_at"],
+            "finished_at": engine.scans[scan_id]["finished_at"],
+            "assets": engine.scans[scan_id]["assets"],
+            "assets_map": assets_map,
         }
         if "info" in engine.scans[scan_id].keys():
-            scan_data.update({
-                "info": engine.scans[scan_id]['info'],
-            })
+            scan_data.update(
+                {
+                    "info": engine.scans[scan_id]["info"],
+                }
+            )
         scans.append({scan_id: scan_data})
 
-    res.update({
-        "nb_scans": len(engine.scans),
-        "status": engine.status,
-        "scans": scans})
+    res.update({"nb_scans": len(engine.scans), "status": engine.status, "scans": scans})
     return jsonify(res)
 
 
 def _status_scan(scan_id, gmp_cnx=None):
     scan_status = "SCANNING"
-    if engine.scans[scan_id]['status'] in ["STARTED", "FINISHED"]:
+    if engine.scans[scan_id]["status"] in ["STARTED", "FINISHED"]:
         return scan_status
 
     if gmp_cnx is None:
         connection = TLSConnection(
             hostname=engine.scanner["options"]["gmp_host"]["value"],
             port=engine.scanner["options"]["gmp_port"]["value"],
-            timeout=int(engine.scanner["options"].get("timeout", DEFAULT_TIMEOUT))
+            timeout=int(engine.scanner["options"].get("timeout", DEFAULT_TIMEOUT)),
         )
         with Gmp(connection) as gmp_cnx:
             gmp_cnx.authenticate(
                 engine.scanner["options"]["gmp_username"]["value"],
-                engine.scanner["options"]["gmp_password"]["value"])
-            scan_assets_status = get_multiple_report_status(engine.scans[scan_id]["info"], gmp_cnx)
+                engine.scanner["options"]["gmp_password"]["value"],
+            )
+            scan_assets_status = get_multiple_report_status(
+                engine.scans[scan_id]["info"], gmp_cnx
+            )
 
         connection.disconnect()
     else:
-        scan_assets_status = get_multiple_report_status(engine.scans[scan_id]["info"], gmp_cnx)
+        scan_assets_status = get_multiple_report_status(
+            engine.scans[scan_id]["info"], gmp_cnx
+        )
 
     if scan_assets_status is None:
-        engine.scans[scan_id]['status'] = "UNKNOWN"
+        engine.scans[scan_id]["status"] = "UNKNOWN"
         return scan_status
 
     if scan_assets_status["status"] == "Done":
-        if 'report_available' in engine.scans[scan_id].keys() and engine.scans[scan_id]['report_available'] is True:
+        if (
+            "report_available" in engine.scans[scan_id].keys()
+            and engine.scans[scan_id]["report_available"] is True
+        ):
             scan_status = "FINISHED"
             engine.scans[scan_id]["finished_at"] = int(time.time() * 1000)
         else:
             scan_status = "SCANNING"
 
-    engine.scans[scan_id]['status'] = scan_status
+    engine.scans[scan_id]["status"] = scan_status
     return scan_assets_status
 
 
@@ -708,7 +753,9 @@ def status_scan(scan_id):
     """Get status on scan identified by id."""
     res = {"page": "status", "status": "UNKNOWN"}
     if scan_id not in engine.scans.keys():
-        res.update({"status": "error", "reason": "scan_id '{}' not found".format(scan_id)})
+        res.update(
+            {"status": "error", "reason": "scan_id '{}' not found".format(scan_id)}
+        )
         return jsonify(res)
 
     if engine.scans[scan_id]["status"] == "ERROR":
@@ -716,14 +763,14 @@ def status_scan(scan_id):
         return jsonify(res)
 
     assets_status = _status_scan(scan_id)
-    if engine.scans[scan_id]['status'] in ["SCANNING", "STARTED", "FINISHED"]:
-        res.update({
-            'status': engine.scans[scan_id]['status']
-        })
-        if 'info' in engine.scans[scan_id].keys():
-            res.update({
-                'info': engine.scans[scan_id]['info'],
-            })
+    if engine.scans[scan_id]["status"] in ["SCANNING", "STARTED", "FINISHED"]:
+        res.update({"status": engine.scans[scan_id]["status"]})
+        if "info" in engine.scans[scan_id].keys():
+            res.update(
+                {
+                    "info": engine.scans[scan_id]["info"],
+                }
+            )
 
     if assets_status is None:
         res.update({"status": "error", "reason": "Cannot find any report_status"})
@@ -742,20 +789,23 @@ def stop_scan(scan_id):
     """Stop scan identified by id."""
     res = {"page": "stop_scan", "status": "UNKNOWN"}
     if scan_id not in engine.scans.keys():
-        res.update({"status": "error", "reason": "scan_id '{}' not found".format(scan_id)})
+        res.update(
+            {"status": "error", "reason": "scan_id '{}' not found".format(scan_id)}
+        )
         return jsonify(res)
 
-    task_id = engine.scans[scan_id]['info']['task_id']
+    task_id = engine.scans[scan_id]["info"]["task_id"]
     try:
         connection = TLSConnection(
             hostname=engine.scanner["options"]["gmp_host"]["value"],
             port=engine.scanner["options"]["gmp_port"]["value"],
-            timeout=int(engine.scanner["options"].get("timeout", DEFAULT_TIMEOUT))
+            timeout=int(engine.scanner["options"].get("timeout", DEFAULT_TIMEOUT)),
         )
         with Gmp(connection) as gmp_cnx:
             gmp_cnx.authenticate(
                 engine.scanner["options"]["gmp_username"]["value"],
-                engine.scanner["options"]["gmp_password"]["value"])
+                engine.scanner["options"]["gmp_password"]["value"],
+            )
             gmp_cnx.stop_task(task_id)
             engine.scans[scan_id]["status"] = "STOPPED"
         connection.disconnect()
@@ -775,7 +825,7 @@ def getreport(scan_id):
 
 def _loadconfig():
     """Load configuration file."""
-    conf_file = APP_BASE_DIR+"/openvas.json"
+    conf_file = APP_BASE_DIR + "/openvas.json"
     if not exists(conf_file):
         app.logger.error("Error: config file '{}' not found".format(conf_file))
         return False
@@ -786,7 +836,7 @@ def _loadconfig():
         engine.scanner["status"] = "ERROR"
         engine.scanner["reason"] = "Starting loading configuration file"
     except Exception as ex:
-        app.logger.error("Loadconfig: Error "+ex.__str__())
+        app.logger.error("Loadconfig: Error " + ex.__str__())
         return False
 
     try:
@@ -794,26 +844,29 @@ def _loadconfig():
         connection = TLSConnection(
             hostname=engine.scanner["options"]["gmp_host"]["value"],
             port=engine.scanner["options"]["gmp_port"]["value"],
-            timeout=int(engine.scanner["options"].get("timeout", DEFAULT_TIMEOUT))
+            timeout=int(engine.scanner["options"].get("timeout", DEFAULT_TIMEOUT)),
         )
         with Gmp(connection) as this.gmp:
             response = this.gmp.authenticate(
                 engine.scanner["options"]["gmp_username"]["value"],
-                engine.scanner["options"]["gmp_password"]["value"])
+                engine.scanner["options"]["gmp_password"]["value"],
+            )
     except Exception as ex:
         engine.scanner["status"] = "ERROR"
         engine.status = "ERROR"
 
-        if(ex.__str__() == "timed out"):
-            engine.scanner["reason"] = "connection to {}:{} timed-out".format(connection.hostname, connection.port)
+        if ex.__str__() == "timed out":
+            engine.scanner["reason"] = "connection to {}:{} timed-out".format(
+                connection.hostname, connection.port
+            )
         else:
             engine.scanner["reason"] = ex.__str__()
 
-        app.logger.error("Loadconfig: Error "+ex.__str__())
+        app.logger.error("Loadconfig: Error " + ex.__str__())
         return False
 
     # Check login response
-    if response.find("authenticate_response status=\"400\"") > 0:
+    if response.find('authenticate_response status="400"') > 0:
         engine.status = "ERROR"
         engine.scanner["status"] = "ERROR"
         engine.scanner["reason"] = "openvas login failed"
@@ -827,20 +880,19 @@ def _loadconfig():
         app.logger.error("Loadconfig: Unable to retrieve port lists.")
         return False
 
-    for pl in portlists.findall('port_list'):
-        pl_name = pl.find('name').text
-        pl_uuid = pl.get('id')
+    for pl in portlists.findall("port_list"):
+        pl_name = pl.find("name").text
+        pl_uuid = pl.get("id")
         this.openvas_portlists.update({pl_name: pl_uuid})
 
     # Create custom port lists
     if "patrowl-all_tcp" not in this.openvas_portlists.keys():
         try:
             new_pl_xml = this.gmp.create_port_list(
-                name="patrowl-all_tcp",
-                port_range="T:1-65535"
+                name="patrowl-all_tcp", port_range="T:1-65535"
             )
             new_pl = ET.fromstring(new_pl_xml)
-            this.openvas_portlists.update({"patrowl-all_tcp": new_pl.get('id')})
+            this.openvas_portlists.update({"patrowl-all_tcp": new_pl.get("id")})
         except Exception:
             app.logger.error("Loadconfig: Unable to create port list 'patrowl-all_tcp'")
             return False
@@ -848,23 +900,23 @@ def _loadconfig():
     if "patrowl-quick_tcp" not in this.openvas_portlists.keys():
         try:
             new_pl_xml = this.gmp.create_port_list(
-                name="patrowl-quick_tcp",
-                port_range="T:21-80,T:443,U:53"
+                name="patrowl-quick_tcp", port_range="T:21-80,T:443,U:53"
             )
             new_pl = ET.fromstring(new_pl_xml)
-            this.openvas_portlists.update({"patrowl-quick_tcp": new_pl.get('id')})
+            this.openvas_portlists.update({"patrowl-quick_tcp": new_pl.get("id")})
         except Exception:
-            app.logger.error("Loadconfig: Unable to create port list 'patrowl-quick_tcp'")
+            app.logger.error(
+                "Loadconfig: Unable to create port list 'patrowl-quick_tcp'"
+            )
             return False
 
     if "patrowl-tcp_80" not in this.openvas_portlists.keys():
         try:
             new_pl_xml = this.gmp.create_port_list(
-                name="patrowl-tcp_80",
-                port_range="T:80"
+                name="patrowl-tcp_80", port_range="T:80"
             )
             new_pl = ET.fromstring(new_pl_xml)
-            this.openvas_portlists.update({"patrowl-tcp_80": new_pl.get('id')})
+            this.openvas_portlists.update({"patrowl-tcp_80": new_pl.get("id")})
         except Exception:
             app.logger.error("Loadconfig: Unable to create port list 'patrowl-tcp_80'")
             return False
@@ -872,11 +924,10 @@ def _loadconfig():
     if "patrowl-tcp_443" not in this.openvas_portlists.keys():
         try:
             new_pl_xml = this.gmp.create_port_list(
-                name="patrowl-tcp_443",
-                port_range="T:443"
+                name="patrowl-tcp_443", port_range="T:443"
             )
             new_pl = ET.fromstring(new_pl_xml)
-            this.openvas_portlists.update({"patrowl-tcp_443": new_pl.get('id')})
+            this.openvas_portlists.update({"patrowl-tcp_443": new_pl.get("id")})
         except Exception:
             app.logger.error("Loadconfig: Unable to create port list 'patrowl-tcp_443'")
             return False
@@ -884,23 +935,22 @@ def _loadconfig():
     if "patrowl-tcp_22" not in this.openvas_portlists.keys():
         try:
             new_pl_xml = this.gmp.create_port_list(
-                name="patrowl-tcp_22",
-                port_range="T:22"
+                name="patrowl-tcp_22", port_range="T:22"
             )
             new_pl = ET.fromstring(new_pl_xml)
-            this.openvas_portlists.update({"patrowl-tcp_22": new_pl.get('id')})
+            this.openvas_portlists.update({"patrowl-tcp_22": new_pl.get("id")})
         except Exception:
             app.logger.error("Loadconfig: Unable to create port list 'patrowl-tcp_22'")
             return False
 
     try:
-        version_filename = APP_BASE_DIR+'/VERSION'
+        version_filename = APP_BASE_DIR + "/VERSION"
         if os.path.exists(version_filename):
             version_file = open(version_filename, "r")
-            engine.version = version_file.read().rstrip('\n')
+            engine.version = version_file.read().rstrip("\n")
             version_file.close()
     except Exception as ex:
-        app.logger.error("Loadconfig: Unable to read the VERSION file. "+ex.__str__())
+        app.logger.error("Loadconfig: Unable to read the VERSION file. " + ex.__str__())
         return False
 
     engine.scanner["status"] = "READY"
@@ -927,48 +977,64 @@ def start_scan():
 
     # Check the scanner is ready to start a new scan
     if len(engine.scans) == APP_MAXSCANS:
-        res.update({
-            "status": "error",
-            "reason": "Scan refused: max concurrent active scans reached ({})".format(APP_MAXSCANS)
-        })
+        res.update(
+            {
+                "status": "error",
+                "reason": "Scan refused: max concurrent active scans reached ({})".format(
+                    APP_MAXSCANS
+                ),
+            }
+        )
         return jsonify(res)
 
     status()
     if engine.scanner["status"] != "READY":
-        res.update({
-            "status": "refused",
-            "details": {
-                "reason": engine.scanner.get("reason", "scanner not ready"),
-                "status": engine.scanner["status"]
-            }})
+        res.update(
+            {
+                "status": "refused",
+                "details": {
+                    "reason": engine.scanner.get("reason", "scanner not ready"),
+                    "status": engine.scanner["status"],
+                },
+            }
+        )
         return jsonify(res)
 
     data = loads(request.data.decode("utf-8"))
     if "assets" not in data.keys() or "scan_id" not in data.keys():
-        res.update({
-            "status": "refused",
-            "details": {
-                "reason": "arg error, something is missing ('assets' ?)"
-            }})
-        app.logger.error("StartScan: arg error, something is missing ('assets' or 'scan_id' ?)")
+        res.update(
+            {
+                "status": "refused",
+                "details": {"reason": "arg error, something is missing ('assets' ?)"},
+            }
+        )
+        app.logger.error(
+            "StartScan: arg error, something is missing ('assets' or 'scan_id' ?)"
+        )
         return jsonify(res)
 
     assets = []
     for asset in data["assets"]:
         # Value
         if "value" not in asset.keys() or not asset["value"]:
-            res.update({
-                "status": "error",
-                "reason": "arg error, something is missing ('asset.value')"
-            })
+            res.update(
+                {
+                    "status": "error",
+                    "reason": "arg error, something is missing ('asset.value')",
+                }
+            )
             return jsonify(res)
 
         # Supported datatypes
         if asset["datatype"] not in engine.scanner["allowed_asset_types"]:
-            res.update({
-                "status": "error",
-                "reason": "arg error, bad value for '{}' datatype (not supported)".format(asset["value"])
-            })
+            res.update(
+                {
+                    "status": "error",
+                    "reason": "arg error, bad value for '{}' datatype (not supported)".format(
+                        asset["value"]
+                    ),
+                }
+            )
             return jsonify(res)
 
         if asset["datatype"] == "url":
@@ -980,16 +1046,16 @@ def start_scan():
     scan_id = str(data["scan_id"])
 
     scan = {
-        "assets":       assets,
-        "threads":      [],
-        "options":      data["options"],
-        "scan_id":      scan_id,
-        "status":       "STARTED",
-        "reason":       "",
-        "lock":         False,
-        "started_at":   int(time.time() * 1000),
-        "finished_at":  "",
-        "findings":     {}
+        "assets": assets,
+        "threads": [],
+        "options": data["options"],
+        "scan_id": scan_id,
+        "status": "STARTED",
+        "reason": "",
+        "lock": False,
+        "started_at": int(time.time() * 1000),
+        "finished_at": "",
+        "findings": {},
     }
 
     engine.scans.update({scan_id: scan})
@@ -997,13 +1063,15 @@ def start_scan():
     thread.start()
     engine.scans[scan_id]["threads"].append(thread)
 
-    res.update({
-        "status": "accepted",
-        "details": {
-            # "scan_id": scan["scan_id"]
-            "scan_id": scan_id
+    res.update(
+        {
+            "status": "accepted",
+            "details": {
+                # "scan_id": scan["scan_id"]
+                "scan_id": scan_id
+            },
         }
-    })
+    )
 
     return jsonify(res)
 
@@ -1013,7 +1081,7 @@ def _scan_assets(scan_id):
     scan = engine.scans[scan_id]
 
     scan_config_name = None
-    if 'profile' in engine.scans[scan_id]["options"].keys():
+    if "profile" in engine.scans[scan_id]["options"].keys():
         scan_config_name = engine.scans[scan_id]["options"]["profile"]
 
     # print("scan_config_name:", scan_config_name)
@@ -1024,7 +1092,7 @@ def _scan_assets(scan_id):
     if "OpenVAS Default" in this.openvas_portlists.keys():
         scan_portlist_id = this.openvas_portlists["OpenVAS Default"]
     scan_portlist_name = ""
-    if 'port_list' in scan["options"].keys():
+    if "port_list" in scan["options"].keys():
         scan_portlist_name = scan["options"]["port_list"]
         if scan_portlist_name in this.openvas_portlists.keys():
             scan_portlist_id = this.openvas_portlists[scan_portlist_name]
@@ -1032,14 +1100,14 @@ def _scan_assets(scan_id):
     # print("scan_portlist_id:", scan_portlist_id)
 
     if scan_portlist_id is None:
-        engine.scans[scan_id]['status'] = "ERROR"
-        engine.scans[scan_id]['reason'] = "Port list unknown ('OpenVAS Default' ?)"
+        engine.scans[scan_id]["status"] = "ERROR"
+        engine.scans[scan_id]["reason"] = "Port list unknown ('OpenVAS Default' ?)"
         return False
 
     options = get_options(scan)
 
     assets = engine.scans[scan_id]["assets"]
-    assets_hash = hashlib.sha1(str(''.join(assets)).encode('utf-8')).hexdigest()
+    assets_hash = hashlib.sha1(str("".join(assets)).encode("utf-8")).hexdigest()
     engine.scans[scan_id]["assets_hash"] = assets_hash
 
     try:
@@ -1050,18 +1118,23 @@ def _scan_assets(scan_id):
                 target_name=assets_hash,
                 target_hosts=engine.scans[scan_id]["assets"],
                 port_list_id=scan_portlist_id,
-                port_list_name=scan_portlist_name)  # Todo: add credentials if needed
+                port_list_name=scan_portlist_name,
+            )  # Todo: add credentials if needed
         if target_id is None:
-            engine.scans[scan_id]['status'] = "ERROR"
-            engine.scans[scan_id]['reason'] = "Unable to create a target ({})".format(assets_hash)
+            engine.scans[scan_id]["status"] = "ERROR"
+            engine.scans[scan_id]["reason"] = "Unable to create a target ({})".format(
+                assets_hash
+            )
             return False
 
         task_id = get_task_by_target_name(assets_hash, scan_config_id)
         if task_id is None and options["enable_create_task"] is True:
             task_id = create_task(assets_hash, target_id, scan_config_id=scan_config_id)
         if task_id is None:
-            engine.scans[scan_id]['status'] = "ERROR"
-            engine.scans[scan_id]['reason'] = "Unable to create a task ({})".format(assets_hash)
+            engine.scans[scan_id]["status"] = "ERROR"
+            engine.scans[scan_id]["reason"] = "Unable to create a task ({})".format(
+                assets_hash
+            )
             return False
 
         if options["enable_start_task"] is True:
@@ -1072,30 +1145,35 @@ def _scan_assets(scan_id):
             report_id = get_last_report(task_id)
 
         if report_id is None:
-            engine.scans[scan_id]['status'] = "ERROR"
-            engine.scans[scan_id]['reason'] = "Unable to get a report ({})".format(assets_hash)
+            engine.scans[scan_id]["status"] = "ERROR"
+            engine.scans[scan_id]["reason"] = "Unable to get a report ({})".format(
+                assets_hash
+            )
             return False
 
         # Store the scan info
-        engine.scans[scan_id]['info'] = {
-                "task_id": task_id,
-                "report_id": report_id,
-                "status": "accepted"
-            }
+        engine.scans[scan_id]["info"] = {
+            "task_id": task_id,
+            "report_id": report_id,
+            "status": "accepted",
+        }
     except Exception as e:
         print(e)
-        engine.scans[scan_id]['status'] = "ERROR"
-        engine.scans[scan_id]['reason'] = "Error when trying to start the scan"
+        engine.scans[scan_id]["status"] = "ERROR"
+        engine.scans[scan_id]["reason"] = "Error when trying to start the scan"
         return False
 
     # Scan is now running
-    engine.scans[scan_id]['status'] = "SCANNING"
+    engine.scans[scan_id]["status"] = "SCANNING"
 
     # @todo: Wait max scan timeout
     max_scan_timeout = DEFAULT_SCAN_TIMEOUT
     try:
-        if 'max_timeout' in engine.scans[scan_id]['options'].keys() and engine.scans[scan_id]['options']['max_timeout'].isnumeric():
-            max_scan_timeout = int(engine.scans[scan_id]['options']['max_timeout'])
+        if (
+            "max_timeout" in engine.scans[scan_id]["options"].keys()
+            and engine.scans[scan_id]["options"]["max_timeout"].isnumeric()
+        ):
+            max_scan_timeout = int(engine.scans[scan_id]["options"]["max_timeout"])
     except Exception:
         pass
     timeout = time.time() + max_scan_timeout
@@ -1103,25 +1181,37 @@ def _scan_assets(scan_id):
     while True:
         time.sleep(5)
         if time.time() > timeout:
-            engine.scans[scan_id]['status'] = "ERROR"
-            engine.scans[scan_id]['reason'] = "Scan timeout exceeded: {} seconds.".format(timeout)
+            engine.scans[scan_id]["status"] = "ERROR"
+            engine.scans[scan_id]["reason"] = (
+                "Scan timeout exceeded: {} seconds.".format(timeout)
+            )
             break
 
         scan_assets_status = _status_scan(scan_id)
 
-        if engine.scans[scan_id]["status"].upper() in ["ERROR", "UNKNOWN", "STOPPED", "FINISHED"]:
+        if engine.scans[scan_id]["status"].upper() in [
+            "ERROR",
+            "UNKNOWN",
+            "STOPPED",
+            "FINISHED",
+        ]:
             break
         elif engine.scans[scan_id]["status"].upper() == "STARTED":
             continue
         elif engine.scans[scan_id]["status"].upper() == "SCANNING":
-            if scan_assets_status["status"] == "Done" and "report_available" not in engine.scans[scan_id].keys():
+            if (
+                scan_assets_status["status"] == "Done"
+                and "report_available" not in engine.scans[scan_id].keys()
+            ):
                 try:
                     # Get the report from the OpenVAS instance
                     engine.scans[scan_id]["findings"] = get_report(scan_id)
                 except Exception as e:
                     print(e)
-                    engine.scans[scan_id]['status'] = "ERROR"
-                    engine.scans[scan_id]['reason'] = "Unable to get findings from scan '{}'.".format(scan_id)
+                    engine.scans[scan_id]["status"] = "ERROR"
+                    engine.scans[scan_id]["reason"] = (
+                        "Unable to get findings from scan '{}'.".format(scan_id)
+                    )
                     break
 
                 # Parse the results
@@ -1129,8 +1219,10 @@ def _scan_assets(scan_id):
                     issues, summary = _parse_results(scan_id)
                 except Exception as e:
                     print(e)
-                    engine.scans[scan_id]['status'] = "ERROR"
-                    engine.scans[scan_id]['reason'] = "Unable to parse findings from scan '{}'.".format(scan_id)
+                    engine.scans[scan_id]["status"] = "ERROR"
+                    engine.scans[scan_id]["reason"] = (
+                        "Unable to parse findings from scan '{}'.".format(scan_id)
+                    )
                     break
 
                 scan = {
@@ -1139,16 +1231,18 @@ def _scan_assets(scan_id):
                     "options": engine.scans[scan_id]["options"],
                     "status": engine.scans[scan_id]["status"],
                     "started_at": engine.scans[scan_id]["started_at"],
-                    "finished_at": engine.scans[scan_id]["finished_at"]
+                    "finished_at": engine.scans[scan_id]["finished_at"],
                 }
 
                 # Store the findings in a file
-                with open(APP_BASE_DIR+"/results/openvas_"+scan_id+".json", "w") as rf:
-                    dump({
-                        "scan": scan,
-                        "summary": summary,
-                        "issues": issues
-                    }, rf, default=_json_serial)
+                with open(
+                    APP_BASE_DIR + "/results/openvas_" + scan_id + ".json", "w"
+                ) as rf:
+                    dump(
+                        {"scan": scan, "summary": summary, "issues": issues},
+                        rf,
+                        default=_json_serial,
+                    )
 
                 engine.scans[scan_id]["status"] = "FINISHED"
                 engine.scans[scan_id]["finished_at"] = int(time.time() * 1000)
@@ -1168,12 +1262,13 @@ def get_report(scan_id):
     connection = TLSConnection(
         hostname=engine.scanner["options"]["gmp_host"]["value"],
         port=engine.scanner["options"]["gmp_port"]["value"],
-        timeout=int(engine.scanner["options"].get("timeout", DEFAULT_TIMEOUT))
+        timeout=int(engine.scanner["options"].get("timeout", DEFAULT_TIMEOUT)),
     )
     with Gmp(connection) as gmp_cnx:
         gmp_cnx.authenticate(
             engine.scanner["options"]["gmp_username"]["value"],
-            engine.scanner["options"]["gmp_password"]["value"])
+            engine.scanner["options"]["gmp_password"]["value"],
+        )
         if not isfile("results/openvas_report_{}_{}.xml".format(scan_id, assets_hash)):
             # # result = gmp_cnx.get_reports(filter="report_id={} levels=hmlg apply_overrides=0 rows=-1 min_qod=70 sort-reverse=severity notes=1 overrides=1".format(report_id), details=1, override_details=1, note_details=1)
             # # result = gmp_cnx.get_reports(filter="task_id={} levels=hmlg apply_overrides=0 rows=-1 min_qod=70 sort-reverse=severity notes=1 overrides=1".format(task_id), details=1, override_details=1, note_details=1)
@@ -1190,7 +1285,7 @@ def get_report(scan_id):
                 # filter="levels=hmlg apply_overrides=0 rows=-1 min_qod=70 sort-reverse=severity notes=1 overrides=1",
                 filter_string="levels=hmlg apply_overrides=0 rows=-1 min_qod=70 sort-reverse=severity notes=1 overrides=1",
                 details=1,
-                ignore_pagination=1
+                ignore_pagination=1,
             )
 
             # result = gmp_cnx.get_results(filter="task_id={} levels=hmlg apply_overrides=0 rows=-1 min_qod=70 sort-reverse=severity notes=1 overrides=1".format(task_id), details=1, override_details=1, note_details=1)
@@ -1203,12 +1298,16 @@ def get_report(scan_id):
             #     override_details=1,
             #     note_details=1
             # )
-            result_file = open("results/openvas_report_{}_{}.xml".format(scan_id, assets_hash), "w")
+            result_file = open(
+                "results/openvas_report_{}_{}.xml".format(scan_id, assets_hash), "w"
+            )
             result_file.write(result)
             result_file.close()
 
         try:
-            tree = ET.parse("results/openvas_report_{}_{}.xml".format(scan_id, assets_hash))
+            tree = ET.parse(
+                "results/openvas_report_{}_{}.xml".format(scan_id, assets_hash)
+            )
         except Exception as e:
             # No Element found in XML file
             app.logger.error(e)
@@ -1217,7 +1316,7 @@ def get_report(scan_id):
 
         # Build the asset mapping
         assets_map = {}
-        for asset in engine.scans[scan_id]['assets']:
+        for asset in engine.scans[scan_id]["assets"]:
             asset_datatype = "fqdn"
             siblings = [asset]
             if is_domain(asset):
@@ -1241,19 +1340,21 @@ def get_report(scan_id):
                     app.logger.error(e)
                     pass
 
-            assets_map.update({
-                asset: {
-                    'siblings': list(set(siblings)),
-                    'datatype': asset_datatype,
-                    'has_issues': False
+            assets_map.update(
+                {
+                    asset: {
+                        "siblings": list(set(siblings)),
+                        "datatype": asset_datatype,
+                        "has_issues": False,
+                    }
                 }
-            })
+            )
 
-        engine.scans[scan_id]['assets_map'] = assets_map
+        engine.scans[scan_id]["assets_map"] = assets_map
 
         report = tree.getroot().find("report")  # Use with get_reports
         # report = tree.getroot()  # Use with get_results
-        for result in report.findall('.//result'):
+        for result in report.findall(".//result"):
             try:
                 if result.find("host") is None:
                     continue
@@ -1261,16 +1362,23 @@ def get_report(scan_id):
                 host_name = result.find("host").find("hostname")
 
                 for a in assets_map.keys():
-                    if host_ip in assets_map[a]['siblings']:
+                    if host_ip in assets_map[a]["siblings"]:
                         issues.append(result)
-                        engine.scans[scan_id]['assets_map'][a]['has_issues'] = True
-                    elif host_name is not None and host_name.text in assets_map[a]['siblings']:
+                        engine.scans[scan_id]["assets_map"][a]["has_issues"] = True
+                    elif (
+                        host_name is not None
+                        and host_name.text in assets_map[a]["siblings"]
+                    ):
                         issues.append(result)
-                        engine.scans[scan_id]['assets_map'][a]['has_issues'] = True
+                        engine.scans[scan_id]["assets_map"][a]["has_issues"] = True
 
             except Exception as e:
                 # probably unknown issue's host, skip it
-                app.logger.error("Warning: failed to process issue: {}".format(ET.tostring(result, encoding='utf8', method='xml')))
+                app.logger.error(
+                    "Warning: failed to process issue: {}".format(
+                        ET.tostring(result, encoding="utf8", method="xml")
+                    )
+                )
                 app.logger.error(e)
 
     connection.disconnect()
@@ -1282,49 +1390,43 @@ def _parse_results(scan_id):
     issues = []
     summary = {}
 
-    nb_vulns = {
-        "info": 0,
-        "low": 0,
-        "medium": 0,
-        "high": 0,
-        "critical": 0
-    }
+    nb_vulns = {"info": 0, "low": 0, "medium": 0, "high": 0, "critical": 0}
     timestamp = int(time.time() * 1000)
 
     # No issue
     if engine.scans[scan_id]["findings"] == {}:
-        for asset in engine.scans[scan_id]['assets']:
-            issues.append({
-                "issue_id": len(issues)+1,
-                "severity": "info", "confidence": "certain",
-                "target": {
-                    "addr": [asset],
-                    "protocol": "tcp"
-                },
-                "title": "No results found.",
-                "solution": "n/a",
-                "metadata": {},
-                "type": "openvas_report",
-                "timestamp": timestamp,
-                "description": "No results found during the scan.",
-            })
+        for asset in engine.scans[scan_id]["assets"]:
+            issues.append(
+                {
+                    "issue_id": len(issues) + 1,
+                    "severity": "info",
+                    "confidence": "certain",
+                    "target": {"addr": [asset], "protocol": "tcp"},
+                    "title": "No results found.",
+                    "solution": "n/a",
+                    "metadata": {},
+                    "type": "openvas_report",
+                    "timestamp": timestamp,
+                    "description": "No results found during the scan.",
+                }
+            )
 
-    for asset in engine.scans[scan_id]['assets_map'].keys():
-        if engine.scans[scan_id]['assets_map'][asset]['has_issues'] is False:
-            issues.append({
-                "issue_id": len(issues)+1,
-                "severity": "info", "confidence": "certain",
-                "target": {
-                    "addr": [asset],
-                    "protocol": "tcp"
-                },
-                "title": "No results found.",
-                "solution": "n/a",
-                "metadata": {},
-                "type": "openvas_report",
-                "timestamp": timestamp,
-                "description": "No results found during the scan.",
-            })
+    for asset in engine.scans[scan_id]["assets_map"].keys():
+        if engine.scans[scan_id]["assets_map"][asset]["has_issues"] is False:
+            issues.append(
+                {
+                    "issue_id": len(issues) + 1,
+                    "severity": "info",
+                    "confidence": "certain",
+                    "target": {"addr": [asset], "protocol": "tcp"},
+                    "title": "No results found.",
+                    "solution": "n/a",
+                    "metadata": {},
+                    "type": "openvas_report",
+                    "timestamp": timestamp,
+                    "description": "No results found during the scan.",
+                }
+            )
 
     titles = []
     for result in engine.scans[scan_id]["findings"]:
@@ -1332,15 +1434,21 @@ def _parse_results(scan_id):
             if result.find("nvt") is None:
                 continue
             # Do not report an outdated or end-of-life scan engine
-            if result.find("nvt") is not None and "Report outdated" in result.find("nvt").find("name").text:
+            if (
+                result.find("nvt") is not None
+                and "Report outdated" in result.find("nvt").find("name").text
+            ):
                 continue
-            if result.find("nvt") is not None and "Important Announcement" in result.find("nvt").find("name").text:
+            if (
+                result.find("nvt") is not None
+                and "Important Announcement" in result.find("nvt").find("name").text
+            ):
                 continue
 
             if result.find("severity") is not None:
                 severity = float(result.find("severity").text)
             else:
-                severity = 'info'
+                severity = "info"
             cve = []
             if result.find("nvt").find("cve") is not None:
                 cve = [result.find("nvt").find("cve").text]
@@ -1364,14 +1472,21 @@ def _parse_results(scan_id):
             asset_name = result.find("host").text
             asset_hostname = result.find("host").find("hostname")
             asset_names = []
-            for a in engine.scans[scan_id]['assets_map'].keys():
-                if asset_name in engine.scans[scan_id]['assets_map'][a]['siblings']:
-                    if engine.scans[scan_id]['assets_map'][a]['datatype'] in ['ip-range', 'ip-subnet']:
+            for a in engine.scans[scan_id]["assets_map"].keys():
+                if asset_name in engine.scans[scan_id]["assets_map"][a]["siblings"]:
+                    if engine.scans[scan_id]["assets_map"][a]["datatype"] in [
+                        "ip-range",
+                        "ip-subnet",
+                    ]:
                         asset_names.append(asset_name)
                     else:
                         asset_names.append(a)
 
-                if asset_hostname is not None and asset_hostname.text in engine.scans[scan_id]['assets_map'][a]['siblings']:
+                if (
+                    asset_hostname is not None
+                    and asset_hostname.text
+                    in engine.scans[scan_id]["assets_map"][a]["siblings"]
+                ):
                     asset_names.append(asset_hostname.text)
                     asset_names.append(asset_name)
 
@@ -1398,89 +1513,96 @@ def _parse_results(scan_id):
             nb_vulns[criticity] += 1
 
             # CVE
-            if (refs):
-                for ref in refs.findall('ref'):
-                    if ref.attrib['type'] == 'cve':
-                        cve.append(ref.attrib['id'])
+            if refs:
+                for ref in refs.findall("ref"):
+                    if ref.attrib["type"] == "cve":
+                        cve.append(ref.attrib["id"])
 
             # form description
             description = "[{}] CVSS: {}\n\n".format(threat, severity)
             if len(cve) > 0:
                 description += "Associated CVE: {}\n\n".format(", ".join(cve))
 
-            if (xmlDesc):
+            if xmlDesc:
                 description += xmlDesc + "\n\n"
-            if (tags):
-                description += tags.replace('|', '\n') + "\n\n"
+            if tags:
+                description += tags.replace("|", "\n") + "\n\n"
 
             # Solution
-            solution_data = re.search('\|solution=(.+?)\|', tags)
+            solution_data = re.search("\|solution=(.+?)\|", tags)
             if solution_data and solution_data[0] != "|":
                 solution = solution_data.group(1)
 
             #  metadata
-            finding_metadata = {
-                "risk": {"cvss_base_score": cvss_base},
-                "vuln_refs": {}
-            }
+            finding_metadata = {"risk": {"cvss_base_score": cvss_base}, "vuln_refs": {}}
             # CVE
             if len(cve) > 0:
-                finding_metadata.update({
-                    "vuln_refs": {"CVE": cve}
-                })
+                finding_metadata.update({"vuln_refs": {"CVE": cve}})
 
             # CPE
             try:
                 if name == "CPE Inventory":
-                    finding_metadata.update({
-                        "vuln_refs": {"CPE": [c.split("|")[1] for c in xmlDesc.split("\n")]}
-                    })
+                    finding_metadata.update(
+                        {
+                            "vuln_refs": {
+                                "CPE": [c.split("|")[1] for c in xmlDesc.split("\n")]
+                            }
+                        }
+                    )
             except Exception:
                 pass
 
             try:
                 if name == "CPE Inventory":
-                    finding_metadata.update({
-                        "vuln_refs": {"CPE": [c.split("|")[1] for c in xmlDesc.split("\n\n")]}
-                    })
+                    finding_metadata.update(
+                        {
+                            "vuln_refs": {
+                                "CPE": [c.split("|")[1] for c in xmlDesc.split("\n\n")]
+                            }
+                        }
+                    )
             except Exception:
                 pass
 
             # if (xmlDesc) and "CPE:" in str(xmlDesc):
             #     print(xmlDesc)
-                # cpe_list = finding_metadata["vuln_refs"]["CPE"]
-                # for desc_line in xmlDesc.split("\n"):
-                #     if desc_line.startswith("CPE:"):
-                #         cpe_list.append(desc_line.split("\t")[1])
-                #
-                # finding_metadata.update({
-                #     "vuln_refs": {"CPE": cpe_list}
-                # })
+            # cpe_list = finding_metadata["vuln_refs"]["CPE"]
+            # for desc_line in xmlDesc.split("\n"):
+            #     if desc_line.startswith("CPE:"):
+            #         cpe_list.append(desc_line.split("\t")[1])
+            #
+            # finding_metadata.update({
+            #     "vuln_refs": {"CPE": cpe_list}
+            # })
 
             # create issue
-            issues.append({
-                "issue_id": len(issues)+1,
-                "severity": criticity, "confidence": "certain",
-                "target": {
-                    "addr": asset_names,
-                    "protocol": asset_port_protocol
-                },
-                "title": title,
-                "solution": solution,
-                "metadata": finding_metadata,
-                "type": "openvas_report",
-                "timestamp": timestamp,
-                "description": description,
-            })
+            issues.append(
+                {
+                    "issue_id": len(issues) + 1,
+                    "severity": criticity,
+                    "confidence": "certain",
+                    "target": {"addr": asset_names, "protocol": asset_port_protocol},
+                    "title": title,
+                    "solution": solution,
+                    "metadata": finding_metadata,
+                    "type": "openvas_report",
+                    "timestamp": timestamp,
+                    "description": description,
+                }
+            )
             # print("new_issue", issues[-1])
 
             xmlDesc = ""
 
         except Exception as e:
             # probably unknown issue's host, skip it
-            app.logger.error("Warning: failed to process issue: {}".format(ET.tostring(result, encoding='utf8', method='xml')))
+            app.logger.error(
+                "Warning: failed to process issue: {}".format(
+                    ET.tostring(result, encoding="utf8", method="xml")
+                )
+            )
             app.logger.error(e)
-            if hasattr(e, 'message'):
+            if hasattr(e, "message"):
                 app.logger.error(e.message)
 
     summary = {
@@ -1491,7 +1613,7 @@ def _parse_results(scan_id):
         "nb_high": nb_vulns["high"],
         "nb_critical": nb_vulns["critical"],
         "engine_name": "openvas",
-        "engine_version": engine.scanner["version"]
+        "engine_version": engine.scanner["version"],
     }
 
     return issues, summary
@@ -1504,46 +1626,60 @@ def getfindings(scan_id):
 
     # check if the scan_id exists
     if scan_id not in engine.scans.keys():
-        res.update({"status": "error", "reason": "scan_id '{}' not found".format(scan_id)})
+        res.update(
+            {"status": "error", "reason": "scan_id '{}' not found".format(scan_id)}
+        )
         return jsonify(res)
 
     # check if the scan is finished
     # status()
     _status_scan(scan_id)
     if engine.scans[scan_id]["status"] != "FINISHED":
-        res.update({
-            "status": "error",
-            "reason": "scan_id '{}' not finished (status={})".format(scan_id, engine.scans[scan_id]["status"])
-        })
+        res.update(
+            {
+                "status": "error",
+                "reason": "scan_id '{}' not finished (status={})".format(
+                    scan_id, engine.scans[scan_id]["status"]
+                ),
+            }
+        )
         return jsonify(res)
 
     try:
-        with open(APP_BASE_DIR+"/results/openvas_"+scan_id+".json", "r") as rf:
+        with open(APP_BASE_DIR + "/results/openvas_" + scan_id + ".json", "r") as rf:
             json_report = load(rf)
     except Exception:
-        res.update({
-            "status": "error",
-            "reason": "Unable to get report and findings from scan '{}'".format(scan_id)
-        })
+        res.update(
+            {
+                "status": "error",
+                "reason": "Unable to get report and findings from scan '{}'".format(
+                    scan_id
+                ),
+            }
+        )
         return jsonify(res)
 
-    res.update({
-        "scan": json_report['scan'],
-        "summary": json_report['summary'],
-        "issues": json_report['issues'],
-        "status": "success"
-    })
+    res.update(
+        {
+            "scan": json_report["scan"],
+            "summary": json_report["summary"],
+            "issues": json_report["issues"],
+            "status": "success",
+        }
+    )
     return jsonify(res)
 
 
 @app.before_first_request
 def main():
     """First function called."""
-    if not exists(APP_BASE_DIR+"/results"):
-        makedirs(APP_BASE_DIR+"/results")
+    if not exists(APP_BASE_DIR + "/results"):
+        makedirs(APP_BASE_DIR + "/results")
     res = _loadconfig()
     if res is False:
-        app.logger.error("Unable to initialize the engine with provided configuration file.")
+        app.logger.error(
+            "Unable to initialize the engine with provided configuration file."
+        )
 
 
 if __name__ == "__main__":

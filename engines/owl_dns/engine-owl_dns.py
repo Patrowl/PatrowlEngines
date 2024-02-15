@@ -1,6 +1,8 @@
 #!/usr/bin/python3
 # -*- coding: utf-8 -*-
-import os, sys, json, time, urllib, hashlib, threading, datetime, copy, dns.resolver, socket, optparse, random, string
+
+import os, sys, json, time, urllib, hashlib, threading
+import datetime, copy, dns.resolver, socket, optparse, random, string
 from flask import Flask, request, jsonify, redirect, url_for, send_from_directory
 import validators
 import requests
@@ -694,9 +696,9 @@ def _do_seg_check(scan_id, asset_value):
             this.scans[scan_id]["findings"]["seg_dict"][asset_value] = copy.deepcopy(
                 seg_dict
             )
-            this.scans[scan_id]["findings"]["seg_dict_dns_records"][
-                asset_value
-            ] = copy.deepcopy(dns_records)
+            this.scans[scan_id]["findings"]["seg_dict_dns_records"][asset_value] = (
+                copy.deepcopy(dns_records)
+            )
         else:
             this.scans[scan_id]["findings"]["no_seg"] = {
                 asset_value: "MX records found but no Secure Email Gateway set"

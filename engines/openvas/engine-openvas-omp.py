@@ -40,11 +40,12 @@ engine = PatrowlEngine(
     base_dir=APP_BASE_DIR,
     name=APP_ENGINE_NAME,
     max_scans=APP_MAXSCANS,
-    version=VERSION
+    version=VERSION,
 )
 
 this = modules[__name__]
 this.keys = []
+
 
 def get_criticity(score):
     """
@@ -59,6 +60,7 @@ def get_criticity(score):
         criticity = "medium"
     return criticity
 
+
 def is_uuid(uuid_string, version=4):
     """
     This function uuid_string returns True is the uuid_string is a valid UUID.
@@ -69,34 +71,56 @@ def is_uuid(uuid_string, version=4):
     except ValueError:
         return False
 
+
 def get_options(payload):
     """
     Extracts formatted options from the payload.
     """
-    options = {"enable_create_target": True, "enable_create_task": True, "enable_start_task": True}
+    options = {
+        "enable_create_target": True,
+        "enable_create_task": True,
+        "enable_start_task": True,
+    }
     user_opts = loads(payload["options"])
     if "enable_create_target" in user_opts:
-        options["enable_create_target"] = user_opts["enable_create_target"] == "True" or user_opts["enable_create_target"] == "true"
+        options["enable_create_target"] = (
+            user_opts["enable_create_target"] == "True"
+            or user_opts["enable_create_target"] == "true"
+        )
     if "enable_create_task" in user_opts:
-        options["enable_create_task"] = user_opts["enable_create_task"] == "True" or user_opts["enable_create_task"] == "true"
+        options["enable_create_task"] = (
+            user_opts["enable_create_task"] == "True"
+            or user_opts["enable_create_task"] == "true"
+        )
     if "enable_start_task" in user_opts:
-        options["enable_start_task"] = user_opts["enable_start_task"] == "True" or user_opts["enable_start_task"] == "true"
+        options["enable_start_task"] = (
+            user_opts["enable_start_task"] == "True"
+            or user_opts["enable_start_task"] == "true"
+        )
     return options
+
 
 def omp_cmd(command):
     """
     This function returns the output of an 'omp' command.
     """
-    omp_cmd_base = ["omp",
-                    "-h", engine.scanner["options"]["omp_host"]["value"],
-                    "-p", engine.scanner["options"]["omp_port"]["value"],
-                    "-u", engine.scanner["options"]["omp_username"]["value"],
-                    "-w", engine.scanner["options"]["omp_password"]["value"]]
+    omp_cmd_base = [
+        "omp",
+        "-h",
+        engine.scanner["options"]["omp_host"]["value"],
+        "-p",
+        engine.scanner["options"]["omp_port"]["value"],
+        "-u",
+        engine.scanner["options"]["omp_username"]["value"],
+        "-w",
+        engine.scanner["options"]["omp_password"]["value"],
+    ]
     try:
         result = check_output(omp_cmd_base + command).decode("utf-8")
     except Exception:
         result = ""
     return result
+
 
 def get_target(target_name):
     """
@@ -111,6 +135,7 @@ def get_target(target_name):
             return target_id
     return None
 
+
 def get_credentials():
     """
     This function returns the credentials_id from configuration.
@@ -123,12 +148,16 @@ def get_credentials():
     if not result.attrib["status"] == "200":
         return None
     for credential in result.findall("credential"):
-        if credential.find("name").text == engine.scanner["options"]["credential_name"]["value"]:
+        if (
+            credential.find("name").text
+            == engine.scanner["options"]["credential_name"]["value"]
+        ):
             credentials_id = credential.attrib["id"]
             if not is_uuid(credentials_id):
                 return None
             return credentials_id
     return None
+
 
 def get_scan_config():
     """
@@ -143,15 +172,21 @@ def get_scan_config():
             return scan_config_id
     return None
 
+
 def create_target(target_name):
     """
     This function creates a target in OpenVAS and returns its target_id
     """
-    result_xml = omp_cmd(["--xml",
-                          "<create_target><name>{target_name}</name><hosts>{target_name}</hosts><ssh_credential id='{credentials_name}'><port>{ssh_port}</port></ssh_credential></create_target>".format(
-                              target_name=target_name,
-                              credentials_name=engine.scanner["credentials"],
-                              ssh_port=22)])
+    result_xml = omp_cmd(
+        [
+            "--xml",
+            "<create_target><name>{target_name}</name><hosts>{target_name}</hosts><ssh_credential id='{credentials_name}'><port>{ssh_port}</port></ssh_credential></create_target>".format(
+                target_name=target_name,
+                credentials_name=engine.scanner["credentials"],
+                ssh_port=22,
+            ),
+        ]
+    )
     try:
         result = ET.fromstring(result_xml)
     except Exception:
@@ -162,6 +197,7 @@ def create_target(target_name):
     if not is_uuid(target_id):
         return None
     return target_id
+
 
 def get_task(target_name):
     """
@@ -176,15 +212,27 @@ def get_task(target_name):
             return task_id
     return None
 
+
 def create_task(target_name, target_id):
     """
     This function creates a task_id in OpenVAS and returns its task_id
     """
-    result = omp_cmd(["-C", "-c", engine.scanner["scan_config"], "--name", target_name, "--target", target_id]).split("\n")
+    result = omp_cmd(
+        [
+            "-C",
+            "-c",
+            engine.scanner["scan_config"],
+            "--name",
+            target_name,
+            "--target",
+            target_id,
+        ]
+    ).split("\n")
     task_id = result[0]
     if not is_uuid(task_id):
         return None
     return task_id
+
 
 def start_task(task_id):
     """
@@ -195,6 +243,7 @@ def start_task(task_id):
     if not is_uuid(report_id):
         return None
     return report_id
+
 
 def get_last_report(task_id):
     """
@@ -209,6 +258,7 @@ def get_last_report(task_id):
         return None
     return report_id
 
+
 def get_report_status(task_id, report_id):
     """
     This function get the status of a report_id
@@ -218,6 +268,7 @@ def get_report_status(task_id, report_id):
         if report_id in report:
             return report.split("  ")[2]
     return None
+
 
 def get_multiple_report_status(assets):
     """
@@ -234,11 +285,17 @@ def get_multiple_report_status(assets):
     for asset in assets:
         task_id = assets[asset]["task_id"]
         report_id = assets[asset]["report_id"]
-        report = result.find("task/[@id='{task_id}']/*/report[@id='{report_id}']".format(
-            task_id=task_id, report_id=report_id))
+        report = result.find(
+            "task/[@id='{task_id}']/*/report[@id='{report_id}']".format(
+                task_id=task_id, report_id=report_id
+            )
+        )
         if report is None:
-            print("Can't find task_id={task_id}, report_id={report_id}".format(
-                task_id=task_id, report_id=report_id))
+            print(
+                "Can't find task_id={task_id}, report_id={report_id}".format(
+                    task_id=task_id, report_id=report_id
+                )
+            )
             assets_status.update({asset: {"status": "Failure"}})
         else:
             scan_end = report.find("scan_end").text
@@ -248,9 +305,11 @@ def get_multiple_report_status(assets):
                 assets_status.update({asset: {"status": "Done"}})
     return assets_status
 
+
 def is_ip(string):
-    """ This dummy function returns True is the string is probably an IP """
+    """This dummy function returns True is the string is probably an IP"""
     return re_search("[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+", string) is not None
+
 
 @app.errorhandler(404)
 def page_not_found(e):
@@ -325,7 +384,9 @@ def status_scan(scan_id):
     """Get status on scan identified by id."""
     res = {"page": "status", "status": "UNKNOWN"}
     if scan_id not in engine.scans.keys():
-        res.update({"status": "error", "reason": "scan_id '{}' not found".format(scan_id)})
+        res.update(
+            {"status": "error", "reason": "scan_id '{}' not found".format(scan_id)}
+        )
         return jsonify(res)
 
     if engine.scans[scan_id]["status"] == "ERROR":
@@ -353,7 +414,12 @@ def status_scan(scan_id):
         try:
             _scan_urls(scan_id)
         except Exception as e:
-            res.update({"status": "error", "reason": "scan_urls did not worked ! ({})".format(e)})
+            res.update(
+                {
+                    "status": "error",
+                    "reason": "scan_urls did not worked ! ({})".format(e),
+                }
+            )
             return jsonify(res)
     else:
         res.update({"status": "SCANNING"})
@@ -383,7 +449,7 @@ def getreport(scan_id):
 
 
 def _loadconfig():
-    conf_file = APP_BASE_DIR+"/openvas.json"
+    conf_file = APP_BASE_DIR + "/openvas.json"
     if exists(conf_file):
         json_data = open(conf_file)
         engine.scanner = load(json_data)
@@ -411,47 +477,61 @@ def start_scan():
 
     # Check the scanner is ready to start a new scan
     if len(engine.scans) == APP_MAXSCANS:
-        res.update({
-            "status": "error",
-            "reason": "Scan refused: max concurrent active scans reached ({})".format(APP_MAXSCANS)
-        })
+        res.update(
+            {
+                "status": "error",
+                "reason": "Scan refused: max concurrent active scans reached ({})".format(
+                    APP_MAXSCANS
+                ),
+            }
+        )
         return jsonify(res)
 
     status()
     if engine.scanner["status"] != "READY":
-        res.update({
-            "status": "refused",
-            "details": {
-                "reason": "scanner not ready",
-                "status": engine.scanner["status"]
-            }})
+        res.update(
+            {
+                "status": "refused",
+                "details": {
+                    "reason": "scanner not ready",
+                    "status": engine.scanner["status"],
+                },
+            }
+        )
         return jsonify(res)
 
     data = loads(request.data.decode("utf-8"))
     if "assets" not in data.keys() or "scan_id" not in data.keys():
-        res.update({
-            "status": "refused",
-            "details": {
-                "reason": "arg error, something is missing ('assets' ?)"
-            }})
+        res.update(
+            {
+                "status": "refused",
+                "details": {"reason": "arg error, something is missing ('assets' ?)"},
+            }
+        )
         return jsonify(res)
 
     assets = []
     for asset in data["assets"]:
         # Value
         if "value" not in asset.keys() or not asset["value"]:
-            res.update({
-                "status": "error",
-                "reason": "arg error, something is missing ('asset.value')"
-            })
+            res.update(
+                {
+                    "status": "error",
+                    "reason": "arg error, something is missing ('asset.value')",
+                }
+            )
             return jsonify(res)
 
         # Supported datatypes
         if asset["datatype"] not in engine.scanner["allowed_asset_types"]:
-            res.update({
-                "status": "error",
-                "reason": "arg error, bad value for '{}' datatype (not supported)".format(asset["value"])
-            })
+            res.update(
+                {
+                    "status": "error",
+                    "reason": "arg error, bad value for '{}' datatype (not supported)".format(
+                        asset["value"]
+                    ),
+                }
+            )
             return jsonify(res)
 
         if asset["datatype"] == "url":
@@ -463,24 +543,28 @@ def start_scan():
     scan_id = str(data["scan_id"])
 
     if data["scan_id"] in engine.scans.keys():
-        res.update({
-            "status": "refused",
-            "details": {
-                "reason": "scan '{}' is probably already launched".format(data["scan_id"]),
+        res.update(
+            {
+                "status": "refused",
+                "details": {
+                    "reason": "scan '{}' is probably already launched".format(
+                        data["scan_id"]
+                    ),
+                },
             }
-        })
+        )
         return jsonify(res)
 
     scan = {
-        "assets":       assets,
-        "threads":      [],
-        "options":      data["options"],
-        "scan_id":      scan_id,
-        "status":       "STARTED",
-        "lock":         False,
-        "started_at":   int(time() * 1000),
-        "findings":     {},
-        "in_failure":   dict()
+        "assets": assets,
+        "threads": [],
+        "options": data["options"],
+        "scan_id": scan_id,
+        "status": "STARTED",
+        "lock": False,
+        "started_at": int(time() * 1000),
+        "findings": {},
+        "in_failure": dict(),
     }
     options = get_options(data)
 
@@ -499,7 +583,9 @@ def start_scan():
                 scan["in_failure"].update({asset: {"reason": "Fail to create target."}})
             else:
                 print("Target creation disabled")
-                scan["in_failure"].update({asset: {"reason": "Target creation disabled"}})
+                scan["in_failure"].update(
+                    {asset: {"reason": "Target creation disabled"}}
+                )
         else:
             task_id = get_task(asset)
             if task_id is None and options["enable_create_task"]:
@@ -509,10 +595,14 @@ def start_scan():
             if task_id is None:
                 if options["enable_create_task"]:
                     print("Fail to create task {}".format(asset))
-                    scan["in_failure"].update({asset: {"reason": "Fail to create task."}})
+                    scan["in_failure"].update(
+                        {asset: {"reason": "Fail to create task."}}
+                    )
                 else:
                     print("Task creation disabled")
-                    scan["in_failure"].update({asset: {"reason": "Task creation disabled."}})
+                    scan["in_failure"].update(
+                        {asset: {"reason": "Task creation disabled."}}
+                    )
             else:
                 if options["enable_start_task"]:
                     report_id = start_task(task_id)
@@ -525,21 +615,37 @@ def start_scan():
                 if report_id is None:
                     if options["enable_start_task"]:
                         print("Fail to start task {}".format(task_id))
-                        scan["in_failure"].update({asset: {"reason": "Fail to start task {}".format(task_id)}})
+                        scan["in_failure"].update(
+                            {asset: {"reason": "Fail to start task {}".format(task_id)}}
+                        )
                     else:
                         print("Task start disabled")
-                        scan["in_failure"].update({asset: {"reason": "Task start disabled"}})
+                        scan["in_failure"].update(
+                            {asset: {"reason": "Task start disabled"}}
+                        )
                 else:
                     print("OK for report_id {}".format(report_id))
-                    scan["assets"].update({asset: {"task_id": task_id, "report_id": report_id, "status": "accepted"}})
+                    scan["assets"].update(
+                        {
+                            asset: {
+                                "task_id": task_id,
+                                "report_id": report_id,
+                                "status": "accepted",
+                            }
+                        }
+                    )
 
     if scan["assets"] == dict():
-        res.update({
-            "status": "refused",
-            "details": {
-                "reason": "scan '{}' is probably already launched".format(data["scan_id"]),
+        res.update(
+            {
+                "status": "refused",
+                "details": {
+                    "reason": "scan '{}' is probably already launched".format(
+                        data["scan_id"]
+                    ),
+                },
             }
-        })
+        )
         return jsonify(res)
 
     engine.scans.update({scan_id: scan})
@@ -547,12 +653,7 @@ def start_scan():
     thread.start()
     engine.scans[scan_id]["threads"].append(thread)
 
-    res.update({
-        "status": "accepted",
-        "details": {
-            "scan_id": scan["scan_id"]
-        }
-    })
+    res.update({"status": "accepted", "details": {"scan_id": scan["scan_id"]}})
 
     return jsonify(res)
 
@@ -582,7 +683,9 @@ def _scan_urls(scan_id):
         if asset not in engine.scans[scan_id]["findings"]:
             engine.scans[scan_id]["findings"][asset] = {}
         try:
-            engine.scans[scan_id]["findings"][asset]["issues"] = get_report(asset, scan_id)
+            engine.scans[scan_id]["findings"][asset]["issues"] = get_report(
+                asset, scan_id
+            )
         except Exception as e:
             print("scan_urls did not worked ! ({})".format(e))
             return False
@@ -597,14 +700,27 @@ def get_report(asset, scan_id):
     report_id = engine.scans[scan_id]["assets"][asset]["report_id"]
     issues = []
 
-    if not isfile("results/openvas_report_{scan_id}_{asset}.xml".format(scan_id=scan_id, asset=asset)):
+    if not isfile(
+        "results/openvas_report_{scan_id}_{asset}.xml".format(
+            scan_id=scan_id, asset=asset
+        )
+    ):
         result = omp_cmd(["--get-report", report_id])
-        result_file = open("results/openvas_report_{scan_id}_{asset}.xml".format(scan_id=scan_id, asset=asset), "w")
+        result_file = open(
+            "results/openvas_report_{scan_id}_{asset}.xml".format(
+                scan_id=scan_id, asset=asset
+            ),
+            "w",
+        )
         result_file.write(result)
         result_file.close()
 
     try:
-        tree = ET.parse("results/openvas_report_{scan_id}_{asset}.xml".format(scan_id=scan_id, asset=asset))
+        tree = ET.parse(
+            "results/openvas_report_{scan_id}_{asset}.xml".format(
+                scan_id=scan_id, asset=asset
+            )
+        )
     except Exception:
         # No Element found in XML file
         return {"status": "ERROR", "reason": "no issues found"}
@@ -639,29 +755,29 @@ def _parse_results(scan_id):
     issues = []
     summary = {}
 
-    nb_vulns = {
-        "info": 0,
-        "low": 0,
-        "medium": 0,
-        "high": 0
-    }
+    nb_vulns = {"info": 0, "low": 0, "medium": 0, "high": 0}
     timestamp = int(time() * 1000)
     cvss_max = float(0)
 
     for failed_asset in engine.scans[scan_id]["in_failure"]:
         nb_vulns[get_criticity(cvss_max)] += 1
 
-        issues.append({
-            "issue_id": len(issues)+1,
-            "severity": get_criticity(cvss_max), "confidence": "certain",
-            "target": {"addr": [failed_asset], "protocol": "http"},
-            "title": "No report found for '{}'".format(failed_asset),
-            "solution": "n/a",
-            "metadata": {"risk": {"cvss_base_score": cvss_max}},
-            "type": "openvas_report",
-            "timestamp": timestamp,
-            "description": engine.scans[scan_id]["in_failure"][failed_asset]["reason"],
-        })
+        issues.append(
+            {
+                "issue_id": len(issues) + 1,
+                "severity": get_criticity(cvss_max),
+                "confidence": "certain",
+                "target": {"addr": [failed_asset], "protocol": "http"},
+                "title": "No report found for '{}'".format(failed_asset),
+                "solution": "n/a",
+                "metadata": {"risk": {"cvss_base_score": cvss_max}},
+                "type": "openvas_report",
+                "timestamp": timestamp,
+                "description": engine.scans[scan_id]["in_failure"][failed_asset][
+                    "reason"
+                ],
+            }
+        )
 
     def sortBySeverity(val):
         return float(val[0])
@@ -672,31 +788,43 @@ def _parse_results(scan_id):
             description = ""
             cvss_max = float(0)
             # Sort issues by CVE severity
-            engine.scans[scan_id]["findings"][asset]["issues"].sort(key=sortBySeverity, reverse=True)
+            engine.scans[scan_id]["findings"][asset]["issues"].sort(
+                key=sortBySeverity, reverse=True
+            )
             for eng in engine.scans[scan_id]["findings"][asset]["issues"]:
                 if float(eng[0]) > 0:
                     cvss_max = max(float(eng[0]), cvss_max)
-                    description = description + "[{threat}] CVSS: {severity} - Associated CVE : {cve}".format(
-                        threat=eng[2],
-                        severity=eng[0],
-                        cve=eng[1]) + "\n"
+                    description = (
+                        description
+                        + "[{threat}] CVSS: {severity} - Associated CVE : {cve}".format(
+                            threat=eng[2], severity=eng[0], cve=eng[1]
+                        )
+                        + "\n"
+                    )
             link = "https://{omp_host}/omp?cmd=get_report&report_id={report_id}".format(
                 omp_host=engine.scanner["options"]["omp_host"]["value"],
-                report_id=report_id)
+                report_id=report_id,
+            )
 
             nb_vulns[get_criticity(cvss_max)] += 1
 
-            issues.append({
-                "issue_id": len(issues)+1,
-                "severity": get_criticity(cvss_max), "confidence": "certain",
-                "target": {"addr": [asset], "protocol": "http"},
-                "title": "'{}' identified in openvas".format(asset),
-                "solution": "n/a",
-                "metadata": {"risk": {"cvss_base_score": cvss_max}, "links": [link]},
-                "type": "openvas_report",
-                "timestamp": timestamp,
-                "description": description,
-            })
+            issues.append(
+                {
+                    "issue_id": len(issues) + 1,
+                    "severity": get_criticity(cvss_max),
+                    "confidence": "certain",
+                    "target": {"addr": [asset], "protocol": "http"},
+                    "title": "'{}' identified in openvas".format(asset),
+                    "solution": "n/a",
+                    "metadata": {
+                        "risk": {"cvss_base_score": cvss_max},
+                        "links": [link],
+                    },
+                    "type": "openvas_report",
+                    "timestamp": timestamp,
+                    "description": description,
+                }
+            )
 
     summary = {
         "nb_issues": len(issues),
@@ -705,7 +833,7 @@ def _parse_results(scan_id):
         "nb_medium": nb_vulns["medium"],
         "nb_high": nb_vulns["high"],
         "engine_name": "openvas",
-        "engine_version": engine.scanner["version"]
+        "engine_version": engine.scanner["version"],
     }
 
     return issues, summary
@@ -717,13 +845,22 @@ def getfindings(scan_id):
 
     # check if the scan_id exists
     if scan_id not in engine.scans.keys():
-        res.update({"status": "error", "reason": "scan_id '{}' not found".format(scan_id)})
+        res.update(
+            {"status": "error", "reason": "scan_id '{}' not found".format(scan_id)}
+        )
         return jsonify(res)
 
     # check if the scan is finished
     status()
     if engine.scans[scan_id]["status"] != "FINISHED":
-        res.update({"status": "error", "reason": "scan_id '{}' not finished (status={})".format(scan_id, engine.scans[scan_id]["status"])})
+        res.update(
+            {
+                "status": "error",
+                "reason": "scan_id '{}' not finished (status={})".format(
+                    scan_id, engine.scans[scan_id]["status"]
+                ),
+            }
+        )
         return jsonify(res)
 
     issues, summary = _parse_results(scan_id)
@@ -734,31 +871,36 @@ def getfindings(scan_id):
         "options": engine.scans[scan_id]["options"],
         "status": engine.scans[scan_id]["status"],
         "started_at": engine.scans[scan_id]["started_at"],
-        "finished_at": engine.scans[scan_id]["finished_at"]
+        "finished_at": engine.scans[scan_id]["finished_at"],
     }
 
     # Store the findings in a file
-    with open(APP_BASE_DIR+"/results/openvas_"+scan_id+".json", "w") as report_file:
-        dump({
-            "scan": scan,
-            "summary": summary,
-            "issues": issues
-        }, report_file, default=_json_serial)
+    with open(
+        APP_BASE_DIR + "/results/openvas_" + scan_id + ".json", "w"
+    ) as report_file:
+        dump(
+            {"scan": scan, "summary": summary, "issues": issues},
+            report_file,
+            default=_json_serial,
+        )
 
     # remove the scan from the active scan list
     clean_scan(scan_id)
 
-    res.update({"scan": scan, "summary": summary, "issues": issues, "status": "success"})
+    res.update(
+        {"scan": scan, "summary": summary, "issues": issues, "status": "success"}
+    )
     return jsonify(res)
 
 
 @app.before_first_request
 def main():
     """First function called."""
-    if not exists(APP_BASE_DIR+"/results"):
-        makedirs(APP_BASE_DIR+"/results")
+    if not exists(APP_BASE_DIR + "/results"):
+        makedirs(APP_BASE_DIR + "/results")
     _loadconfig()
     print("Run engine")
+
 
 if __name__ == "__main__":
     engine.run_app(app_debug=APP_DEBUG, app_host=APP_HOST, app_port=APP_PORT)
