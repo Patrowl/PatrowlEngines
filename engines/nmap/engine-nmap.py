@@ -1,5 +1,6 @@
 #!/usr/bin/python3
 # -*- coding: utf-8 -*-
+
 import os
 import subprocess
 import sys
@@ -365,9 +366,8 @@ def _scan_thread(scan_id):
 
         this.scans[scan_id]["issues"] = deepcopy(issues)
     except Exception as e:
-        print(e)
         app.logger.info(e)
-        traceback.print_exception(*sys.exc_info())
+        # traceback.print_exception(*sys.exc_info())
         this.scans[scan_id]["status"] = "ERROR"
         this.scans[scan_id]["issues_available"] = False
     this.scans[scan_id]["issues_available"] = True
@@ -423,11 +423,9 @@ def stop_scan(scan_id):
         res.update({"status": "error", "reason": f"scan_id '{scan_id}' not found"})
         return jsonify(res)
 
+    # Stop the nmap cmd
     proc = this.scans[scan_id]["proc"]
     if hasattr(proc, "pid"):
-        # his.proc.terminate()
-        # proc.kill()
-        # os.killpg(os.getpgid(proc.pid), signal.SIGTERM)
         if psutil.pid_exists(proc.pid):
             psutil.Process(proc.pid).terminate()
         res.update(
@@ -440,6 +438,10 @@ def stop_scan(scan_id):
                 },
             }
         )
+
+    # Stop the thread '_scan_thread'
+    for th in this.scans[scan_id]["threads"]:
+        th.join()
 
     this.scans[scan_id]["status"] = "STOPPED"
     # this.scans[scan_id]["finished_at"] = int(time.time() * 1000)

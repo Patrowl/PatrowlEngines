@@ -3,7 +3,7 @@
 """
 CertStream PatrOwl engine application.
 
-Copyright (C) 2021 Nicolas Mattiocco - @MaKyOtOx
+Copyright (C) 2024 Nicolas Mattiocco - @MaKyOtOx
 Licensed under the AGPLv3 License
 Written by Nicolas BEGUIER (nicolas.beguier@adevinta.com)
 """
@@ -28,7 +28,9 @@ try:
     from utils.confparser import ConfParser
     import gethost
 except ModuleNotFoundError:
-    LOG.warning("[WARNING] You have to 'git clone https://github.com/AssuranceMaladieSec/CertStreamMonitor.git'")
+    LOG.warning(
+        "[WARNING] You have to 'git clone https://github.com/AssuranceMaladieSec/CertStreamMonitor.git'"
+    )
 
 # Own library imports
 from PatrowlEnginesUtils.PatrowlEngine import _json_serial
@@ -42,7 +44,7 @@ app = Flask(__name__)
 APP_DEBUG = False
 APP_HOST = "0.0.0.0"
 APP_PORT = 5017
-APP_MAXSCANS = int(os.environ.get('APP_MAXSCANS', 5))
+APP_MAXSCANS = int(os.environ.get("APP_MAXSCANS", 5))
 APP_ENGINE_NAME = "certstream"
 APP_BASE_DIR = dirname(realpath(__file__))
 CREATED_CERT_CVSS = 5
@@ -56,7 +58,7 @@ engine = PatrowlEngine(
     base_dir=APP_BASE_DIR,
     name=APP_ENGINE_NAME,
     max_scans=APP_MAXSCANS,
-    version=VERSION
+    version=VERSION,
 )
 
 this = modules[__name__]
@@ -102,9 +104,10 @@ def in_whitelist(domain):
     if domain in whitelist:
         return True
     for white in whitelist:
-        if domain.endswith("."+white):
+        if domain.endswith("." + white):
             return True
     return False
+
 
 @app.errorhandler(404)
 def page_not_found(e):
@@ -173,8 +176,17 @@ def status():
     """Get status on engine and all scans."""
     CertStreamMonitorFile = engine.scanner["options"]["CertStreamMonitorFile"]["value"]
     if not exists(CertStreamMonitorFile):
-        LOG.error("Error: CertStreamMonitorFile not found : {}".format(CertStreamMonitorFile))
-        return jsonify({"status": "error", "reason": "CertStreamMonitorFile not found : {}".format(CertStreamMonitorFile)})
+        LOG.error(
+            "Error: CertStreamMonitorFile not found : {}".format(CertStreamMonitorFile)
+        )
+        return jsonify(
+            {
+                "status": "error",
+                "reason": "CertStreamMonitorFile not found : {}".format(
+                    CertStreamMonitorFile
+                ),
+            }
+        )
 
     try:
         CONF = ConfParser(CertStreamMonitorFile)
@@ -182,12 +194,34 @@ def status():
         engine.scanner["options"]["TABLEname"] = CONF.TABLEname
         engine.scanner["options"]["SearchKeywords"] = CONF.SearchKeywords
     except Exception:
-        LOG.error("Error: Cannot read CertStreamMonitorFile : {}".format(CertStreamMonitorFile))
-        return jsonify({"status": "error", "reason": "Cannot read CertStreamMonitorFile : {}".format(CertStreamMonitorFile)})
+        LOG.error(
+            "Error: Cannot read CertStreamMonitorFile : {}".format(
+                CertStreamMonitorFile
+            )
+        )
+        return jsonify(
+            {
+                "status": "error",
+                "reason": "Cannot read CertStreamMonitorFile : {}".format(
+                    CertStreamMonitorFile
+                ),
+            }
+        )
 
     if not exists(engine.scanner["options"]["DBFile"]):
-        LOG.error("Error: sqlite file not found : {}".format(engine.scanner["options"]["DBFile"]))
-        return jsonify({"status": "error", "reason": "sqlite file not found : {}".format(engine.scanner["options"]["DBFile"])})
+        LOG.error(
+            "Error: sqlite file not found : {}".format(
+                engine.scanner["options"]["DBFile"]
+            )
+        )
+        return jsonify(
+            {
+                "status": "error",
+                "reason": "sqlite file not found : {}".format(
+                    engine.scanner["options"]["DBFile"]
+                ),
+            }
+        )
 
     return engine.getstatus()
 
@@ -197,7 +231,9 @@ def status_scan(scan_id):
     """Get status on scan identified by id."""
     res = {"page": "status", "status": "UNKNOWN"}
     if scan_id not in engine.scans.keys():
-        res.update({"status": "error", "reason": "scan_id '{}' not found".format(scan_id)})
+        res.update(
+            {"status": "error", "reason": "scan_id '{}' not found".format(scan_id)}
+        )
         return jsonify(res)
 
     if engine.scans[scan_id]["status"] == "ERROR":
@@ -210,7 +246,9 @@ def status_scan(scan_id):
     try:
         _scan_urls(scan_id)
     except Exception as e:
-        res.update({"status": "error", "reason": "scan_urls did not worked ! ({})".format(e)})
+        res.update(
+            {"status": "error", "reason": "scan_urls did not worked ! ({})".format(e)}
+        )
         return jsonify(res)
 
     return jsonify(res)
@@ -235,8 +273,8 @@ def getreport(scan_id):
 
 
 def _loadconfig():
-    conf_file = APP_BASE_DIR+"/certstream.json"
-    if len(argv) > 1 and exists(APP_BASE_DIR+"/"+argv[1]):
+    conf_file = APP_BASE_DIR + "/certstream.json"
+    if len(argv) > 1 and exists(APP_BASE_DIR + "/" + argv[1]):
         conf_file = APP_BASE_DIR + "/" + argv[1]
     if exists(conf_file):
         json_data = open(conf_file)
@@ -246,30 +284,44 @@ def _loadconfig():
         LOG.error("Error: config file '{}' not found".format(conf_file))
         return {"status": "error", "reason": "config file not found"}
 
-    version_filename = APP_BASE_DIR+'/VERSION'
+    version_filename = APP_BASE_DIR + "/VERSION"
     if os.path.exists(version_filename):
         version_file = open(version_filename, "r")
-        engine.version = version_file.read().rstrip('\n')
+        engine.version = version_file.read().rstrip("\n")
         version_file.close()
 
     if "options" not in engine.scanner:
         LOG.error("Error: You have to specify options")
         return {"status": "error", "reason": "You have to specify options"}
 
-    engine.scanner["options"]["Whitelist"]["present"] = "Whitelist" in engine.scanner["options"] and exists(engine.scanner["options"]["Whitelist"]["value"])
+    engine.scanner["options"]["Whitelist"]["present"] = "Whitelist" in engine.scanner[
+        "options"
+    ] and exists(engine.scanner["options"]["Whitelist"]["value"])
 
-    with open(engine.scanner["options"]["Whitelist"]["value"], "r", encoding="UTF-8") as whitelist_file:
+    with open(
+        engine.scanner["options"]["Whitelist"]["value"], "r", encoding="UTF-8"
+    ) as whitelist_file:
         whitelist = whitelist_file.read()
         engine.scanner["options"]["Whitelist"]["list"] = whitelist.split("\n")[:-1]
 
     if "CertStreamMonitorFile" not in engine.scanner["options"]:
         LOG.error("Error: You have to specify CertStreamMonitorFile in options")
-        return {"status": "error", "reason": "You have to specify CertStreamMonitorFile in options"}
+        return {
+            "status": "error",
+            "reason": "You have to specify CertStreamMonitorFile in options",
+        }
 
     CertStreamMonitorFile = engine.scanner["options"]["CertStreamMonitorFile"]["value"]
     if not exists(CertStreamMonitorFile):
-        LOG.error("Error: CertStreamMonitorFile not found : {}".format(CertStreamMonitorFile))
-        return {"status": "error", "reason": "CertStreamMonitorFile not found : {}".format(CertStreamMonitorFile)}
+        LOG.error(
+            "Error: CertStreamMonitorFile not found : {}".format(CertStreamMonitorFile)
+        )
+        return {
+            "status": "error",
+            "reason": "CertStreamMonitorFile not found : {}".format(
+                CertStreamMonitorFile
+            ),
+        }
 
     LOG.info("[OK] CertStreamMonitorFile")
 
@@ -280,12 +332,30 @@ def _loadconfig():
         engine.scanner["options"]["TABLEname"] = CONF.TABLEname
         engine.scanner["options"]["SearchKeywords"] = CONF.SearchKeywords
     except Exception:
-        LOG.error("Error: Cannot read CertStreamMonitorFile : {}".format(CertStreamMonitorFile))
-        return {"status": "error", "reason": "Cannot read CertStreamMonitorFile : {}".format(CertStreamMonitorFile)}
+        LOG.error(
+            "Error: Cannot read CertStreamMonitorFile : {}".format(
+                CertStreamMonitorFile
+            )
+        )
+        return {
+            "status": "error",
+            "reason": "Cannot read CertStreamMonitorFile : {}".format(
+                CertStreamMonitorFile
+            ),
+        }
 
     if not exists(engine.scanner["options"]["DBFile"]):
-        LOG.error("Error: sqlite file not found : {}".format(engine.scanner["options"]["DBFile"]))
-        return {"status": "error", "reason": "sqlite file not found : {}".format(engine.scanner["options"]["DBFile"])}
+        LOG.error(
+            "Error: sqlite file not found : {}".format(
+                engine.scanner["options"]["DBFile"]
+            )
+        )
+        return {
+            "status": "error",
+            "reason": "sqlite file not found : {}".format(
+                engine.scanner["options"]["DBFile"]
+            ),
+        }
 
 
 @app.route("/engines/certstream/reloadconfig", methods=["GET"])
@@ -302,47 +372,61 @@ def start_scan():
 
     # Check the scanner is ready to start a new scan
     if len(engine.scans) == APP_MAXSCANS:
-        res.update({
-            "status": "error",
-            "reason": "Scan refused: max concurrent active scans reached ({})".format(APP_MAXSCANS)
-        })
+        res.update(
+            {
+                "status": "error",
+                "reason": "Scan refused: max concurrent active scans reached ({})".format(
+                    APP_MAXSCANS
+                ),
+            }
+        )
         return jsonify(res)
 
     status()
     if engine.scanner["status"] != "READY":
-        res.update({
-            "status": "refused",
-            "details": {
-                "reason": "scanner not ready",
-                "status": engine.scanner["status"]
-            }})
+        res.update(
+            {
+                "status": "refused",
+                "details": {
+                    "reason": "scanner not ready",
+                    "status": engine.scanner["status"],
+                },
+            }
+        )
         return jsonify(res)
 
     data = loads(request.data.decode("utf-8"))
     if "assets" not in data.keys() or "scan_id" not in data.keys():
-        res.update({
-            "status": "refused",
-            "details": {
-                "reason": "arg error, something is missing ('assets' ?)"
-            }})
+        res.update(
+            {
+                "status": "refused",
+                "details": {"reason": "arg error, something is missing ('assets' ?)"},
+            }
+        )
         return jsonify(res)
 
     assets = []
     for asset in data["assets"]:
         # Value
         if "value" not in asset.keys() or not asset["value"]:
-            res.update({
-                "status": "error",
-                "reason": "arg error, something is missing ('asset.value')"
-            })
+            res.update(
+                {
+                    "status": "error",
+                    "reason": "arg error, something is missing ('asset.value')",
+                }
+            )
             return jsonify(res)
 
         # Supported datatypes
         if asset["datatype"] not in engine.scanner["allowed_asset_types"]:
-            res.update({
-                "status": "error",
-                "reason": "arg error, bad value for '{}' datatype (not supported)".format(asset["value"])
-            })
+            res.update(
+                {
+                    "status": "error",
+                    "reason": "arg error, bad value for '{}' datatype (not supported)".format(
+                        asset["value"]
+                    ),
+                }
+            )
             return jsonify(res)
 
         if asset["datatype"] == "url":
@@ -354,35 +438,43 @@ def start_scan():
     scan_id = str(data["scan_id"])
 
     if data["scan_id"] in engine.scans.keys():
-        res.update({
-            "status": "refused",
-            "details": {
-                "reason": "scan '{}' is probably already launched".format(data["scan_id"]),
+        res.update(
+            {
+                "status": "refused",
+                "details": {
+                    "reason": "scan '{}' is probably already launched".format(
+                        data["scan_id"]
+                    ),
+                },
             }
-        })
+        )
         return jsonify(res)
     # Default Value
     if not "options" in data:
         data["options"] = {"since": 3600}
 
     scan = {
-        "assets":       assets,
-        "threads":      [],
-        "options":      data["options"],
-        "scan_id":      scan_id,
-        "status":       "STARTED",
-        "lock":         False,
-        "started_at":   int(time() * 1000),
-        "findings":     {}
+        "assets": assets,
+        "threads": [],
+        "options": data["options"],
+        "scan_id": scan_id,
+        "status": "STARTED",
+        "lock": False,
+        "started_at": int(time() * 1000),
+        "findings": {},
     }
 
     options = get_options(data)
 
     if options["since"] == 0:
-        res.update({
-            "status": "refused",
-            "details": {
-                "reason": "You need to specify a valid since options in seconds"}})
+        res.update(
+            {
+                "status": "refused",
+                "details": {
+                    "reason": "You need to specify a valid since options in seconds"
+                },
+            }
+        )
         return jsonify(res)
 
     engine.scanner["options"]["since"] = options["since"]
@@ -392,12 +484,7 @@ def start_scan():
     thread.start()
     engine.scans[scan_id]["threads"].append(thread)
 
-    res.update({
-        "status": "accepted",
-        "details": {
-            "scan_id": scan["scan_id"]
-        }
-    })
+    res.update({"status": "accepted", "details": {"scan_id": scan["scan_id"]}})
 
     return jsonify(res)
 
@@ -427,7 +514,9 @@ def _scan_urls(scan_id):
         if asset not in engine.scans[scan_id]["findings"]:
             engine.scans[scan_id]["findings"][asset] = {}
         try:
-            engine.scans[scan_id]["findings"][asset]["issues"] = get_report(asset, scan_id)
+            engine.scans[scan_id]["findings"][asset]["issues"] = get_report(
+                asset, scan_id
+            )
         except Exception as e:
             LOG.error("_scan_urls: API Connexion error (quota?): {}".format(e))
             return False
@@ -444,13 +533,19 @@ def get_report(asset, scan_id):
     if not isfile("results/certstream_report_{scan_id}.txt".format(scan_id=scan_id)):
         gethost.SINCE = engine.scanner["options"]["since"]
         conn = gethost.create_connection(engine.scanner["options"]["DBFile"])
-        result = gethost.parse_and_display_all_hostnames(engine.scanner["options"]["TABLEname"], conn)
-        result_file = open("results/certstream_report_{scan_id}.txt".format(scan_id=scan_id), "w")
+        result = gethost.parse_and_display_all_hostnames(
+            engine.scanner["options"]["TABLEname"], conn
+        )
+        result_file = open(
+            "results/certstream_report_{scan_id}.txt".format(scan_id=scan_id), "w"
+        )
         result_file.write(dumps(result))
         result_file.close()
 
     try:
-        result_file = open("results/certstream_report_{scan_id}.txt".format(scan_id=scan_id), "r")
+        result_file = open(
+            "results/certstream_report_{scan_id}.txt".format(scan_id=scan_id), "r"
+        )
         result = loads(result_file.read())
         result_file.close()
     except Exception:
@@ -467,12 +562,7 @@ def _parse_results(scan_id):
     issues = []
     summary = {}
 
-    nb_vulns = {
-        "info": 0,
-        "low": 0,
-        "medium": 0,
-        "high": 0
-    }
+    nb_vulns = {"info": 0, "low": 0, "medium": 0, "high": 0}
     timestamp = int(time() * 1000)
 
     for asset in engine.scans[scan_id]["findings"]:
@@ -484,56 +574,81 @@ def _parse_results(scan_id):
                 if in_whitelist(domain):
                     continue
                 cvss_local = CREATED_CERT_CVSS
-                description_local = "Domain: {} has been created\nIssuer: {}\nFingerprint {}\n".format(
-                    domain,
-                    report[domain]["issuer"],
-                    report[domain]["fingerprint"])
-                issues.append({
-                    "issue_id": len(issues)+1,
-                    "severity": get_criticity(cvss_local), "confidence": "certain",
-                    "target": {"addr": [domain], "protocol": "http", "parent": asset},
-                    "title": "Domain '{}' has been identified in certstream".format(domain),
-                    "solution": "n/a",
-                    "metadata": {"risk": {"cvss_base_score": cvss_local}},
-                    "type": "certstream_report",
-                    "timestamp": timestamp,
-                    "description": description_local,
-                })
-                nb_vulns[get_criticity(cvss_local)] += 1
-
-                if report[domain]["still_investing"] is not None:
-                    cvss_local = UP_DOMAIN_CVSS
-                    description_local += "Last time up: {}\n".format(report[domain]["still_investing"])
-                    issues.append({
-                        "issue_id": len(issues)+1,
-                        "severity": get_criticity(cvss_local), "confidence": "certain",
-                        "target": {"addr": [domain], "protocol": "http", "parent": asset},
-                        "title": "Domain '{}' is reacheable".format(domain),
+                description_local = (
+                    "Domain: {} has been created\nIssuer: {}\nFingerprint {}\n".format(
+                        domain, report[domain]["issuer"], report[domain]["fingerprint"]
+                    )
+                )
+                issues.append(
+                    {
+                        "issue_id": len(issues) + 1,
+                        "severity": get_criticity(cvss_local),
+                        "confidence": "certain",
+                        "target": {
+                            "addr": [domain],
+                            "protocol": "http",
+                            "parent": asset,
+                        },
+                        "title": "Domain '{}' has been identified in certstream".format(
+                            domain
+                        ),
                         "solution": "n/a",
                         "metadata": {"risk": {"cvss_base_score": cvss_local}},
                         "type": "certstream_report",
                         "timestamp": timestamp,
                         "description": description_local,
-                    })
+                    }
+                )
+                nb_vulns[get_criticity(cvss_local)] += 1
+
+                if report[domain]["still_investing"] is not None:
+                    cvss_local = UP_DOMAIN_CVSS
+                    description_local += "Last time up: {}\n".format(
+                        report[domain]["still_investing"]
+                    )
+                    issues.append(
+                        {
+                            "issue_id": len(issues) + 1,
+                            "severity": get_criticity(cvss_local),
+                            "confidence": "certain",
+                            "target": {
+                                "addr": [domain],
+                                "protocol": "http",
+                                "parent": asset,
+                            },
+                            "title": "Domain '{}' is reacheable".format(domain),
+                            "solution": "n/a",
+                            "metadata": {"risk": {"cvss_base_score": cvss_local}},
+                            "type": "certstream_report",
+                            "timestamp": timestamp,
+                            "description": description_local,
+                        }
+                    )
                     nb_vulns[get_criticity(cvss_local)] += 1
 
                 cvss_max = max(cvss_local, cvss_max)
                 description += description_local
 
         if cvss_max > PARENT_ASSET_CREATE_FINDING_CEIL:
-            issues.append({
-                "issue_id": len(issues)+1,
-                "severity": get_criticity(PARENT_ASSET_CREATE_FINDING_CVSS), "confidence": "certain",
-                "target": {"addr": [asset], "protocol": "http"},
-                "title": "[{}] Some domain has been identified in certstream".format(timestamp),
-                "solution": "n/a",
-                "metadata": {"risk": {"cvss_base_score": PARENT_ASSET_CREATE_FINDING_CVSS}},
-                "type": "certstream_report",
-                "timestamp": timestamp,
-                "description": description,
-            })
+            issues.append(
+                {
+                    "issue_id": len(issues) + 1,
+                    "severity": get_criticity(PARENT_ASSET_CREATE_FINDING_CVSS),
+                    "confidence": "certain",
+                    "target": {"addr": [asset], "protocol": "http"},
+                    "title": "[{}] Some domain has been identified in certstream".format(
+                        timestamp
+                    ),
+                    "solution": "n/a",
+                    "metadata": {
+                        "risk": {"cvss_base_score": PARENT_ASSET_CREATE_FINDING_CVSS}
+                    },
+                    "type": "certstream_report",
+                    "timestamp": timestamp,
+                    "description": description,
+                }
+            )
             nb_vulns[get_criticity(PARENT_ASSET_CREATE_FINDING_CVSS)] += 1
-
 
     summary = {
         "nb_issues": len(issues),
@@ -542,7 +657,7 @@ def _parse_results(scan_id):
         "nb_medium": nb_vulns["medium"],
         "nb_high": nb_vulns["high"],
         "engine_name": "certstream",
-        "engine_version": engine.scanner["version"]
+        "engine_version": engine.scanner["version"],
     }
 
     return issues, summary
@@ -554,13 +669,22 @@ def getfindings(scan_id):
 
     # check if the scan_id exists
     if scan_id not in engine.scans.keys():
-        res.update({"status": "error", "reason": "scan_id '{}' not found".format(scan_id)})
+        res.update(
+            {"status": "error", "reason": "scan_id '{}' not found".format(scan_id)}
+        )
         return jsonify(res)
 
     # check if the scan is finished
     status()
     if engine.scans[scan_id]["status"] != "FINISHED":
-        res.update({"status": "error", "reason": "scan_id '{}' not finished (status={})".format(scan_id, engine.scans[scan_id]["status"])})
+        res.update(
+            {
+                "status": "error",
+                "reason": "scan_id '{}' not finished (status={})".format(
+                    scan_id, engine.scans[scan_id]["status"]
+                ),
+            }
+        )
         return jsonify(res)
 
     issues, summary = _parse_results(scan_id)
@@ -571,29 +695,31 @@ def getfindings(scan_id):
         "options": engine.scans[scan_id]["options"],
         "status": engine.scans[scan_id]["status"],
         "started_at": engine.scans[scan_id]["started_at"],
-        "finished_at": engine.scans[scan_id]["finished_at"]
+        "finished_at": engine.scans[scan_id]["finished_at"],
     }
 
     # Store the findings in a file
-    with open(APP_BASE_DIR+"/results/certstream_"+scan_id+".json", "w") as rf:
-        dump({
-            "scan": scan,
-            "summary": summary,
-            "issues": issues
-        }, rf, default=_json_serial)
+    with open(APP_BASE_DIR + "/results/certstream_" + scan_id + ".json", "w") as rf:
+        dump(
+            {"scan": scan, "summary": summary, "issues": issues},
+            rf,
+            default=_json_serial,
+        )
 
     # remove the scan from the active scan list
     clean_scan(scan_id)
 
-    res.update({"scan": scan, "summary": summary, "issues": issues, "status": "success"})
+    res.update(
+        {"scan": scan, "summary": summary, "issues": issues, "status": "success"}
+    )
     return jsonify(res)
 
 
 @app.before_first_request
 def main():
     """First function called."""
-    if not exists(APP_BASE_DIR+"/results"):
-        os.makedirs(APP_BASE_DIR+"/results")
+    if not exists(APP_BASE_DIR + "/results"):
+        os.makedirs(APP_BASE_DIR + "/results")
     _loadconfig()
     LOG.debug("Run engine")
 

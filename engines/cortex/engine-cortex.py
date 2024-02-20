@@ -1,5 +1,6 @@
 #!/usr/bin/python3
 # -*- coding: utf-8 -*-
+
 import os, sys, json, time, datetime, threading, hashlib, optparse
 from urllib.parse import urlparse
 from flask import Flask, request, jsonify, redirect, url_for, send_from_directory
@@ -9,27 +10,27 @@ app = Flask(__name__)
 APP_DEBUG = False
 APP_HOST = "0.0.0.0"
 APP_PORT = 5009
-APP_MAXSCANS = int(os.environ.get('APP_MAXSCANS', 100))
+APP_MAXSCANS = int(os.environ.get("APP_MAXSCANS", 100))
 
 BASE_DIR = os.path.dirname(os.path.realpath(__file__))
 this = sys.modules[__name__]
-this.scanner = {}   # Scanner config
-this.scans = {}     # Scans list
-this.api = None     # Cortex API instance
+this.scanner = {}  # Scanner config
+this.scans = {}  # Scans list
+this.api = None  # Cortex API instance
 
 
-@app.route('/')
+@app.route("/")
 def default():
-    return redirect(url_for('index'))
+    return redirect(url_for("index"))
 
 
-@app.route('/engines/cortex/')
+@app.route("/engines/cortex/")
 def index():
     return jsonify({"page": "index"})
 
 
 def _loadconfig():
-    conf_file = BASE_DIR+'/cortex.json'
+    conf_file = BASE_DIR + "/cortex.json"
     if os.path.exists(conf_file):
         json_data = open(conf_file)
         this.scanner = json.load(json_data)
@@ -38,16 +39,17 @@ def _loadconfig():
             this.scanner["api_url"],
             this.scanner["api_key"],
             proxies=this.scanner["proxies"],
-            cert=False)
+            cert=False,
+        )
 
         this.scanner["status"] = "READY"
 
-        version_filename = BASE_DIR+'/VERSION'
+        version_filename = BASE_DIR + "/VERSION"
         if os.path.exists(version_filename):
             version_file = open(version_filename, "r")
-            this.scanner["version"] = version_file.read().rstrip('\n')
+            this.scanner["version"] = version_file.read().rstrip("\n")
             version_file.close()
-    
+
         _refresh_analyzers()
     else:
         this.scanner["status"] = "ERROR"
@@ -61,12 +63,12 @@ def _refresh_analyzers():
         this.scanner["analyzers"] = analyzers
     except CortexException as ex:
         this.scanner["status"] = "ERROR"
-        print('[ERROR]: Failed to list analyzers ({})'.format(ex.message))
+        print("[ERROR]: Failed to list analyzers ({})".format(ex.message))
         return False
     return True
 
 
-@app.route('/engines/cortex/reloadconfig')
+@app.route("/engines/cortex/reloadconfig")
 def reloadconfig():
     res = {"page": "reloadconfig"}
     _loadconfig()
@@ -74,87 +76,99 @@ def reloadconfig():
     return jsonify(res)
 
 
-@app.route('/engines/cortex/startscan', methods=['POST'])
+@app.route("/engines/cortex/startscan", methods=["POST"])
 def start_scan():
     """
     List available Cortex Analyzers (refresh).
 
     Ensure each scans comply with the analyzer (ready, datatype, ...)
     """
-    #@todo: validate parameters and options format
+    # @todo: validate parameters and options format
     res = {"page": "startscan"}
 
     # check the scanner is ready to start a new scan
     if len(this.scans) == APP_MAXSCANS:
-        res.update({
-            "status": "error",
-            "reason": "Scan refused: max concurrent active scans reached ({})".format(APP_MAXSCANS)
-        })
+        res.update(
+            {
+                "status": "error",
+                "reason": "Scan refused: max concurrent active scans reached ({})".format(
+                    APP_MAXSCANS
+                ),
+            }
+        )
         return jsonify(res)
 
     status()
-    if this.scanner['status'] != "READY":
-        res.update({
-            "status": "refused",
-            "details": {
-                "reason": "scanner not ready",
-                "status": this.scanner['status']
-        }})
+    if this.scanner["status"] != "READY":
+        res.update(
+            {
+                "status": "refused",
+                "details": {
+                    "reason": "scanner not ready",
+                    "status": this.scanner["status"],
+                },
+            }
+        )
         return jsonify(res)
 
     data = json.loads(request.data)
 
     # Assets
-    if 'assets' not in data.keys():
-        res.update({
-            "status": "refused",
-            "details": {
-                "reason": "arg error, something is missing ('assets' ?)"
-        }})
+    if "assets" not in data.keys():
+        res.update(
+            {
+                "status": "refused",
+                "details": {"reason": "arg error, something is missing ('assets' ?)"},
+            }
+        )
         return jsonify(res)
 
     # Scan ID
-    scan_id = str(data['scan_id'])
-    if data['scan_id'] in this.scans.keys():
-        res.update({
-            "status": "refused",
-            "details": {
-                "reason": "scan '{}' already launched".format(data['scan_id']),
-        }})
+    scan_id = str(data["scan_id"])
+    if data["scan_id"] in this.scans.keys():
+        res.update(
+            {
+                "status": "refused",
+                "details": {
+                    "reason": "scan '{}' already launched".format(data["scan_id"]),
+                },
+            }
+        )
         return jsonify(res)
 
     # Analyzers availability
     _refresh_analyzers()
     if not _refresh_analyzers():
-        res.update({
-            "status": "refused",
-            "details": {
-                "reason": "Scan refused: having troubles with the Cortex analyzers"
-        }})
+        res.update(
+            {
+                "status": "refused",
+                "details": {
+                    "reason": "Scan refused: having troubles with the Cortex analyzers"
+                },
+            }
+        )
         return jsonify(res)
 
     scan = {
-        'assets':       data['assets'],
-        'threads':      [],
-        'jobs':         [],
-        'options':      data['options'],
-        'scan_id':      scan_id,
-        'status':       "STARTED",
-        'started_at':   int(time.time() * 1000),
-        'findings':     []
+        "assets": data["assets"],
+        "threads": [],
+        "jobs": [],
+        "options": data["options"],
+        "scan_id": scan_id,
+        "status": "STARTED",
+        "started_at": int(time.time() * 1000),
+        "findings": [],
     }
 
     this.scans.update({scan_id: scan})
-    for asset in data['assets']:
-        th = threading.Thread(target=_start_analyzes, args=(scan_id, asset["value"], asset["datatype"]))
+    for asset in data["assets"]:
+        th = threading.Thread(
+            target=_start_analyzes, args=(scan_id, asset["value"], asset["datatype"])
+        )
         th.start()
-        this.scans[scan_id]['threads'].append(th)
+        this.scans[scan_id]["threads"].append(th)
 
-    res.update({
-        "status": "accepted",
-        "details": {
-            "scan_id": scan['scan_id']
-    }})
+    res.update({"status": "accepted", "details": {"scan_id": scan["scan_id"]}})
 
     return jsonify(res)
 
@@ -163,20 +177,32 @@ def _start_analyzes(scan_id, asset, datatype):
     analyzers = []
 
     # Analyzers selected one by one
-    if "use_analyzers" in this.scans[scan_id]["options"] and this.scans[scan_id]["options"]["use_analyzers"]:
+    if (
+        "use_analyzers" in this.scans[scan_id]["options"]
+        and this.scans[scan_id]["options"]["use_analyzers"]
+    ):
         preselected_analyzers = this.scans[scan_id]["options"]["use_analyzers"]
 
         for analyzer in this.scanner["analyzers"]:
             # Check availability and datatype
-            if analyzer["analyzerDefinitionId"] in preselected_analyzers and datatype in analyzer["dataTypeList"]:
+            if (
+                analyzer["analyzerDefinitionId"] in preselected_analyzers
+                and datatype in analyzer["dataTypeList"]
+            ):
                 analyzers.append(analyzer["id"])
 
-    if "all_datatype_analyzers" in this.scans[scan_id]["options"] and this.scans[scan_id]["options"]["all_datatype_analyzers"]:
+    if (
+        "all_datatype_analyzers" in this.scans[scan_id]["options"]
+        and this.scans[scan_id]["options"]["all_datatype_analyzers"]
+    ):
         for analyzer in this.scanner["analyzers"]:
             if datatype in analyzer["dataTypeList"]:
                 analyzers.append(analyzer["id"])
 
-    if "meta_analyzers" in this.scans[scan_id]["options"] and this.scans[scan_id]["options"]["meta_analyzers"]:
+    if (
+        "meta_analyzers" in this.scans[scan_id]["options"]
+        and this.scans[scan_id]["options"]["meta_analyzers"]
+    ):
         for ma in this.scans[scan_id]["options"]["meta_analyzers"]:
             if ma in this.scanner["meta_analyzers"].keys():
                 # valid meta-analyzer
@@ -188,39 +214,48 @@ def _start_analyzes(scan_id, asset, datatype):
             resp = this.api.run_analyzer(analyzer, datatype, 1, asset)
             this.scans[scan_id]["jobs"].append(resp["id"])
         except CortexException as ex:
-            print('[ERROR]: Failed to run analyzer: {}'.format(ex.message))
+            print("[ERROR]: Failed to run analyzer: {}".format(ex.message))
             return False
 
     return True
 
 
-@app.route('/engines/cortex/stop/<scan_id>')
+@app.route("/engines/cortex/stop/<scan_id>")
 def stop_scan(scan_id):
     res = {"page": "stop"}
 
     if scan_id not in this.scans.keys():
-        res.update({"status": "error", "reason": "scan_id '{}' not found".format(scan_id)})
+        res.update(
+            {"status": "error", "reason": "scan_id '{}' not found".format(scan_id)}
+        )
         return jsonify(res)
 
     scan_status(scan_id)
-    if this.scans[scan_id]['status'] != "SCANNING":
-        res.update({"status": "error", "reason": "scan '{}' is not running (status={})".format(scan_id, this.scans[scan_id]['status'])})
+    if this.scans[scan_id]["status"] != "SCANNING":
+        res.update(
+            {
+                "status": "error",
+                "reason": "scan '{}' is not running (status={})".format(
+                    scan_id, this.scans[scan_id]["status"]
+                ),
+            }
+        )
         return jsonify(res)
 
-    for job_id in this.scans[scan_id]['jobs']:
+    for job_id in this.scans[scan_id]["jobs"]:
         _clean_job(job_id)
 
-    for t in this.scans[scan_id]['threads']:
+    for t in this.scans[scan_id]["threads"]:
         t._Thread__stop()
-    this.scans[scan_id]['status'] = "STOPPED"
-    this.scans[scan_id]['finished_at'] = int(time.time() * 1000)
+    this.scans[scan_id]["status"] = "STOPPED"
+    this.scans[scan_id]["finished_at"] = int(time.time() * 1000)
 
     res.update({"status": "success"})
     return jsonify(res)
 
 
 # Stop all scans
-@app.route('/engines/cortex/stopscans', methods=['GET'])
+@app.route("/engines/cortex/stopscans", methods=["GET"])
 def stop():
     res = {"page": "stopscans"}
 
@@ -232,7 +267,7 @@ def stop():
     return jsonify(res)
 
 
-@app.route('/engines/cortex/clean')
+@app.route("/engines/cortex/clean")
 def clean():
     res = {"page": "clean"}
     this.scans.clear()
@@ -241,13 +276,15 @@ def clean():
     return jsonify(res)
 
 
-@app.route('/engines/cortex/clean/<scan_id>')
+@app.route("/engines/cortex/clean/<scan_id>")
 def clean_scan(scan_id):
     res = {"page": "clean_scan"}
     res.update({"scan_id": scan_id})
 
     if scan_id not in this.scans.keys():
-        res.update({"status": "error", "reason": "scan_id '{}' not found".format(scan_id)})
+        res.update(
+            {"status": "error", "reason": "scan_id '{}' not found".format(scan_id)}
+        )
         return jsonify(res)
 
     for job in this.scans[scan_id]["jobs"]:
@@ -262,75 +299,81 @@ def _clean_job(job_id):
     try:
         this.api.delete_job(job_id)
     except CortexException as ex:
-        print('[ERROR]: Failed to get job report: {}'.format(ex.message))
+        print("[ERROR]: Failed to get job report: {}".format(ex.message))
     return True
 
 
-@app.route('/engines/cortex/status/<scan_id>')
+@app.route("/engines/cortex/status/<scan_id>")
 def scan_status(scan_id):
     if scan_id not in this.scans.keys():
-        return jsonify({
-            "status": "ERROR",
-            "details": "scan_id '{}' not found".format(scan_id)})
+        return jsonify(
+            {"status": "ERROR", "details": "scan_id '{}' not found".format(scan_id)}
+        )
 
-    for job_id in this.scans[scan_id]['jobs']:
+    for job_id in this.scans[scan_id]["jobs"]:
         try:
             r = this.api.get_job_report(job_id)
             if r["status"] in ["Success", "Failure"]:
-                this.scans[scan_id]["findings"] = this.scans[scan_id]["findings"] + _parse_results(scan_id, r)
+                this.scans[scan_id]["findings"] = this.scans[scan_id][
+                    "findings"
+                ] + _parse_results(scan_id, r)
                 this.scans[scan_id]["jobs"].remove(job_id)
         except CortexException as ex:
-            print('[ERROR]: Failed to get job report: {}'.format(ex.message))
+            print("[ERROR]: Failed to get job report: {}".format(ex.message))
 
     all_threads_finished = False
-    for t in this.scans[scan_id]['threads']:
+    for t in this.scans[scan_id]["threads"]:
         if t.isAlive():
-            this.scans[scan_id]['status'] = "SCANNING"
+            this.scans[scan_id]["status"] = "SCANNING"
             all_threads_finished = False
             break
         else:
             all_threads_finished = True
 
-    if all_threads_finished and len(this.scans[scan_id]['jobs']) == 0 and this.scans[scan_id]['status'] == "SCANNING":
-        this.scans[scan_id]['status'] = "FINISHED"
-        this.scans[scan_id]['finished_at'] = int(time.time() * 1000)
+    if (
+        all_threads_finished
+        and len(this.scans[scan_id]["jobs"]) == 0
+        and this.scans[scan_id]["status"] == "SCANNING"
+    ):
+        this.scans[scan_id]["status"] = "FINISHED"
+        this.scans[scan_id]["finished_at"] = int(time.time() * 1000)
 
-    return jsonify({"status": this.scans[scan_id]['status']})
+    return jsonify({"status": this.scans[scan_id]["status"]})
 
 
-@app.route('/engines/cortex/status')
+@app.route("/engines/cortex/status")
 def status():
     res = {"page": "status"}
 
     if len(this.scans) == APP_MAXSCANS:
-        this.scanner['status'] = "BUSY"
+        this.scanner["status"] = "BUSY"
     else:
-        this.scanner['status'] = "READY"
+        this.scanner["status"] = "READY"
 
     scans = []
     for scan_id in this.scans.keys():
         scan_status(scan_id)
-        scans.append({scan_id: {
-            "status": this.scans[scan_id]['status'],
-            "started_at": this.scans[scan_id]['started_at'],
-            "assets": this.scans[scan_id]['assets']
-        }})
+        scans.append(
+            {
+                scan_id: {
+                    "status": this.scans[scan_id]["status"],
+                    "started_at": this.scans[scan_id]["started_at"],
+                    "assets": this.scans[scan_id]["assets"],
+                }
+            }
+        )
 
-    res.update({
-        "nb_scans": len(this.scans),
-        "status": this.scanner['status'],
-        "scans": scans})
+    res.update(
+        {"nb_scans": len(this.scans), "status": this.scanner["status"], "scans": scans}
+    )
 
     return jsonify(res)
 
 
-@app.route('/engines/cortex/info')
+@app.route("/engines/cortex/info")
 def info():
     status()
-    return jsonify({
-        "page": "info",
-        "engine_config": this.scanner
-    })
+    return jsonify({"page": "info", "engine_config": this.scanner})
 
 
 def _parse_results(scan_id, results):
@@ -340,55 +383,59 @@ def _parse_results(scan_id, results):
 
     # if failure: return an issue
     if results["status"] == "Failure":
-        if "display_failures" in this.scans[scan_id]["options"].keys() and this.scans[scan_id]["options"]["display_failures"] is True:
-            issues.append({
-                    "issue_id": len(issues)+1,
-                    "severity": "info", "confidence": "certain",
+        if (
+            "display_failures" in this.scans[scan_id]["options"].keys()
+            and this.scans[scan_id]["options"]["display_failures"] is True
+        ):
+            issues.append(
+                {
+                    "issue_id": len(issues) + 1,
+                    "severity": "info",
+                    "confidence": "certain",
                     "target": {
                         "addr": [results["data"]],
-                        "protocol": results["dataType"]},
+                        "protocol": results["dataType"],
+                    },
                     "title": "Failure in '{}' analyze".format(results["analyzerName"]),
                     "solution": "n/a",
-                    "metadata": {"tags": [
-                        "cortex",
-                        results["dataType"],
-                        results["analyzerName"]
-                        ]
+                    "metadata": {
+                        "tags": ["cortex", results["dataType"], results["analyzerName"]]
                     },
                     "type": "cortex_report",
                     "timestamp": ts,
-                    "description": "Error message: {}".format(results["report"]["full"]["errorMessage"])
+                    "description": "Error message: {}".format(
+                        results["report"]["full"]["errorMessage"]
+                    ),
                 }
             )
         return issues
 
     # Artifact issue if asked (get_artifacts=True option)
-    if "get_artifacts" in this.scans[scan_id]["options"].keys() and this.scans[scan_id]["options"]["get_artifacts"]:
+    if (
+        "get_artifacts" in this.scans[scan_id]["options"].keys()
+        and this.scans[scan_id]["options"]["get_artifacts"]
+    ):
         description = "Following artefacts have been found during the analyze:\n"
         for artefact in results["report"]["artifacts"]:
             description += "\n{} ({})".format(artefact["data"], artefact["dataType"])
-        issue_hash = hashlib.sha1(str(description).encode('utf-8')).hexdigest()[:6]
+        issue_hash = hashlib.sha1(str(description).encode("utf-8")).hexdigest()[:6]
 
-        issues.append({
-                "issue_id": len(issues)+1,
-                "severity": "info", "confidence": "certain",
-                "target": {
-                    "addr": [results["data"]],
-                    "protocol": results["dataType"]},
+        issues.append(
+            {
+                "issue_id": len(issues) + 1,
+                "severity": "info",
+                "confidence": "certain",
+                "target": {"addr": [results["data"]], "protocol": results["dataType"]},
                 "title": "Artefacts from '{}' analyzer (HASH: {})".format(
-                    results["analyzerName"],
-                    issue_hash
+                    results["analyzerName"], issue_hash
                 ),
                 "solution": "n/a",
-                "metadata": {"tags": [
-                    "cortex",
-                    results["dataType"],
-                    results["analyzerName"]
-                    ]
+                "metadata": {
+                    "tags": ["cortex", results["dataType"], results["analyzerName"]]
                 },
                 "type": "cortex_report",
                 "timestamp": ts,
-                "description": description
+                "description": description,
             }
         )
 
@@ -396,72 +443,86 @@ def _parse_results(scan_id, results):
     if "taxonomies" in results["report"]["summary"].keys():
         for taxo in results["report"]["summary"]["taxonomies"]:
             severity = "info"
-            if taxo["level"] == "info": severity = "info"
-            elif taxo["level"] == "safe": severity = "info"
-            elif taxo["level"] == "suspicious": severity = "medium"
-            elif taxo["level"] == "malicious": severity = "high"
+            if taxo["level"] == "info":
+                severity = "info"
+            elif taxo["level"] == "safe":
+                severity = "info"
+            elif taxo["level"] == "suspicious":
+                severity = "medium"
+            elif taxo["level"] == "malicious":
+                severity = "high"
 
-            issues.append({
-                    "issue_id": len(issues)+1,
-                    "severity": severity, "confidence": "certain",
+            issues.append(
+                {
+                    "issue_id": len(issues) + 1,
+                    "severity": severity,
+                    "confidence": "certain",
                     "target": {
                         "addr": [results["data"]],
-                        "protocol": results["dataType"]},
-                    "title": "{}: {}={}".format(taxo["namespace"], taxo["predicate"], taxo["value"]),
+                        "protocol": results["dataType"],
+                    },
+                    "title": "{}: {}={}".format(
+                        taxo["namespace"], taxo["predicate"], taxo["value"]
+                    ),
                     "solution": "n/a",
-                    "metadata": {"tags": [
-                        "cortex",
-                        results["dataType"],
-                        results["analyzerName"]
-                        ]
+                    "metadata": {
+                        "tags": ["cortex", results["dataType"], results["analyzerName"]]
                     },
                     "type": "cortex_report",
                     "timestamp": ts,
                     "description": "Analyzer '{}' stated following taxo:\n{}={}".format(
-                        taxo["namespace"], taxo["predicate"], taxo["value"])
+                        taxo["namespace"], taxo["predicate"], taxo["value"]
+                    ),
                 }
             )
 
     # Full report
     description = json.dumps(results["report"]["full"], indent=4)
-    description_hash = hashlib.sha1(str(description).encode('utf-8')).hexdigest()[:6]
-    issues.append({
-            "issue_id": len(issues)+1,
-            "severity": "info", "confidence": "certain",
-            "target": {
-                "addr": [results["data"]],
-                "protocol": results["dataType"]},
+    description_hash = hashlib.sha1(str(description).encode("utf-8")).hexdigest()[:6]
+    issues.append(
+        {
+            "issue_id": len(issues) + 1,
+            "severity": "info",
+            "confidence": "certain",
+            "target": {"addr": [results["data"]], "protocol": results["dataType"]},
             "title": "{} full results (HASH: {})".format(
-                results["analyzerName"], description_hash),
+                results["analyzerName"], description_hash
+            ),
             "solution": "n/a",
-            "metadata": {"tags": [
-                "cortex",
-                results["dataType"],
-                results["analyzerName"]
-                ]
+            "metadata": {
+                "tags": ["cortex", results["dataType"], results["analyzerName"]]
             },
             "type": "cortex_report",
             "timestamp": ts,
-            "description": description
+            "description": description,
         }
     )
 
     return issues
 
 
-@app.route('/engines/cortex/getfindings/<scan_id>')
+@app.route("/engines/cortex/getfindings/<scan_id>")
 def getfindings(scan_id):
     res = {"page": "getfindings", "scan_id": scan_id}
 
     # check if the scan_id exists
     if scan_id not in this.scans.keys():
-        res.update({"status": "error", "reason": "scan_id '{}' not found".format(scan_id)})
+        res.update(
+            {"status": "error", "reason": "scan_id '{}' not found".format(scan_id)}
+        )
         return jsonify(res)
 
     # check if the scan is finished
     status()
-    if this.scans[scan_id]['status'] != "FINISHED":
-        res.update({"status": "error", "reason": "scan_id '{}' not finished (status={})".format(scan_id, this.scans[scan_id]['status'])})
+    if this.scans[scan_id]["status"] != "FINISHED":
+        res.update(
+            {
+                "status": "error",
+                "reason": "scan_id '{}' not finished (status={})".format(
+                    scan_id, this.scans[scan_id]["status"]
+                ),
+            }
+        )
         return jsonify(res)
 
     findings = this.scans[scan_id]["findings"]
@@ -474,42 +535,44 @@ def getfindings(scan_id):
         "nb_high": 0,
         "nb_critical": 0,
         "engine_name": "cortex",
-        "engine_version": this.scanner["version"]
+        "engine_version": this.scanner["version"],
     }
 
     # Update summary with severity counts
     for finding in findings:
         sev = finding["severity"]
-        summary.update({"nb_"+sev: summary["nb_"+sev] + 1})
+        summary.update({"nb_" + sev: summary["nb_" + sev] + 1})
 
     scan = {
         "scan_id": scan_id,
-        "assets": this.scans[scan_id]['assets'],
-        "options": this.scans[scan_id]['options'],
-        "status": this.scans[scan_id]['status'],
-        "started_at": this.scans[scan_id]['started_at'],
-        "finished_at": this.scans[scan_id]['finished_at']
+        "assets": this.scans[scan_id]["assets"],
+        "options": this.scans[scan_id]["options"],
+        "status": this.scans[scan_id]["status"],
+        "started_at": this.scans[scan_id]["started_at"],
+        "finished_at": this.scans[scan_id]["finished_at"],
     }
 
     # store the findings in a file
-    with open(BASE_DIR+"/results/cortex_"+scan_id+".json", 'w') as report_file:
-        json.dump({
-            "scan": scan,
-            "summary": summary,
-            "issues": findings
-        }, report_file, default=_json_serial)
+    with open(BASE_DIR + "/results/cortex_" + scan_id + ".json", "w") as report_file:
+        json.dump(
+            {"scan": scan, "summary": summary, "issues": findings},
+            report_file,
+            default=_json_serial,
+        )
 
     # remove the scan from the active scan list
     clean_scan(scan_id)
 
-    res.update({"scan": scan, "summary": summary, "issues": findings, "status": "success"})
+    res.update(
+        {"scan": scan, "summary": summary, "issues": findings, "status": "success"}
+    )
     return jsonify(res)
 
 
 def _json_serial(obj):
     """
-        JSON serializer for objects not serializable by default json code
-        Used for datetime serialization when the results are written in file
+    JSON serializer for objects not serializable by default json code
+    Used for datetime serialization when the results are written in file
     """
 
     if isinstance(obj, datetime.datetime) or isinstance(obj, datetime.date):
@@ -518,17 +581,22 @@ def _json_serial(obj):
     raise TypeError("Type not serializable ({})".format(obj))
 
 
-@app.route('/engines/cortex/getreport/<scan_id>')
+@app.route("/engines/cortex/getreport/<scan_id>")
 def getreport(scan_id):
-    filepath = BASE_DIR+"/results/cortex_"+scan_id+".json"
+    filepath = BASE_DIR + "/results/cortex_" + scan_id + ".json"
 
     if not os.path.exists(filepath):
-        return jsonify({"status": "error", "reason": "report file for scan_id '{}' not found".format(scan_id)})
+        return jsonify(
+            {
+                "status": "error",
+                "reason": "report file for scan_id '{}' not found".format(scan_id),
+            }
+        )
 
-    return send_from_directory(BASE_DIR+"/results/", "cortex_"+scan_id+".json")
+    return send_from_directory(BASE_DIR + "/results/", "cortex_" + scan_id + ".json")
 
 
-@app.route('/engines/cortex/test')
+@app.route("/engines/cortex/test")
 def test():
     if not APP_DEBUG:
         return jsonify({"page": "test"})
@@ -539,9 +607,13 @@ def test():
         for arg in rule.arguments:
             options[arg] = "[{0}]".format(arg)
 
-        methods = ','.join(rule.methods)
+        methods = ",".join(rule.methods)
         url = url_for(rule.endpoint, **options)
-        res += urlparse.unquote("{0:50s} {1:20s} <a href='{2}'>{2}</a><br/>".format(rule.endpoint, methods, url))
+        res += urlparse.unquote(
+            "{0:50s} {1:20s} <a href='{2}'>{2}</a><br/>".format(
+                rule.endpoint, methods, url
+            )
+        )
 
     return res
 
@@ -553,16 +625,35 @@ def page_not_found(e):
 
 @app.before_first_request
 def main():
-    if not os.path.exists(BASE_DIR+"/results"):
-        os.makedirs(BASE_DIR+"/results")
+    if not os.path.exists(BASE_DIR + "/results"):
+        os.makedirs(BASE_DIR + "/results")
     _loadconfig()
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     parser = optparse.OptionParser()
-    parser.add_option("-H", "--host", help="Hostname of the Flask app [default %s]" % APP_HOST, default=APP_HOST)
-    parser.add_option("-P", "--port", help="Port for the Flask app [default %s]" % APP_PORT, default=APP_PORT)
-    parser.add_option("-d", "--debug", action="store_true", dest="debug", help=optparse.SUPPRESS_HELP, default=APP_DEBUG)
+    parser.add_option(
+        "-H",
+        "--host",
+        help="Hostname of the Flask app [default %s]" % APP_HOST,
+        default=APP_HOST,
+    )
+    parser.add_option(
+        "-P",
+        "--port",
+        help="Port for the Flask app [default %s]" % APP_PORT,
+        default=APP_PORT,
+    )
+    parser.add_option(
+        "-d",
+        "--debug",
+        action="store_true",
+        dest="debug",
+        help=optparse.SUPPRESS_HELP,
+        default=APP_DEBUG,
+    )
 
     options, _ = parser.parse_args()
-    app.run(debug=options.debug, host=options.host, port=int(options.port), threaded=True)
+    app.run(
+        debug=options.debug, host=options.host, port=int(options.port), threaded=True
+    )
