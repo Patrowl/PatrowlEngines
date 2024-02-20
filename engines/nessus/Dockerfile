@@ -1,5 +1,5 @@
 FROM alpine:3.16.3
-LABEL Name="Nessus\ \(Patrowl engine\)" Version="1.4.29"
+LABEL Name="Nessus\ \(Patrowl engine\)" Version="1.4.30"
 
 ENV LOGLEVEL info
 
