@@ -20,6 +20,6 @@ requests==2.28.1
 setuptools #==65.5.1  # not directly required, pinned by Snyk to avoid a vulnerability
 six==1.16.0
 urllib3==1.26.13
-validators==0.20.0
+validators==0.21.0
 werkzeug==2.2.3
 #whois==0.9.27
