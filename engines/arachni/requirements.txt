@@ -24,4 +24,4 @@ scandir==1.9.0
 six==1.11.0
 urllib3==1.26.5
 werkzeug==2.2.3
-setuptools==65.5.1 # not directly required, pinned by Snyk to avoid a vulnerability
+setuptools==70.0.0 # not directly required, pinned by Snyk to avoid a vulnerability
