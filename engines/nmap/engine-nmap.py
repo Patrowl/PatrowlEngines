@@ -4,19 +4,16 @@
 import os
 import subprocess
 import sys
-import traceback
-import psutil
+import hashlib
 import json
 import optparse
 import threading
-import urllib
 import time
-import datetime
 from collections import defaultdict
 from shlex import split
 from urllib.parse import urlparse
 from copy import deepcopy
-from flask import Flask, request, jsonify, redirect, url_for, send_from_directory
+from flask import Flask, request, jsonify
 import xml.etree.ElementTree as ET
 import banner
 
@@ -24,8 +21,6 @@ import banner
 from PatrowlEnginesUtils.PatrowlEngine import _json_serial
 from PatrowlEnginesUtils.PatrowlEngine import PatrowlEngine
 from PatrowlEnginesUtils.PatrowlEngineExceptions import PatrowlEngineExceptions
-
-from requests.packages.urllib3.exceptions import InsecureRequestWarning
 
 app = Flask(__name__)
 APP_DEBUG = os.environ.get("DEBUG", "").lower() in ["true", "1", "yes", "y", "on"]
@@ -113,6 +108,16 @@ def status():
 @app.route("/engines/nuclei/getreport/<scan_id>")
 def getreport(scan_id):
     """Get report on finished scans."""
+    if scan_id not in engine.scans.keys():
+        return (
+            jsonify(
+                {
+                    "status": "error",
+                    "reason": f"Error 1002: scan_id '{scan_id}' not found",
+                }
+            ),
+            503,
+        )
     return engine.getreport(scan_id)
 
 
@@ -185,6 +190,16 @@ def stop():
 @app.route("/engines/nmap/stop/<scan_id>")
 def stop_scan(scan_id):
     """Stop scan identified by id."""
+    if scan_id not in engine.scans.keys():
+        return (
+            jsonify(
+                {
+                    "status": "error",
+                    "reason": f"Error 1002: scan_id '{scan_id}' not found",
+                }
+            ),
+            503,
+        )
     return engine.stop_scan(scan_id)
 
 
@@ -470,6 +485,10 @@ def _scan_thread(scan_id, thread_id):
     return True
 
 
+def hash_text(text):
+    return hashlib.sha1(text.encode("utf-8")).hexdigest()[:6]
+
+
 def get_service_banner(scan_id, raw_hosts):
     ts = int(time.time() * 1000)
     res = []
@@ -488,13 +507,15 @@ def get_service_banner(scan_id, raw_hosts):
             if port_banner == "":
                 continue
 
+            hash_banner = hash_text(port_banner)
+
             res.append(
                 deepcopy(
                     _add_issue(
                         scan_id=scan_id,
                         target=target,
                         ts=ts,
-                        title=f"Service banner for {host}:{port}",
+                        title=f"Service banner for {host}:{port} (HASH: {hash_banner})",
                         desc=f"Service banner:\n\n{port_banner}",
                         type="port_banner",
                         raw={"banner": port_banner, "host": host, "port": port},
@@ -548,7 +569,6 @@ def _parse_report(filename, scan_id):
     issues = []
     target = {}
     raw_hosts = {}
-    nb_vulns = {"info": 0, "low": 0, "medium": 0, "high": 0, "critical": 0}
 
     try:
         tree = ET.parse(filename)
@@ -670,6 +690,7 @@ def _parse_report(filename, scan_id):
         openports = False
         # get ports status - generate issues
         if host.find("ports") is not None:
+            all_open_ports = []
             for port in host.find("ports"):
                 if port.tag == "extraports":
                     continue
@@ -690,9 +711,10 @@ def _parse_report(filename, scan_id):
                             raw_hosts[t].append(portid)
 
                 # get service information if available
-                if port.find("service") is not None and port.find("state").get(
-                    "state"
-                ) not in ["filtered", "closed"]:
+                if port.find("service") is not None and port_state not in [
+                    "filtered",
+                    "closed",
+                ]:
                     svc_name = port.find("service").get("name")
                     if svc_name == "tcpwrapped":  # Classic shit with WAF and Firewalls
                         continue
@@ -781,6 +803,7 @@ def _parse_report(filename, scan_id):
 
                 if port_state not in ["filtered", "closed"]:
                     openports = True
+                    all_open_ports.append(portid)
                     issues.append(
                         deepcopy(
                             _add_issue(
@@ -814,6 +837,25 @@ def _parse_report(filename, scan_id):
                         )
                     )
                 )
+
+            # Prepare and create a finding with all open ports
+            all_open_ports = list(set(all_open_ports))
+            all_open_ports.sort()
+            all_open_ports_str = ",".join([str(x) for x in all_open_ports])
+            all_open_ports_hash = hash_text(all_open_ports_str)
+            issues.append(
+                deepcopy(
+                    _add_issue(
+                        scan_id,
+                        target,
+                        ts,
+                        f"Host has '{len(all_open_ports)}' open port(s) (HASH: {all_open_ports_hash})",
+                        f"The scan detected following open ports: \n{all_open_ports_str}",
+                        type="open_ports",
+                        raw=all_open_ports,
+                    )
+                )
+            )
 
         # get host status
         status = host.find("status").get("state")
