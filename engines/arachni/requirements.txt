@@ -22,6 +22,6 @@ pytest==3.8.1
 requests==2.28.2
 scandir==1.9.0
 six==1.11.0
-urllib3==1.26.5
+urllib3==1.26.17
 werkzeug==2.2.3
 setuptools==65.5.1 # not directly required, pinned by Snyk to avoid a vulnerability
