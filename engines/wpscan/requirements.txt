@@ -1,4 +1,4 @@
-flask==2.0.1
+flask==2.2.5
 gunicorn
 PatrowlEnginesUtils>=1.0.1
 psutil
