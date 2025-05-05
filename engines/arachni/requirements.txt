@@ -5,7 +5,7 @@ chardet==3.0.4
 click
 Flask==2.2.3
 funcsigs==1.0.2
-gevent==1.4.0
+gevent==25.4.1
 greenlet==0.4.15
 gunicorn==20.0.4
 idna==2.5
@@ -24,4 +24,4 @@ scandir==1.9.0
 six==1.11.0
 urllib3==1.26.5
 werkzeug==2.2.3
-setuptools==65.5.1 # not directly required, pinned by Snyk to avoid a vulnerability
+setuptools==78.1.1 # not directly required, pinned by Snyk to avoid a vulnerability
