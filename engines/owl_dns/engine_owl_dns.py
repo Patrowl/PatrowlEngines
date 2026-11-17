@@ -1144,11 +1144,17 @@ def _get_whois(scan_id, asset):
             )
     if is_ip:
         w = IPWhois(str(asset).strip()).lookup_rdap()
+        w_text = "see raw"
+        try:
+            w_text = json.dumps(w, sort_keys=True)
+        except Exception:
+            pass
+
         res.update(
             {
                 asset: {
-                    "raw": {"dict": w, "text": "see raw"},
-                    "text": "see raw",
+                    "raw": {"dict": w, "text": w_text},
+                    "text": w_text,
                     "type": "ip",
                 }
             }
